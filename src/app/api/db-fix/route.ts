@@ -81,7 +81,7 @@ const EXPECTED: Record<string, string[]> = {
 
 async function actualColumns(): Promise<Record<string, string[]>> {
   const rows = (await db.$queryRawUnsafe(
-    `SELECT table_name, column_name FROM information_schema.columns
+    `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name IN ('Confession','ReactionCount','LetterSet','Letter','Gift')
      ORDER BY table_name, ordinal_position`
   )) as { table_name: string; column_name: string }[];
