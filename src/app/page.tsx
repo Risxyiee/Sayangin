@@ -1,13 +1,19 @@
 import Landing from "@/components/landing/Landing";
 import ConfessionView from "@/components/confess/ConfessionView";
+import StatusView from "@/components/confess/StatusView";
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ k?: string }>;
+  searchParams: Promise<{ k?: string; s?: string }>;
 }) {
-  const { k } = await searchParams;
+  const { k, s } = await searchParams;
 
-  // Link confess: /?k=<slug> → tampilkan halaman surat fullscreen
-  return k ? <ConfessionView slug={k} /> : <Landing />;
+  // Link confess penerima: /?k=<slug> → halaman surat fullscreen
+  if (k) return <ConfessionView slug={k} />;
+
+  // Halaman status pengirim: /?s=<senderKey> → dashboard pantauan
+  if (s) return <StatusView senderKey={s} />;
+
+  return <Landing />;
 }

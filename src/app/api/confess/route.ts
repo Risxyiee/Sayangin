@@ -15,6 +15,15 @@ const confessSchema = z.object({
 
 const THEMES = new Set(["rose", "sunset", "midnight"]);
 
+function makeToken(length = 16): string {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let s = "";
+  for (let i = 0; i < length; i++) {
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return s;
+}
+
 function makeSlug(): string {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
   let s = "";
@@ -44,9 +53,11 @@ export async function POST(req: NextRequest) {
       slug = makeSlug();
     }
 
+    const senderKey = makeToken(16);
     const confession = await db.confession.create({
       data: {
         slug,
+        senderKey,
         fromName: fromName ?? "",
         toName,
         message,
@@ -55,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { slug: confession.slug, id: confession.id },
+      { slug: confession.slug, id: confession.id, senderKey },
       { status: 201 }
     );
   } catch (err) {

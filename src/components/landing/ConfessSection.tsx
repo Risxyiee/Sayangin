@@ -188,6 +188,7 @@ export default function ConfessSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
+  const [statusUrl, setStatusUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [previewData, setPreviewData] = useState<null | {
     fromName: string;
@@ -222,6 +223,26 @@ export default function ConfessSection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat confess");
       setLink(`${window.location.origin}/?k=${data.slug}`);
+      setStatusUrl(`${window.location.origin}/?s=${data.senderKey}`);
+      // simpan ke daftar pribadi (localStorage) biar bisa dipantau lagi kapan pun
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("sayangin_confessions") ?? "[]"
+        ) as Array<Record<string, string>>;
+        saved.unshift({
+          slug: data.slug,
+          senderKey: data.senderKey,
+          toName: toName.trim(),
+          theme,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem(
+          "sayangin_confessions",
+          JSON.stringify(saved.slice(0, 20))
+        );
+      } catch {
+        /* localStorage mungkin diblokir — status tetap bisa diakses via link */
+      }
       setTimeout(
         () => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
         120
@@ -439,6 +460,19 @@ export default function ConfessSection() {
                       <Share2 className="mr-2 h-4 w-4" /> Kirim via WA
                     </Button>
                   </div>
+                  <a
+                    href={statusUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 py-3 text-sm font-bold text-amber-700 transition hover:bg-amber-100"
+                  >
+                    <Eye className="h-4 w-4" /> Pantau status: udah dibuka belum?
+                  </a>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Halaman status itu cuma buat kamu — dia nggak tahu. Simpan
+                    linknya, nanti kelihatan: udah dibuka belum & jawabannya
+                    apa (update otomatis).
+                  </p>
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     Tip: kirim pas dia lagi santai (malam hari paling aman 😌).
                     Yang bakal dia lihat persis seperti pratinjau di atas.
@@ -446,6 +480,7 @@ export default function ConfessSection() {
                   <button
                     onClick={() => {
                       setLink("");
+                      setStatusUrl("");
                       setMessage("");
                     }}
                     className="text-xs font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"

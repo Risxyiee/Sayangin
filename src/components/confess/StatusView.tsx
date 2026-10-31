@@ -1,0 +1,383 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Heart,
+  Mail,
+  MailOpen,
+  Check,
+  Clock,
+  RefreshCw,
+  Plus,
+  Share2,
+  MessageCircle,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
+import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
+
+type StatusData = {
+  slug: string;
+  fromName: string;
+  toName: string;
+  theme: string;
+  response: string | null;
+  views: number;
+  createdAt: string;
+  openedAt: string | null;
+  respondedAt: string | null;
+};
+
+type SavedItem = {
+  slug: string;
+  senderKey: string;
+  toName: string;
+  theme: string;
+  createdAt: string;
+};
+
+const LS_KEY = "sayangin_confessions";
+
+function loadSaved(): SavedItem[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? (JSON.parse(raw) as SavedItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "baru saja";
+  if (m < 60) return `${m} menit lalu`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} jam lalu`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} hari lalu`;
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function Step({
+  icon,
+  title,
+  state,
+  detail,
+  pulse,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  state: "done" | "waiting" | "highlight" | "soft";
+  detail: React.ReactNode;
+  pulse?: boolean;
+}) {
+  const ring =
+    state === "done"
+      ? "bg-emerald-500/15 border-emerald-400/50 text-emerald-300"
+      : state === "highlight"
+        ? "bg-rose-500/20 border-rose-400/60 text-rose-300"
+        : state === "soft"
+          ? "bg-white/5 border-white/15 text-white/50"
+          : "bg-amber-500/10 border-amber-400/40 text-amber-300";
+
+  return (
+    <div className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${ring} ${
+          pulse ? "anim-heartbeat" : ""
+        }`}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-white">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-white/60">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function StatusView({ senderKey }: { senderKey: string }) {
+  const [data, setData] = useState<StatusData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [saved, setSaved] = useState<SavedItem[]>([]);
+  const [listOpen, setListOpen] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/status/${senderKey}`);
+      if (!res.ok) throw new Error("notfound");
+      const d = await res.json();
+      setData(d);
+      setError("");
+    } catch {
+      setError("Status nggak ditemukan. Buka lewat link yang kamu simpan ya.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [senderKey]);
+
+  useEffect(() => {
+    setSaved(loadSaved());
+    fetchStatus();
+  }, [fetchStatus]);
+
+  // auto-refresh selama belum ada jawaban (biar user balik-balik 😄)
+  useEffect(() => {
+    if (!data || data.response) return;
+    const t = setInterval(fetchStatus, 12000);
+    return () => clearInterval(t);
+  }, [data, fetchStatus]);
+
+  const active = useMemo(
+    () => saved.find((s) => s.senderKey === senderKey) ?? null,
+    [saved, senderKey]
+  );
+
+  const refresh = () => {
+    setRefreshing(true);
+    fetchStatus();
+  };
+
+  const shareAgain = () => {
+    const link = `${window.location.origin}/?k=${data?.slug}`;
+    const text = encodeURIComponent(
+      `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const theme = CONFESS_THEMES[data?.theme ?? "rose"] ?? CONFESS_THEMES.rose;
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#2b0a1c] via-[#3d0c24] to-[#160510]">
+      <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-rose-600/20 blur-[100px]" />
+      <div className="absolute -right-16 bottom-10 h-72 w-72 rounded-full bg-pink-500/15 blur-[100px]" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-10">
+        {/* header */}
+        <div className="flex items-center justify-between">
+          <a href="/" className="flex items-center gap-1.5">
+            <Heart className="h-5 w-5 fill-rose-500 text-rose-500" />
+            <span className="text-sm font-extrabold text-white">
+              sayang<span className="text-rose-500">.in</span>
+            </span>
+          </a>
+          <button
+            onClick={refresh}
+            aria-label="Perbarui status"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition hover:bg-white/20"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+
+        <h1 className="mt-8 text-2xl font-extrabold leading-tight text-white">
+          Pantau confess kamu 👀
+        </h1>
+        <p className="mt-1 text-sm text-white/60">
+          Halaman ini update otomatis — biarkan tab-nya terbuka.
+        </p>
+
+        {/* LOADING */}
+        {loading && (
+          <div className="mt-20 flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-rose-400" />
+          </div>
+        )}
+
+        {/* ERROR */}
+        {!loading && error && (
+          <div className="mt-10 rounded-2xl bg-white/10 p-6 text-center backdrop-blur">
+            <div className="text-4xl">🥲</div>
+            <p className="mt-3 text-sm text-white/75">{error}</p>
+            <a
+              href="/"
+              className="mt-5 inline-block rounded-full bg-rose-500 px-6 py-2.5 text-sm font-bold text-white hover:bg-rose-600"
+            >
+              Ke Sayang.in
+            </a>
+          </div>
+        )}
+
+        {/* STATUS CARD */}
+        {!loading && !error && data && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 space-y-3"
+          >
+            <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur">
+              <p className="font-hand text-2xl text-rose-200">
+                Buat {data.toName},
+              </p>
+              <p className="text-xs text-white/50">
+                {data.fromName?.trim()
+                  ? `dari ${data.fromName} • `
+                  : "dari Seseorang 🤍 • "}
+                dikirim {relTime(data.createdAt)}
+              </p>
+
+              <div className="mt-5 space-y-3">
+                {/* 1. terkirim */}
+                <Step
+                  icon={<Check className="h-5 w-5" />}
+                  title="Surat terkirim"
+                  state="done"
+                  detail={
+                    <>
+                      Link-nya sudah jadi & aktif selamanya.{" "}
+                      <button
+                        onClick={shareAgain}
+                        className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                      >
+                        kirim ulang <Share2 className="h-3 w-3" />
+                      </button>
+                    </>
+                  }
+                />
+
+                {/* 2. dibuka */}
+                {data.openedAt ? (
+                  <Step
+                    icon={<MailOpen className="h-5 w-5" />}
+                    title={`Udah dibuka! (${data.views}x)`}
+                    state="done"
+                    detail={
+                      <>
+                        Pertama kali {relTime(data.openedAt)}.{" "}
+                        {data.response
+                          ? ""
+                          : "Dia lagi baca... tunggu jawabannya 😳"}
+                      </>
+                    }
+                  />
+                ) : (
+                  <Step
+                    icon={<Mail className="h-5 w-5" />}
+                    title="Belum dibuka"
+                    state="waiting"
+                    detail="Link-nya belum dibuka. Sabar — jangan spam dia, kirim lagi pas malam hari 😌"
+                  />
+                )}
+
+                {/* 3. jawaban */}
+                {data.response === "yes" ? (
+                  <Step
+                    icon={<Heart className="h-5 w-5 fill-rose-400 text-rose-400" />}
+                    title="IYA! Dia juga suka kamu 🎉"
+                    state="highlight"
+                    pulse
+                    detail={
+                      <>
+                        Selamat! {data.fromName?.trim() || "Kamu"} — chat dia
+                        sekarang sebelum momennya lewat.{" "}
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(
+                            `Hai ${data.toName}! Jadi... katanya kamu juga suka aku? 😳💗`
+                          )}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 font-semibold text-emerald-300 underline decoration-emerald-400/50 underline-offset-2"
+                        >
+                          buka WA <MessageCircle className="h-3 w-3" />
+                        </a>
+                      </>
+                    }
+                  />
+                ) : data.response === "later" ? (
+                  <Step
+                    icon={<Clock className="h-5 w-5" />}
+                    title="Dia minta waktu"
+                    state="soft"
+                    detail="Nggak apa-apa. Kamu tetap anonim — mungkin dia butuh proses. Tetap semangat!"
+                  />
+                ) : (
+                  <Step
+                    icon={<Clock className="h-5 w-5" />}
+                    title={data.openedAt ? "Nunggu jawaban..." : "Belum ada jawaban"}
+                    state={data.openedAt ? "waiting" : "soft"}
+                    pulse={!!data.openedAt}
+                    detail={
+                      data.openedAt
+                        ? "Dia udah baca tapi belum jawab. Deg-degan ya 😅"
+                        : "Kadang butuh beberapa jam — atau beberapa keberanian."
+                    }
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* daftar confess lain dari localStorage */}
+            {saved.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04]">
+                <button
+                  onClick={() => setListOpen((v) => !v)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                  aria-expanded={listOpen}
+                >
+                  <span className="text-xs font-bold text-white/80">
+                    Confess & kado lain kamu ({saved.length})
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-white/50 transition-transform ${
+                      listOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {listOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="space-y-1.5 px-3 pb-3">
+                        {saved.map((s) => (
+                          <a
+                            key={s.senderKey}
+                            href={`/?s=${s.senderKey}`}
+                            className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition ${
+                              s.senderKey === senderKey
+                                ? "bg-rose-500/20 text-rose-200"
+                                : "bg-white/5 text-white/70 hover:bg-white/10"
+                            }`}
+                          >
+                            <span className="font-semibold">Buat {s.toName}</span>
+                            <span className="text-white/40">
+                              {relTime(s.createdAt)}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            <a
+              href="/#confess"
+              className="flex items-center justify-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 py-3.5 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20"
+            >
+              <Plus className="h-4 w-4" /> Bikin confess / kado lagi
+            </a>
+
+            <p className="pt-2 text-center text-[11px] leading-relaxed text-white/40">
+              Simpan link halaman ini ({window.location.href.slice(0, 40)}…)
+              — ini satu-satunya cara buat lihat status.
+            </p>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}

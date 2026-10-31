@@ -27,7 +27,26 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(confession);
+    // catat aktivitas buka (untuk halaman status pengirim)
+    const now = new Date();
+    const tracked = await db.confession.update({
+      where: { slug },
+      data: {
+        views: { increment: 1 },
+        openedAt: confession.openedAt ?? now,
+      },
+      select: {
+        slug: true,
+        fromName: true,
+        toName: true,
+        message: true,
+        theme: true,
+        response: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(tracked);
   } catch (err) {
     console.error("GET /api/confess/[slug] error:", err);
     return NextResponse.json(

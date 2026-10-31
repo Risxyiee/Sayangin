@@ -10,11 +10,14 @@ datasource db {
 model Confession {
   id          String    @id @default(cuid())
   slug        String    @unique
+  senderKey   String?   @unique
   fromName    String    @default("")
   toName      String
   message     String
   theme       String    @default("rose")
   response    String?
+  views       Int       @default(0)
   createdAt   DateTime  @default(now())
+  openedAt    DateTime?
   respondedAt DateTime?
 }
