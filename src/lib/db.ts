@@ -83,7 +83,9 @@ function makePool(connectionString: string | undefined): PgPool {
     statement_timeout: 8_000, // server-side: potong query nangkring
     idleTimeoutMillis: 8_000, // koneksi nganggur ditutup duluan sebelum Hyperdrive membuangnya diam-diam
     maxUses: 250, // daur ulang koneksi sebelum menua/jadi zombie
-    keepAlive: true, // TCP keepalive deteksi koneksi setengah mati
+    // catatan: keepAlive TIDAK dipakai — di runtime Workers socket yang menempel
+    // (keepalive) berisiko menggleding limit koneksi simultan per isolate dan
+    // membuat isolate crash instan. Hidigiene cukup lewat idleTimeout + maxUses.
     ...(connectionString && isSupabaseHostWithoutSsl(connectionString)
       ? { ssl: { rejectUnauthorized: false } }
       : {}),
