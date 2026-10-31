@@ -92,10 +92,16 @@ export async function GET(req: NextRequest) {
   try {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
     const { env } = getCloudflareContext() as unknown as {
-      env?: { HYPERDRIVE?: { connectionString?: string }; DATABASE_URL?: string };
+      env?: {
+        HYPERDRIVE_DB?: { connectionString?: string };
+        HYPERDRIVE?: { connectionString?: string };
+        DATABASE_URL?: string;
+      };
     };
-    envInfo.hasHyperdriveBinding = !!env?.HYPERDRIVE;
-    envInfo.hyperdrive = maskConn(env?.HYPERDRIVE?.connectionString);
+    const hdCs = env?.HYPERDRIVE_DB?.connectionString ?? env?.HYPERDRIVE?.connectionString;
+    envInfo.hasHyperdriveBinding = !!hdCs;
+    envInfo.hyperdrive = maskConn(hdCs ?? null);
+    envInfo.bindingName = env?.HYPERDRIVE_DB ? "HYPERDRIVE_DB" : env?.HYPERDRIVE ? "HYPERDRIVE" : null;
     rawDirectUrl = env?.DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim() || undefined;
     envInfo.hasDatabaseUrlSecret = !!rawDirectUrl;
     envInfo.databaseUrl = maskConn(rawDirectUrl ?? null);

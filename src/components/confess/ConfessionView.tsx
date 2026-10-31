@@ -5,56 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Heart, Loader2, Lock, Share2, X } from "lucide-react";
+import { CONFESS_THEMES, type ConfessionTheme } from "@/lib/themes";
+
+// re-export: pemakai lama tetap import dari sini — definisi tunggal ada di lib
+export { CONFESS_THEMES };
+export type { ConfessionTheme };
 
 export type ConfessionData = {
   fromName: string;
   toName: string;
   message: string;
   theme: string;
-};
-
-export type ConfessionTheme = {
-  name: string;
-  bg: string;
-  accent: string;
-  seal: string;
-  /** Edisi terbatas: hilang dari pemilih tema setelah tanggal ini (FOMO) */
-  limited?: { until: string; label: string };
-};
-
-export const CONFESS_THEMES: Record<string, ConfessionTheme> = {
-  rose: {
-    name: "Rose",
-    bg: "from-[#2b0a1c] via-[#4a0e2e] to-[#160510]",
-    accent: "#ff5f9e",
-    seal: "from-rose-500 to-rose-700",
-  },
-  sunset: {
-    name: "Sunset",
-    bg: "from-[#3b0f1e] via-[#7c2d12] to-[#1f0806]",
-    accent: "#fb923c",
-    seal: "from-orange-500 to-rose-600",
-  },
-  midnight: {
-    name: "Midnight",
-    bg: "from-[#150620] via-[#3b0764] to-[#0b0313]",
-    accent: "#c084fc",
-    seal: "from-purple-500 to-fuchsia-700",
-  },
-  // Edisi terbatas 11.11 — cuma sampai 11 Nov, setelah itu tak bisa dipilih lagi
-  sakura: {
-    name: "Sakura",
-    bg: "from-[#3a0d22] via-[#7e2148] to-[#20060f]",
-    accent: "#ffb7d5",
-    seal: "from-pink-400 to-rose-600",
-    limited: { until: "2026-11-11T23:59:59+07:00", label: "Edisi 11.11" },
-  },
-  matcha: {
-    name: "Matcha",
-    bg: "from-[#0f2118] via-[#1f4d33] to-[#081209]",
-    accent: "#86efac",
-    seal: "from-emerald-500 to-green-700",
-  },
 };
 
 type Stage =

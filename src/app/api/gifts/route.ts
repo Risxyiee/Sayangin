@@ -14,17 +14,19 @@ import {
   GIFT_TYPES,
   type GiftType,
 } from "@/lib/gift-data";
+import { THEME_KEYS, THEME_INVALID_MESSAGE } from "@/lib/themes";
 import { describeError } from "@/lib/log-error";
 
 const createSchema = z.object({
   type: z.enum(GIFT_TYPES),
   fromName: z.string().trim().max(40).optional().default(""),
   toName: z.string().trim().min(1, "Nama penerima wajib diisi").max(40),
-  theme: z.enum(["rose", "sunset", "midnight"]).optional().default("rose"),
+  // sumber tunggal tema: src/lib/themes.ts (UI & API pasti sinkron)
+  theme: z.enum(THEME_KEYS).optional().default("rose"),
   data: z.unknown(),
 });
 
-const THEMES = new Set(["rose", "sunset", "midnight"]);
+const THEMES = new Set<string>(THEME_KEYS);
 
 const DATA_SCHEMA: Record<GiftType, z.ZodTypeAny> = {
   bouquet: bouquetDataSchema,
@@ -48,8 +50,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const isTheme = issue?.path[0] === "theme";
       return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Data tidak valid" },
+        { error: isTheme ? THEME_INVALID_MESSAGE : (issue?.message ?? "Data tidak valid") },
         { status: 400 }
       );
     }

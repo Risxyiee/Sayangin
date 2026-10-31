@@ -13,8 +13,11 @@
   },
   "hyperdrive": [
     {
-      "binding": "HYPERDRIVE",
-      // Hyperdrive manual yang menunjuk ke SESSION POOLER Supabase (IPv4)
+      "binding": "HYPERDRIVE_DB",
+      // ATURAN ARSITEKTUR: origin WAJIB direct connection Supabase port 5432
+      // (db.nulaitlgupgfonqjqcol.supabase.co), DILARANG pooler Supabase (6543).
+      // Hyperdrive sudah bertindak sebagai pooler global — double-pooling
+      // menyebabkan koneksi zombie & query menggantung.
       "id": "0ea648605309405bbc102ce10e4caebd",
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/postgres"
     }
