@@ -14,8 +14,8 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      // Hyperdrive baru via integrasi Supabase↔Cloudflare (pengganti f8829376...)
-      "id": "84746000ec124c97b552eca978315df8",
+      // Hyperdrive manual yang menunjuk ke SESSION POOLER Supabase (IPv4)
+      "id": "0ea648605309405bbc102ce10e4caebd",
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/postgres"
     }
   ],
