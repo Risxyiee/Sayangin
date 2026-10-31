@@ -12,6 +12,49 @@ import { makeSlug, makeToken } from "@/lib/token";
 // ganti/acak saat pakai; sengaja tidak masuk env biar sederhana & sementara
 const DEBUG_KEY = "dbg-kangenin-2026xq7";
 
+const POOLER_HOST = "aws-0-ap-southeast-1.pooler.supabase.com"; // region: Singapore
+
+/**
+ * Tulis-ulang URL direct Supabase (host db.<ref>.supabase.co, IPv6-only) menjadi
+ * URL session pooler (IPv4). Username 'postgres' wajib jadi 'postgres.<ref>'.
+ * HASIL TIDAK BOLEH DILOG/DIKEMBALIKAN — mengandung password.
+ */
+function toPoolerUrl(direct: string): { url: string; ref: string } | null {
+  try {
+    const u = new URL(direct);
+    if (!u.hostname.endsWith(".supabase.co")) return null;
+    const ref = u.hostname.split(".")[0];
+    u.hostname = POOLER_HOST;
+    if (u.username === "postgres") u.username = `postgres.${ref}`;
+    u.port = "5432";
+    u.searchParams.delete("sslmode");
+    return { url: u.toString(), ref };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Probe koneksi Postgres MURNI lewat node-postgres + TLS (tanpa Hyperdrive).
+ * Menguji apakah nodejs_compat terbaru sanggup TLS ke pooler langsung.
+ */
+async function poolerProbe(cs: string) {
+  const pg = (await import("pg")).default;
+  const pool = new pg.Pool({
+    connectionString: cs,
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    connectionTimeoutMillis: 8_000,
+    query_timeout: 8_000,
+  });
+  try {
+    const r = await pool.query("SELECT 1 AS one");
+    return r.rows;
+  } finally {
+    await pool.end().catch(() => {});
+  }
+}
+
 function maskConn(cs: string | undefined | null) {
   if (!cs) return null;
   try {
@@ -38,8 +81,11 @@ export async function GET(req: NextRequest) {
   type Step = { step: string; ok: boolean; ms: number; result?: unknown; error?: string };
   const steps: Step[] = [];
   const envInfo: Record<string, unknown> = {};
+  // hanya jalankan tes pooler (lewati langkah Hyperdrive yang suka hang)
+  const only = req.nextUrl.searchParams.get("only");
 
   // ── info koneksi (tanpa password) ──
+  let rawDirectUrl: string | undefined;
   try {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
     const { env } = getCloudflareContext() as unknown as {
@@ -47,9 +93,11 @@ export async function GET(req: NextRequest) {
     };
     envInfo.hasHyperdriveBinding = !!env?.HYPERDRIVE;
     envInfo.hyperdrive = maskConn(env?.HYPERDRIVE?.connectionString);
-    envInfo.hasDatabaseUrlSecret = !!env?.DATABASE_URL;
-    envInfo.databaseUrl = maskConn(env?.DATABASE_URL ?? null);
+    rawDirectUrl = env?.DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim() || undefined;
+    envInfo.hasDatabaseUrlSecret = !!rawDirectUrl;
+    envInfo.databaseUrl = maskConn(rawDirectUrl ?? null);
   } catch (e) {
+    rawDirectUrl = process.env.DATABASE_URL?.trim() || undefined;
     envInfo.contextError = describeError(e);
   }
 
@@ -65,56 +113,69 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── langkah diagnosis, berurutan ──
-  await run("raw-select-1", () => db.$queryRaw`SELECT 1 AS one`);
+  // ── TES UTAMA: Worker → pooler Supabase langsung (TLS, TANPA Hyperdrive) ──
+  const pooler = rawDirectUrl ? toPoolerUrl(rawDirectUrl) : null;
+  if (pooler) {
+    envInfo.poolerRewrite = { ref: pooler.ref, host: POOLER_HOST, ok: true };
+    for (let i = 1; i <= 2; i++) {
+      await run(`pooler-tls-${i}`, () => poolerProbe(pooler.url));
+    }
+  } else {
+    envInfo.poolerRewrite = { ok: false, reason: "DATABASE_URL bukan host direct supabase.co" };
+  }
 
-  await run("whoami", () =>
-    db.$queryRaw`SELECT current_user::text AS user, current_database()::text AS db`
-  );
+  // ── langkah diagnosis via Hyperdrive (dilewati kalau ?only=pooler) ──
+  if (only !== "pooler") {
+    await run("raw-select-1", () => db.$queryRaw`SELECT 1 AS one`);
 
-  // Buktikan (atau bantah) kehabisan slot koneksi di origin:
-  // max_connections=60 di Supabase free — kalau total mendekati max, semua
-  // koneksi baru akan hang sampai timeout. Ini persis gejala yang terlihat.
-  await run("pg-activity", () =>
-    db.$queryRaw`
-      SELECT
-        (SELECT setting::text FROM pg_settings WHERE name = 'max_connections') AS max_conn,
-        (SELECT setting::text FROM pg_settings WHERE name = 'supabase_pooler_client_max_connections') AS pooler_client_max,
-        count(*)::text AS total,
-        count(*) FILTER (WHERE state = 'active')::text AS active,
-        count(*) FILTER (WHERE state = 'idle')::text AS idle,
-        count(*) FILTER (WHERE state = 'idle in transaction')::text AS idle_in_txn,
-        count(*) FILTER (WHERE wait_event IS NOT NULL)::text AS waiting
-      FROM pg_stat_activity`
-  );
-
-  await run("count-confession", () => db.confession.count());
-
-  const slug = makeSlug();
-  const senderKey = makeToken(16);
-
-  // simulasi persis alur POST /api/confess
-  await run("findUnique-slug", () => db.confession.findUnique({ where: { slug } }));
-
-  const created = (await run("create-confession", () =>
-    db.confession.create({
-      data: {
-        slug,
-        senderKey,
-        fromName: "__debug__",
-        toName: "Debug Target",
-        message: "Baris uji koneksi tulis — akan dihapus otomatis.",
-        theme: "rose",
-        isPublic: false,
-      },
-      select: { id: true, slug: true },
-    })
-  )) as { id: string; slug: string } | undefined;
-
-  if (created?.id) {
-    await run("delete-confession", () =>
-      db.confession.delete({ where: { id: created.id } })
+    await run("whoami", () =>
+      db.$queryRaw`SELECT current_user::text AS user, current_database()::text AS db`
     );
+
+    // Buktikan (atau bantah) kehabisan slot koneksi di origin:
+    // max_connections=60 di Supabase free — kalau total mendekati max, semua
+    // koneksi baru akan hang sampai timeout. Ini persis gejala yang terlihat.
+    await run("pg-activity", () =>
+      db.$queryRaw`
+        SELECT
+          (SELECT setting::text FROM pg_settings WHERE name = 'max_connections') AS max_conn,
+          (SELECT setting::text FROM pg_settings WHERE name = 'supabase_pooler_client_max_connections') AS pooler_client_max,
+          count(*)::text AS total,
+          count(*) FILTER (WHERE state = 'active')::text AS active,
+          count(*) FILTER (WHERE state = 'idle')::text AS idle,
+          count(*) FILTER (WHERE state = 'idle in transaction')::text AS idle_in_txn,
+          count(*) FILTER (WHERE wait_event IS NOT NULL)::text AS waiting
+        FROM pg_stat_activity`
+    );
+
+    await run("count-confession", () => db.confession.count());
+
+    const slug = makeSlug();
+    const senderKey = makeToken(16);
+
+    // simulasi persis alur POST /api/confess
+    await run("findUnique-slug", () => db.confession.findUnique({ where: { slug } }));
+
+    const created = (await run("create-confession", () =>
+      db.confession.create({
+        data: {
+          slug,
+          senderKey,
+          fromName: "__debug__",
+          toName: "Debug Target",
+          message: "Baris uji koneksi tulis — akan dihapus otomatis.",
+          theme: "rose",
+          isPublic: false,
+        },
+        select: { id: true, slug: true },
+      })
+    )) as { id: string; slug: string } | undefined;
+
+    if (created?.id) {
+      await run("delete-confession", () =>
+        db.confession.delete({ where: { id: created.id } })
+      );
+    }
   }
 
   return NextResponse.json(
