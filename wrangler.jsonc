@@ -18,7 +18,7 @@
       // (db.nulaitlgupgfonqjqcol.supabase.co), DILARANG pooler Supabase (6543).
       // Hyperdrive sudah bertindak sebagai pooler global — double-pooling
       // menyebabkan koneksi zombie & query menggantung.
-      "id": "0ea648605309405bbc102ce10e4caebd",
+      "id": "01a56693e6eb4127a3bf81c99381b82b",
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/postgres"
     }
   ],
