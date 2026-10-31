@@ -1,25 +1,86 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useRef, type CSSProperties, type PointerEvent } from "react";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 
 /*
-  Hero editorial: kertas hangat, tipografi serif, satu objek —
-  kartu surat dengan cap pos. Tanpa gradien, glow, atau partikel.
+  Hero editorial dengan panggung 3D. Kartu surat melayang di ruang
+  berperspektif dan miring mengikuti kursor; setiap elemen kertas —
+  perangko, cap pos, selotip, pesawat kertas, segel lilin — berada di
+  kedalaman translateZ berbeda sehingga parallax-nya nyata. Bayangan
+  lantai bergeser berlawanan arah kemiringan. Tanpa gradien, glow,
+  atau partikel.
 */
+
+const PRESERVE_3D: CSSProperties = { transformStyle: "preserve-3d" };
+
+function PaperPlane({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <path fill="currentColor" d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+      {/* lipatan kertas di sisi atas */}
+      <path fill="#000" fillOpacity="0.28" d="M2 3l15 9L2 10V3z" />
+    </svg>
+  );
+}
+
+function WaxSeal({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      className={`flex h-11 w-11 items-center justify-center rounded-full bg-[#8e2137] shadow-[0_12px_24px_-10px_rgba(0,0,0,0.8)] ring-1 ring-black/30 ${
+        className ?? ""
+      }`}
+      style={style}
+    >
+      <div className="relative h-4 w-4">
+        <div className="heart-shape !bg-[#f0e4dc]" />
+      </div>
+    </div>
+  );
+}
 
 function LetterCard() {
   return (
-    <div className="relative mx-auto w-full max-w-sm rotate-[-1.5deg]">
+    <div className="relative mx-auto w-full max-w-sm" style={PRESERVE_3D}>
       {/* kartu surat */}
-      <div className="rounded-sm border border-border bg-card p-7 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_12px_32px_-16px_rgba(28,25,23,0.25)]">
+      <div
+        className="rounded-sm border border-border bg-card p-7 shadow-[0_1px_2px_rgba(28,25,23,0.06),0_12px_32px_-16px_rgba(28,25,23,0.25)]"
+        style={PRESERVE_3D}
+      >
         {/* baris kepala surat */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between" style={PRESERVE_3D}>
           <div className="space-y-2.5 pt-1">
             <div className="h-2 w-28 rounded-sm bg-neutral-200" />
             <div className="h-2 w-20 rounded-sm bg-neutral-200/80" />
           </div>
-          {/* perangko */}
-          <div className="flex h-14 w-12 items-center justify-center border-2 border-dashed border-primary/40 bg-primary/5">
+          {/* perangko — melayang di depan permukaan kartu */}
+          <div
+            className="flex h-14 w-12 items-center justify-center border-2 border-dashed border-primary/40 bg-primary/5"
+            style={{ transform: "translateZ(42px)" }}
+          >
             <div className="relative h-5 w-5">
               <div className="heart-shape" />
             </div>
@@ -41,9 +102,12 @@ function LetterCard() {
         </div>
 
         {/* tanda tangan + cap */}
-        <div className="mt-7 flex items-end justify-between">
+        <div className="mt-7 flex items-end justify-between" style={PRESERVE_3D}>
           <p className="font-hand text-xl text-foreground/70">— seseorang</p>
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/50 text-center">
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/50 text-center"
+            style={{ transform: "translateZ(26px)" }}
+          >
             <div className="text-[7px] font-bold uppercase leading-tight tracking-[0.15em] text-primary/70">
               sayangin
               <br />
@@ -55,14 +119,46 @@ function LetterCard() {
         </div>
       </div>
 
-      {/* selotip kertas di pojok */}
-      <div className="absolute -top-2.5 left-8 h-5 w-16 rotate-[-4deg] rounded-[2px] bg-secondary/90 shadow-sm" />
-      <div className="absolute -bottom-2.5 right-10 h-5 w-14 rotate-[3deg] rounded-[2px] bg-secondary/90 shadow-sm" />
+      {/* selotip kertas — lapisan paling depan */}
+      <motion.div
+        aria-hidden
+        className="absolute -top-2.5 left-8 h-5 w-16 rounded-[2px] bg-secondary/90 shadow-sm"
+        style={{ z: 58, rotate: -4 }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute -bottom-2.5 right-10 h-5 w-14 rounded-[2px] bg-secondary/90 shadow-sm"
+        style={{ z: 50, rotate: 3 }}
+      />
     </div>
   );
 }
 
 export default function Hero() {
+  const reduce = useReducedMotion();
+  const sceneRef = useRef<HTMLDivElement>(null);
+
+  // posisi kursor dinormalisasi (-0.5 .. 0.5), dihaluskan dengan spring
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const sx = useSpring(mx, { stiffness: 150, damping: 18, mass: 0.5 });
+  const sy = useSpring(my, { stiffness: 150, damping: 18, mass: 0.5 });
+  const rotateX = useTransform(sy, [-0.5, 0.5], [8, -8]);
+  const rotateY = useTransform(sx, [-0.5, 0.5], [-11, 11]);
+  const shadowX = useTransform(sx, [-0.5, 0.5], [20, -20]);
+
+  const handleMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (reduce || e.pointerType === "touch") return;
+    const rect = sceneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    mx.set((e.clientX - rect.left) / rect.width - 0.5);
+    my.set((e.clientY - rect.top) / rect.height - 0.5);
+  };
+  const handleLeave = () => {
+    mx.set(0);
+    my.set(0);
+  };
+
   return (
     <section
       className="relative overflow-hidden bg-[#211d1a] pb-20 pt-32 sm:pb-24 sm:pt-40"
@@ -135,13 +231,131 @@ export default function Hero() {
           </div>
         </motion.div>
 
+        {/* panggung 3D */}
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
           className="pb-4 lg:pb-0"
         >
-          <LetterCard />
+          <div
+            ref={sceneRef}
+            onPointerMove={handleMove}
+            onPointerLeave={handleLeave}
+            className="relative mx-auto max-w-md cursor-default px-4 py-16"
+            style={{ perspective: "1300px" }}
+          >
+            {/* bayangan lantai — bergeser berlawanan arah kemiringan */}
+            <div aria-hidden className="absolute inset-x-0 bottom-6 flex justify-center">
+              <motion.div
+                className="h-7 w-60 rounded-full bg-black/60 blur-xl"
+                style={{ x: shadowX }}
+                animate={
+                  reduce
+                    ? undefined
+                    : { scaleX: [1, 0.9, 1], opacity: [0.85, 0.6, 0.85] }
+                }
+                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+
+            {/* masuk panggung */}
+            <motion.div
+              style={PRESERVE_3D}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              {/* melayang naik-turun pelan */}
+              <motion.div
+                style={PRESERVE_3D}
+                animate={reduce ? undefined : { y: [0, -12, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                {/* kemiringan mengikuti kursor */}
+                <motion.div
+                  className="relative"
+                  style={{
+                    rotateX,
+                    rotateY,
+                    rotate: -1.5,
+                    willChange: "transform",
+                    ...PRESERVE_3D,
+                  }}
+                >
+                  {/* goyangan ambient pelan saat kursor tidak di atas kartu */}
+                  <motion.div
+                    style={PRESERVE_3D}
+                    animate={reduce ? undefined : { rotateY: [-2.5, 2.5, -2.5] }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <LetterCard />
+
+                    {/* pesawat kertas — lapisan paling depan */}
+                    <motion.div
+                      aria-hidden
+                      className="absolute -top-10 right-4"
+                      style={{ z: 95 }}
+                      animate={
+                        reduce ? undefined : { y: [0, -14, 0], x: [0, 5, 0] }
+                      }
+                      transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <PaperPlane className="h-8 w-8 rotate-[16deg] text-white/30" />
+                    </motion.div>
+
+                    {/* segel lilin — di depan, sisi kiri bawah */}
+                    <motion.div
+                      aria-hidden
+                      className="absolute -bottom-9 -left-4"
+                      style={{ z: 75 }}
+                      animate={reduce ? undefined : { y: [0, 10, 0] }}
+                      transition={{
+                        duration: 5.2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.7,
+                      }}
+                    >
+                      <WaxSeal />
+                    </motion.div>
+
+                    {/* hiasan tinta kecil */}
+                    <motion.span
+                      aria-hidden
+                      className="absolute -top-5 left-8 font-display text-lg text-white/25"
+                      style={{ z: 60 }}
+                      animate={
+                        reduce ? undefined : { y: [0, -8, 0], rotate: [0, 12, 0] }
+                      }
+                      transition={{
+                        duration: 6.4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 1.3,
+                      }}
+                    >
+                      ✦
+                    </motion.span>
+                    <motion.span
+                      aria-hidden
+                      className="absolute top-1/2 -right-7 font-display text-base text-white/15"
+                      style={{ z: 45 }}
+                      animate={reduce ? undefined : { y: [0, 9, 0] }}
+                      transition={{
+                        duration: 7,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 2,
+                      }}
+                    >
+                      +
+                    </motion.span>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>
