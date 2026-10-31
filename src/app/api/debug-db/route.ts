@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   // simulasi persis alur POST /api/confess
   await run("findUnique-slug", () => db.confession.findUnique({ where: { slug } }));
 
-  const created = await run("create-confession", () =>
+  const created = (await run("create-confession", () =>
     db.confession.create({
       data: {
         slug,
@@ -93,11 +93,11 @@ export async function GET(req: NextRequest) {
       },
       select: { id: true, slug: true },
     })
-  );
+  )) as { id: string; slug: string } | undefined;
 
-  if (created && typeof created === "object" && "id" in created) {
+  if (created?.id) {
     await run("delete-confession", () =>
-      db.confession.delete({ where: { id: (created as { id: number }).id } })
+      db.confession.delete({ where: { id: created.id } })
     );
   }
 
