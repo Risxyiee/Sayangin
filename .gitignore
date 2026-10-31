@@ -59,3 +59,6 @@ db/*.db-journal
 # Cloudflare build output & state
 .open-next/
 .wrangler/
+
+# secret lokal untuk wrangler dev/preview
+.dev.vars

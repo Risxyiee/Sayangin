@@ -1,58 +1,75 @@
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 
-// Driver adapter Postgres (pg) — wajib agar Prisma jalan di Cloudflare Workers
-// (OpenNext + nodejs_compat). Juga tetap normal dipakai di Node lokal.
-//
-// DATABASE_URL yang benar untuk runtime (Cloudflare secret):
-//   postgresql://postgres.<REF>:<PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require
-//   (host WAJIB pooler.supabase.com — host db.* itu IPv6-only, tidak terjangkau Workers)
+// ── Kenapa Hyperdrive? ────────────────────────────────────────────────────────
+// Library pg melakukan upgrade TLS dengan cara yang TIDAK didukung runtime
+// Cloudflare Workers (hasil uji: semua varian ssl → "internal error" workerd,
+// produksi: "Connection terminated unexpectedly").
+// Solusi resmi: binding Hyperdrive. Worker konek plaintext ke proxy lokal
+// Hyperdrive (aman, di dalam jaringan Cloudflare), Hyperdrive yang mengurus
+// TLS + connection pooling ke Supabase. Node lokal tetap langsung ke DATABASE_URL.
 
-function resolveConnectionString(): string | undefined {
-  const url = process.env.DATABASE_URL?.trim()
-  if (!url) {
-    console.warn(
-      "[db] DATABASE_URL tidak terpasang — query database akan gagal. " +
-        "Set secret DATABASE_URL di Cloudflare (Workers > Settings > Variables & Secrets)."
-    )
-    return undefined
+type CloudflareEnv = {
+  HYPERDRIVE?: { connectionString?: string }
+}
+
+function hyperdriveConnectionString(): string | undefined {
+  try {
+    const { env } = getCloudflareContext() as unknown as { env?: CloudflareEnv }
+    return env?.HYPERDRIVE?.connectionString
+  } catch {
+    return undefined // bukan runtime Cloudflare (mis. next dev lokal)
   }
-  if (url.includes("[YOUR-PASSWORD]") || url.includes("[PASSWORD]")) {
+}
+
+function envDatabaseUrl(): string | undefined {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!url) return undefined
+  if (url.includes('[YOUR-PASSWORD]') || url.includes('[PASSWORD]')) {
     console.warn(
-      "[db] DATABASE_URL masih memuat placeholder password — ganti dengan password database asli."
+      '[db] DATABASE_URL masih memuat placeholder password — ganti dengan password database asli.'
     )
   }
   return url
 }
 
 // Supabase mewajibkan TLS. Kalau URL lupa membawa ?sslmode=require,
-// aktifkan SSL otomatis untuk host supabase agar koneksi tidak ditolak.
+// aktifkan SSL otomatis untuk host supabase (hanya relevan di Node lokal).
 function isSupabaseHostWithoutSsl(url: string): boolean {
   try {
     const u = new URL(url)
     const supabase = /(^|\.)supabase\.(co|com)$/.test(u.hostname)
-    return supabase && !u.searchParams.has("sslmode")
+    return supabase && !u.searchParams.has('sslmode')
   } catch {
     return false
   }
 }
 
 function makeClient(): PrismaClient {
-  const connectionString = resolveConnectionString()
-  const forceSsl = !!connectionString && isSupabaseHostWithoutSsl(connectionString)
-  if (forceSsl) {
-    console.warn("[db] URL supabase tanpa sslmode — SSL diaktifkan otomatis.")
+  const hd = hyperdriveConnectionString()
+  if (hd) {
+    console.log('[db] memakai binding Hyperdrive (pooling + TLS via Cloudflare)')
+    const adapter = new PrismaPg({ connectionString: hd, max: 5 })
+    return new PrismaClient({ adapter })
   }
+
+  const connectionString = envDatabaseUrl()
+  if (!connectionString) {
+    console.warn(
+      '[db] DATABASE_URL tidak terpasang — query database akan gagal. ' +
+        'Set secret DATABASE_URL di Cloudflare, atau .env untuk lokal.'
+    )
+  }
+  const forceSsl = !!connectionString && isSupabaseHostWithoutSsl(connectionString)
   const adapter = new PrismaPg({
     ...(connectionString ? { connectionString } : {}),
-    max: 5, // koneksi tipis — cocok untuk serverless/Workers
+    max: 5,
     ...(forceSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   })
   return new PrismaClient({
     adapter,
-    ...(process.env.NODE_ENV === 'production'
-      ? {}
-      : { log: ['query'] as const }),
+    ...(process.env.NODE_ENV === 'production' ? {} : { log: ['query'] as const }),
   })
 }
 

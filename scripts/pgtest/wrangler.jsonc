@@ -1,0 +1,6 @@
+{
+  "name": "pgtest",
+  "main": "index.ts",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": ["nodejs_compat"]
+}
