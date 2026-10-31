@@ -5,7 +5,7 @@ import LettersView from "@/components/confess/LettersView";
 import StatusView from "@/components/confess/StatusView";
 import GiftView from "@/components/confess/GiftView";
 import { GIFT_META, type GiftType } from "@/lib/gift-data";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 
 type Params = { searchParams: Promise<{ k?: string; s?: string; p?: string }> };
 
@@ -25,20 +25,22 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
 
   // link kado penerima
   if (k) {
-    const [confession, letterSet, gift] = await Promise.all([
-      db.confession.findUnique({
-        where: { slug: k },
-        select: { toName: true },
-      }),
-      db.letterSet.findUnique({
-        where: { slug: k },
-        select: { toName: true, _count: { select: { letters: true } } },
-      }),
-      db.gift.findUnique({
-        where: { slug: k },
-        select: { toName: true, type: true },
-      }),
-    ]);
+    const [confession, letterSet, gift] = await withDbRetry(() =>
+      Promise.all([
+        db.confession.findUnique({
+          where: { slug: k },
+          select: { toName: true },
+        }),
+        db.letterSet.findUnique({
+          where: { slug: k },
+          select: { toName: true, _count: { select: { letters: true } } },
+        }),
+        db.gift.findUnique({
+          where: { slug: k },
+          select: { toName: true, type: true },
+        }),
+      ]
+    ));
 
     if (letterSet) {
       const title = `${letterSet._count.letters} surat kecil buat ${letterSet.toName}`;
@@ -105,11 +107,13 @@ export default async function Page({ searchParams }: Params) {
   // Link kado penerima: /?k=<slug> → surat fullscreen
   // (confess biasa / open-when letters / kado digital — deteksi dari DB)
   if (k) {
-    const [confession, letterSet, gift] = await Promise.all([
-      db.confession.findUnique({ where: { slug: k }, select: { id: true } }),
-      db.letterSet.findUnique({ where: { slug: k }, select: { id: true } }),
-      db.gift.findUnique({ where: { slug: k }, select: { id: true } }),
-    ]);
+    const [confession, letterSet, gift] = await withDbRetry(() =>
+      Promise.all([
+        db.confession.findUnique({ where: { slug: k }, select: { id: true } }),
+        db.letterSet.findUnique({ where: { slug: k }, select: { id: true } }),
+        db.gift.findUnique({ where: { slug: k }, select: { id: true } }),
+      ])
+    );
     if (letterSet) return <LettersView slug={k} previewKey={p} />;
     if (gift) return <GiftView slug={k} previewKey={p} />;
     return <ConfessionView slug={k} previewKey={p} />; // view sendiri menangani 404

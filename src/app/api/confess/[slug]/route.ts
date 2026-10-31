@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 export async function GET(
@@ -8,7 +8,8 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const confession = await db.confession.findUnique({
+    const confession = await withDbRetry(() =>
+      db.confession.findUnique({
       where: { slug },
       select: {
         slug: true,
@@ -25,7 +26,7 @@ export async function GET(
         openedAt: true,
         unlockAt: true,
       },
-    });
+    }));
 
     if (!confession) {
       return NextResponse.json(

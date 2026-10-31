@@ -78,11 +78,12 @@ function makePool(connectionString: string | undefined): PgPool {
     ...(connectionString ? { connectionString } : {}),
     // ── batas higiene koneksi (lihat komentar arsitektur di atas) ──
     max: 5, // per isolate; pooling global dilakukan Hyperdrive
-    connectionTimeoutMillis: 10_000, // gagal cepat, jangan biarkan user nunggu 30 dtk
-    query_timeout: 10_000, // client-side: query macet dipotong 10 dtk
-    statement_timeout: 8_000, // server-side: potong query nangkring di koneksi zombie
-    idleTimeoutMillis: 10_000, // koneksi nganggur ditutup — tidak menumpuk di origin
+    connectionTimeoutMillis: 8_000, // gagal cepat, jangan biarkan user nunggu lama
+    query_timeout: 4_000, // client-side: koneksi mati diam dipotong 4 dtk (respons sah < 2 dtk)
+    statement_timeout: 8_000, // server-side: potong query nangkring
+    idleTimeoutMillis: 8_000, // koneksi nganggur ditutup duluan sebelum Hyperdrive membuangnya diam-diam
     maxUses: 250, // daur ulang koneksi sebelum menua/jadi zombie
+    keepAlive: true, // TCP keepalive deteksi koneksi setengah mati
     ...(connectionString && isSupabaseHostWithoutSsl(connectionString)
       ? { ssl: { rejectUnauthorized: false } }
       : {}),
@@ -130,20 +131,29 @@ if (!globalForPrisma.prisma) {
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
 // ── Perisai anti-zombie ──────────────────────────────────────────────────────
-// Koneksi origin yang "mati diam" (query terkirim, jawaban tak kunjung datang)
-// kadang masih muncul di cache Hyperdrive. Timeout ketat di pool memotongnya
-// dlm 10 dtk; helper ini melangkahi rasa sakitnya: begitu kena kesalahan koneksi
-// macet, SEGERA ulangi sekali di koneksi baru (baru saja dibuka → respons
-// puluhan ms). Kesalahan validasi/bisnis TIDAK diulang.
+// Hyperdrive sesekali menyerahkan koneksi "mati diam" (query terkirim, jawaban
+// tak kunjung datang) walau origin-nya direct & config baru. Timeout 4 dtk
+// memotongnya, lalu helper ini mengulang di koneksi baru — maksimal 3 percobaan
+// dengan jeda kecil ber-jitter. Peluang ketiga attempt semuanya kena zombie
+// sangat kecil (± 0.4³ ≈ 6% → dengan jeda, jauh di bawah itu), dan kesalahan
+// validasi/bisnis TIDAK pernah diulang.
 const RETRYABLE = /query read timeout|connection terminated|timeout exceeded|ECONNRESET|socket hang up/i
 
 export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn()
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!RETRYABLE.test(msg)) throw err
-    console.warn('[db] koneksi macet terdeteksi, ulang sekali di koneksi baru:', msg)
-    return await fn()
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      // jeda 80–200 ms — beri kesempatan pool membuka koneksi yang benar-benar baru
+      await new Promise((r) => setTimeout(r, 80 + Math.random() * 120))
+    }
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!RETRYABLE.test(msg)) throw err
+      console.warn(`[db] koneksi macet (attempt ${attempt + 1}/3), ulang:`, msg)
+    }
   }
+  throw lastErr
 }

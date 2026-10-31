@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 const openSchema = z.object({ letterId: z.string().min(1) });
@@ -19,10 +19,12 @@ export async function POST(
     }
     const { letterId } = parsed.data;
 
-    const set = await db.letterSet.findUnique({
-      where: { slug },
-      include: { letters: true },
-    });
+    const set = await withDbRetry(() =>
+      db.letterSet.findUnique({
+        where: { slug },
+        include: { letters: true },
+      })
+    );
     if (!set) {
       return NextResponse.json({ error: "Suratnya nggak ketemu." }, { status: 404 });
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 // Halaman status pengirim: GET /api/status/<senderKey>
@@ -12,8 +12,9 @@ export async function GET(
   try {
     const { senderKey } = await params;
 
-    const confession = await db.confession.findUnique({
-      where: { senderKey },
+    const confession = await withDbRetry(() =>
+      db.confession.findUnique({
+        where: { senderKey },
       select: {
         slug: true,
         fromName: true,
@@ -28,7 +29,7 @@ export async function GET(
         openedAt: true,
         respondedAt: true,
       },
-    });
+    }));
 
     if (confession) {
       const { reportCount, ...c } = confession;
@@ -39,10 +40,12 @@ export async function GET(
       });
     }
 
-    const set = await db.letterSet.findUnique({
-      where: { senderKey },
-      include: { letters: { orderBy: { order: "asc" } } },
-    });
+    const set = await withDbRetry(() =>
+      db.letterSet.findUnique({
+        where: { senderKey },
+        include: { letters: { orderBy: { order: "asc" } } },
+      })
+    );
 
     if (set) {
       return NextResponse.json({
@@ -69,7 +72,9 @@ export async function GET(
       });
     }
 
-    const gift = await db.gift.findUnique({ where: { senderKey } });
+    const gift = await withDbRetry(() =>
+      db.gift.findUnique({ where: { senderKey } })
+    );
 
     if (gift) {
       const base = {

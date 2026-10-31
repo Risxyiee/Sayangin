@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -14,10 +14,12 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const set = await db.letterSet.findUnique({
-      where: { slug },
-      include: { letters: { orderBy: { order: "asc" } } },
-    });
+    const set = await withDbRetry(() =>
+      db.letterSet.findUnique({
+        where: { slug },
+        include: { letters: { orderBy: { order: "asc" } } },
+      })
+    );
 
     if (!set) {
       return NextResponse.json(

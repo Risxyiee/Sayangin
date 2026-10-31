@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
@@ -47,10 +47,12 @@ export async function POST(
       return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
     }
 
-    const set = await db.letterSet.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const set = await withDbRetry(() =>
+      db.letterSet.findUnique({
+        where: { slug },
+        select: { id: true },
+      })
+    );
     if (!set) {
       return NextResponse.json(
         { error: "Suratnya nggak ketemu." },
@@ -58,10 +60,12 @@ export async function POST(
       );
     }
 
-    const letter = await db.letter.findFirst({
-      where: { id: letterId, setId: set.id },
-      select: { id: true, openedAt: true, reply: true },
-    });
+    const letter = await withDbRetry(() =>
+      db.letter.findFirst({
+        where: { id: letterId, setId: set.id },
+        select: { id: true, openedAt: true, reply: true },
+      })
+    );
     if (!letter) {
       return NextResponse.json(
         { error: "Suratnya nggak ketemu." },
