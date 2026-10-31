@@ -11,11 +11,19 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const k = searchParams.get("k");
+  const flex = searchParams.get("flex"); // kartu flex pengirim (share story)
+  const yes = searchParams.get("yes"); // kartu kabar bahagia penerima
 
-  let heading = "Ada yang sayang kamu";
-  let sub = "Buka kejutannya sekarang — dari seseorang yang diam-diam perhatian";
+  let heading = "Ada yang diam-diam mikirin kamu";
+  let sub = "Buka kejutannya sekarang — dari seseorang yang selama ini perhatian";
 
-  if (k) {
+  if (yes) {
+    heading = "Dia jawab IYA"; // tanpa emoji — satori butuh font khusus, hati sudah digambar div
+    sub = "Semua berawal dari satu surat kecil yang berani dikirim";
+  } else if (flex) {
+    heading = "Aku baru berani ngirim surat rahasia";
+    sub = "Ditulis diam-diam, dikirim cukup lewat link. Kamu kapan?";
+  } else if (k) {
     try {
       const [confession, letterSet, gift] = await Promise.all([
         db.confession.findUnique({ where: { slug: k }, select: { toName: true } }),
@@ -174,7 +182,7 @@ export async function GET(req: Request) {
             }}
           />
           <div style={{ fontSize: 28, fontWeight: 700, color: "#ffffff", display: "flex" }}>
-            sayang
+            degdeg
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color: "#f43f5e", display: "flex" }}>
             .in

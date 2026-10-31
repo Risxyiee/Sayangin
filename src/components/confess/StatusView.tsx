@@ -22,6 +22,7 @@ import {
   Music,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
+import { LS_KEYS, lsGet } from "@/lib/local-store";
 
 type LetterStatus = {
   order: number;
@@ -87,11 +88,9 @@ function savedIcon(type?: string): string {
   return GIFT_ICONS[type] ?? (type.startsWith("gift:") ? "🎁" : "💌");
 }
 
-const LS_KEY = "sayangin_confessions";
-
 function loadSaved(): SavedItem[] {
+  const raw = lsGet(LS_KEYS.confessions); // fallback otomatis ke kunci era Sayangin
   try {
-    const raw = localStorage.getItem(LS_KEY);
     return raw ? (JSON.parse(raw) as SavedItem[]) : [];
   } catch {
     return [];
@@ -692,6 +691,26 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  // flex ke medsos — mesin FOMO: orang lihat, orang pengen ikutan
+  const flexStory = async () => {
+    const url = window.location.origin;
+    const text =
+      "Aku baru berani ngirim surat rahasia lewat Degdegin 💌 Kamu kapan?";
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: "Degdegin", text, url });
+        return;
+      }
+      window.open(
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+        "_blank",
+        "noopener"
+      );
+    } catch {
+      /* user batal — diabaikan */
+    }
+  };
+
   const theme = CONFESS_THEMES[data?.theme ?? "rose"] ?? CONFESS_THEMES.rose;
 
   return (
@@ -705,7 +724,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
           <a href="/" className="flex items-center gap-1.5">
             <Heart className="h-5 w-5 fill-rose-500 text-rose-500" />
             <span className="text-sm font-extrabold text-white">
-              sayang<span className="text-rose-500">.in</span>
+              degdeg<span className="text-rose-500">.in</span>
             </span>
           </a>
           <button
@@ -743,7 +762,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
               href="/"
               className="mt-5 inline-block rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-[#b52743]"
             >
-              Ke Sayangin
+              Ke Degdegin
             </a>
           </div>
         )}
@@ -922,6 +941,14 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
 
             {/* daftar confess lain dari localStorage */}
             <SavedListBox saved={saved} senderKey={senderKey} listOpen={listOpen} setListOpen={setListOpen} />
+
+            <button
+              onClick={flexStory}
+              className="flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-3.5 text-sm font-bold text-white/85 transition hover:bg-white/10"
+            >
+              <Share2 className="h-4 w-4" /> Flex ke medsos: “aku udah berani,
+              kamu kapan?”
+            </button>
 
             <a
               href="/#confess"

@@ -35,7 +35,7 @@ export default function FooterCta() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <span className="font-display text-base font-bold text-foreground">
-              sayang<span className="text-primary">in</span>
+              degdeg<span className="text-primary">in</span>
             </span>
             <span>— confess &amp; kado digital, dibuat di Indonesia</span>
           </div>
@@ -59,7 +59,7 @@ export default function FooterCta() {
               Privasi
             </a>
           </div>
-          <p className="text-xs">© 2026 Sayangin</p>
+          <p className="text-xs">© 2026 Degdegin</p>
         </div>
       </footer>
     </>

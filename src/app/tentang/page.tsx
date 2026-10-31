@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Tentang — Sayangin",
+  title: "Tentang — Degdegin",
   description:
-    "Sayangin dibuat untuk yang malu bilang langsung: confess anonim yang bisa dijawab, surat mingguan, dan kado digital — cukup lewat link.",
+    "Degdegin dibuat untuk yang malu bilang langsung: confess anonim yang bisa dijawab, surat mingguan, dan kado digital — cukup lewat link.",
 };
 
 export default function TentangPage() {
@@ -17,18 +17,18 @@ export default function TentangPage() {
         ← kembali ke beranda
       </Link>
       <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground">
-        Tentang Sayangin
+        Tentang Degdegin
       </h1>
 
       <div className="mt-8 space-y-6 text-base leading-relaxed text-muted-foreground">
         <p>
-          Sayangin lahir dari satu pengamatan sederhana: perasaan paling sulit
+          Degdegin lahir dari satu pengamatan sederhana: perasaan paling sulit
           diucapkan justru yang paling jujur. Banyak orang lebih berani
           menuliskannya daripada mengatakannya — tapi chat biasa terlalu
           datar, dan kartu ucapan biasa terlalu satu arah.
         </p>
         <p>
-          Jadi Sayangin dibuat berbeda: surat yang <b className="text-foreground">bisa dijawab</b>.
+          Jadi Degdegin dibuat berbeda: surat yang <b className="text-foreground">bisa dijawab</b>.
           Penerima membacanya dengan ritual amplop, lalu bisa membalas — dan
           identitas pengirim baru muncul kalau jawabannya &ldquo;iya&rdquo;. Kalau tidak,
           anonim tetap terjaga.
@@ -42,7 +42,7 @@ export default function TentangPage() {
           install, tanpa akun.
         </p>
         <p>
-          Sayangin dibuat di Indonesia, dan selama masa uji coba{" "}
+          Degdegin dibuat di Indonesia, dan selama masa uji coba{" "}
           <b className="text-foreground">semuanya gratis</b>. Kalau kamu suka, ceritakan
           ke temanmu — itu bantuannya yang paling besar.
         </p>

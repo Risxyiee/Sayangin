@@ -21,9 +21,27 @@ model Confession {
   repliedAt   DateTime?
   views       Int       @default(0)
   reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
+  // opt-in tampil di Dinding Degdegin (cuma nama & tema, ISI SURAT TIDAK) — mesin FOMO
+  isPublic    Boolean   @default(false)
+  // kirim terjadwal: surat terkunci sampai waktu ini (countdown kejutan)
+  unlockAt    DateTime?
   createdAt   DateTime  @default(now())
   openedAt    DateTime?
   respondedAt DateTime?
+
+  reactions ReactionCount?
+}
+
+// Reaksi pengunjung Dinding Degdegin per confess — kolom tetap biar
+// increment-nya atomik tanpa upsert baris per reaksi.
+model ReactionCount {
+  id           String     @id @default(cuid())
+  confessionId String     @unique
+  confession   Confession @relation(fields: [confessionId], references: [id], onDelete: Cascade)
+  heart        Int        @default(0)
+  laugh        Int        @default(0)
+  cry          Int        @default(0)
+  bloom        Int        @default(0)
 }
 
 // Open When Letters: satu set berisi beberapa surat,

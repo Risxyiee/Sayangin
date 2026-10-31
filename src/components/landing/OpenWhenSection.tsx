@@ -19,6 +19,7 @@ import {
   Share2,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
+import { LS_KEYS, lsGet, lsSet } from "@/lib/local-store";
 
 type DraftLetter = { title: string; body: string; unlockDays: number };
 
@@ -245,7 +246,7 @@ export default function OpenWhenSection() {
       // simpan ke daftar pribadi (sama dgn confess) biar bisa dipantau lagi
       try {
         const saved = JSON.parse(
-          localStorage.getItem("sayangin_confessions") ?? "[]"
+          lsGet(LS_KEYS.confessions) ?? "[]"
         ) as Array<Record<string, string>>;
         saved.unshift({
           slug: data.slug,
@@ -255,10 +256,7 @@ export default function OpenWhenSection() {
           type: "letters",
           createdAt: new Date().toISOString(),
         });
-        localStorage.setItem(
-          "sayangin_confessions",
-          JSON.stringify(saved.slice(0, 20))
-        );
+        lsSet(LS_KEYS.confessions, JSON.stringify(saved.slice(0, 20)));
       } catch {
         /* localStorage mungkin diblokir */
       }

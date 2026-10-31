@@ -62,3 +62,6 @@ db/*.db-journal
 
 # secret lokal untuk wrangler dev/preview
 .dev.vars
+tool-results/
+upload/
+download/

@@ -144,7 +144,7 @@ function PhotoboxAnim() {
         </div>
       ))}
       <span className="absolute right-5 top-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
-        sayangin — 2026
+        degdegin — 2026
       </span>
     </div>
   );
@@ -221,7 +221,7 @@ function CouponsAnim() {
         style={{ animation: "pop-in 0.5s ease" }}
       >
         <div className="flex items-center justify-between bg-primary px-3 py-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white">Sayangin Co.</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white">Degdegin Co.</span>
           <span className="text-[9px] font-bold uppercase tracking-wider text-white">no expiry</span>
         </div>
         <div className="relative px-4 py-5">

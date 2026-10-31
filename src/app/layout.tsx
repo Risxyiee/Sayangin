@@ -24,29 +24,30 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
   ),
-  title: "Sayangin — surat untuk orang yang kamu sayang",
+  title: "Degdegin — tulis surat rahasia, bikin dia deg-degan",
   description:
-    "Tulis pengakuan sebagai surat anonim, kirim cukup lewat link. Sudah jadian? Kirim kado digital: buket bunga, surat Open When, photobox, kue tiup lilin. Gratis untuk confess.",
+    "Confess lewat surat anonim yang bisa dijawab — cukup share link. Sudah jadian? Kirim kado digital: buket bunga, surat Open When, photobox, kue tiup lilin. Semua gratis selama masa uji coba.",
   keywords: [
     "confess anonim",
+    "surat rahasia",
     "kado digital",
     "kado ulang tahun pacar",
     "surat cinta digital",
     "website buat pacar",
     "hadiah anniversary",
   ],
-  authors: [{ name: "Sayangin" }],
+  authors: [{ name: "Degdegin" }],
   openGraph: {
-    title: "Sayangin — surat untuk orang yang kamu sayang",
+    title: "Degdegin — tulis surat rahasia, bikin dia deg-degan",
     description:
       "Confess anonim gratis lewat link, plus kado digital — semua gratis selama masa uji coba. Ditulis kamu, dibuka dia.",
-    siteName: "Sayangin",
+    siteName: "Degdegin",
     type: "website",
     images: [{ url: "/api/og", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sayangin — surat untuk orang yang kamu sayang",
+    title: "Degdegin — tulis surat rahasia, bikin dia deg-degan",
     description: "Confess anonim gratis lewat link, plus kado digital — gratis selama masa uji coba.",
   },
 };

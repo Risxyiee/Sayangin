@@ -14,10 +14,12 @@ const confessSchema = z.object({
     .trim()
     .min(5, "Pesan minimal 5 karakter")
     .max(600, "Pesan maksimal 600 karakter"),
-  theme: z.enum(["rose", "sunset", "midnight"]).optional().default("rose"),
+  theme: z.enum(["rose", "sunset", "midnight", "sakura", "galaksi"]).optional().default("rose"),
+  // opt-in tampil di Dinding Degdegin (cuma nama & tema — isi surat tidak)
+  isPublic: z.boolean().optional().default(false),
+  // kirim terjadwal: ISO string, wajib masa depan, maks 30 hari ke depan
+  unlockAt: z.string().datetime({ offset: true }).optional().nullable(),
 });
-
-const THEMES = new Set(["rose", "sunset", "midnight"]);
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const { fromName, toName, message, theme } = parsed.data;
+    const { fromName, toName, message, theme, isPublic, unlockAt } = parsed.data;
 
     // moderasi ringan sebelum masuk DB
     for (const field of [fromName, toName, message]) {
@@ -46,6 +48,26 @@ export async function POST(req: NextRequest) {
       if (hit) {
         return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
       }
+    }
+
+    // validasi jadwal buka: masa depan, maksimal 30 hari
+    let unlock: Date | null = null;
+    if (unlockAt) {
+      const d = new Date(unlockAt);
+      const now = Date.now();
+      if (Number.isNaN(d.getTime()) || d.getTime() < now + 60_000) {
+        return NextResponse.json(
+          { error: "Jadwal buka harus minimal 1 menit dari sekarang." },
+          { status: 400 }
+        );
+      }
+      if (d.getTime() > now + 30 * 24 * 60 * 60 * 1000) {
+        return NextResponse.json(
+          { error: "Jadwal buka maksimal 30 hari ke depan ya." },
+          { status: 400 }
+        );
+      }
+      unlock = d;
     }
 
     let slug = makeSlug();
@@ -64,7 +86,9 @@ export async function POST(req: NextRequest) {
         fromName: fromName ?? "",
         toName,
         message,
-        theme: THEMES.has(theme) ? theme : "rose",
+        theme,
+        isPublic,
+        ...(unlock ? { unlockAt: unlock } : {}),
       },
     });
 

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 import { FLOWERS, FLOWER_IDS } from "@/lib/gift-data";
+import { LS_KEYS, lsGet, lsSet } from "@/lib/local-store";
 
 type TabKey = "bouquet" | "photobox" | "cake" | "coupons" | "playlist";
 
@@ -302,9 +303,7 @@ export default function GiftStudio() {
 
       // simpan ke daftar pribadi (localStorage) — dipakai halaman pantauan
       try {
-        const saved = JSON.parse(
-          localStorage.getItem("sayangin_confessions") ?? "[]"
-        );
+        const saved = JSON.parse(lsGet(LS_KEYS.confessions) ?? "[]");
         saved.push({
           slug: d.slug,
           senderKey: d.senderKey,
@@ -313,10 +312,7 @@ export default function GiftStudio() {
           type: `gift:${tab}`,
           createdAt: new Date().toISOString(),
         });
-        localStorage.setItem(
-          "sayangin_confessions",
-          JSON.stringify(saved.slice(0, 20))
-        );
+        lsSet(LS_KEYS.confessions, JSON.stringify(saved.slice(0, 20)));
       } catch {
         /* localStorage mungkin diblokir */
       }

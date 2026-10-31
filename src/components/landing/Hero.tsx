@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import {
   motion,
   useMotionValue,
@@ -109,7 +109,7 @@ function LetterCard() {
             style={{ transform: "translateZ(26px)" }}
           >
             <div className="text-[7px] font-bold uppercase leading-tight tracking-[0.15em] text-primary/70">
-              sayangin
+              degdegin
               <br />
               pos
               <br />
@@ -131,6 +131,39 @@ function LetterCard() {
         style={{ z: 50, rotate: 3 }}
       />
     </div>
+  );
+}
+
+/* penghitung live dari /api/stats — bukti sosial ala "X orang sedang melihat".
+   Diambil client-side setelah mount supaya tidak bikin hydration mismatch. */
+function LiveCounter() {
+  const [total, setTotal] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && d && typeof d.total === "number") setTotal(d.total);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (total === null) return null;
+  return (
+    <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs text-white/75 backdrop-blur">
+      <span className="relative flex h-2 w-2" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e8b4bb] opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#e8b4bb]" />
+      </span>
+      <span>
+        <b className="font-bold text-white">
+          {total.toLocaleString("id-ID")}
+        </b>{" "}
+        surat rahasia udah terkirim lewat sini
+      </span>
+    </p>
   );
 }
 
@@ -185,7 +218,11 @@ export default function Hero() {
             Gratis &middot; tanpa akun &middot; cukup lewat link
           </p>
 
-          <h1 className="mt-5 font-display text-4xl font-bold leading-[1.12] text-white sm:text-5xl xl:text-[3.6rem]">
+          <div className="mt-4">
+            <LiveCounter />
+          </div>
+
+          <h1 className="mt-4 font-display text-4xl font-bold leading-[1.12] text-white sm:text-5xl xl:text-[3.6rem]">
             Suka dia, belum berani
             <br className="hidden sm:block" /> bilang langsung?
           </h1>
@@ -194,7 +231,7 @@ export default function Hero() {
           </p>
 
           <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/60 lg:mx-0">
-            Sayangin mengubah pesanmu jadi surat yang dikirim sebagai link
+            Degdegin mengubah pesanmu jadi surat yang dikirim sebagai link
             anonim — dia buka, baca pelan-pelan, lalu menjawab. Namamu baru
             muncul kalau jawabannya <i>iya</i>. Sudah jadian? Ada kado
             digitalnya juga.

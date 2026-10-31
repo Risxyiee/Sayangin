@@ -659,7 +659,7 @@ export default function GiftView({
               className="mt-6 rounded-full bg-rose-500 hover:bg-rose-600"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayangin
+              Ke Degdegin
             </Button>
           </div>
         )}
@@ -739,7 +739,7 @@ export default function GiftView({
                 <p>
                   Kadonya dibuat <span className="text-rose-300">GRATIS</span> di{" "}
                   <a href="/#kado" className="font-bold text-white">
-                    Sayangin
+                    Degdegin
                   </a>{" "}
                   — <a href="/#kado" className="underline decoration-rose-400/60 underline-offset-2 hover:text-rose-200">mau kasih yang spesial juga →</a>
                 </p>

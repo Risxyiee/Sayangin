@@ -14,17 +14,46 @@ import {
   Share2,
 } from "lucide-react";
 import ConfessionView, { CONFESS_THEMES } from "@/components/confess/ConfessionView";
+import { LS_KEYS, lsGet, lsSet } from "@/lib/local-store";
 
 type Phase = "closed" | "opening" | "letter" | "question" | "yes";
 const DEMO_MSG =
   "Hei... aku udah lama pengen bilang ini. Setiap kamu ketawa, aku ikut senyum. Aku suka kamu. Sudah lama.";
 
-/* cerita di balik tiap tema — ala kartu template kompetitor, gratis semua */
+/* cerita di balik tiap tema — ala kartu template kompetitor, gratis semua.
+   Tema ber-flag limited ditampilkan dgn badge mundur (FOMO edisi terbatas). */
 const THEME_TAGS: Record<string, string> = {
   rose: "klasik — rahasia paling manis",
   sunset: "hangat kayak senja jam 6",
   midnight: "malam berbintang, dalam",
+  sakura: "selembut kelopak yang jatuh",
+  matcha: "tenang, hangat kayak matcha latte",
 };
+
+/* pilihan jadwal buka — surat terkunci sampai waktunya (countdown di penerima) */
+function unlockDateFor(preset: string): string | null {
+  if (!preset) return null;
+  const d = new Date();
+  if (preset === "malam") {
+    d.setHours(20, 0, 0, 0);
+    if (d.getTime() < Date.now() + 60_000) d.setDate(d.getDate() + 1); // sudah lewat → besok
+  } else if (preset === "besok") {
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+  } else if (preset === "minggu") {
+    d.setDate(d.getDate() + 7);
+  } else {
+    return null;
+  }
+  return d.toISOString();
+}
+
+const UNLOCK_OPTIONS = [
+  { value: "", label: "Kirim sekarang — dia bisa langsung buka" },
+  { value: "malam", label: "Kejutan: buka jam 8 malam nanti 🌙" },
+  { value: "besok", label: "Kejutan: buka besok pagi ☀️" },
+  { value: "minggu", label: "Kejutan: buka seminggu lagi 📅" },
+];
 
 /* ---------- demo looping di dalam HP ---------- */
 function PhoneDemo() {
@@ -167,11 +196,14 @@ export default function ConfessSection() {
   const [toName, setToName] = useState("");
   const [message, setMessage] = useState("");
   const [theme, setTheme] = useState("rose");
+  const [showOnWall, setShowOnWall] = useState(false);
+  const [unlockPreset, setUnlockPreset] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
   const [statusUrl, setStatusUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [scheduled, setScheduled] = useState(false);
   const [previewData, setPreviewData] = useState<null | {
     fromName: string;
     toName: string;
@@ -183,7 +215,7 @@ export default function ConfessSection() {
   /* draft tersimpan otomatis (localStorage) — pulih saat balik ke halaman */
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("sayangin_draft_confess");
+      const raw = lsGet(LS_KEYS.draftConfess); // fallback otomatis ke draft era Sayangin
       if (!raw) return;
       const d = JSON.parse(raw) as Record<string, unknown>;
       if (typeof d.fromName === "string") setFromName(d.fromName);
@@ -197,27 +229,19 @@ export default function ConfessSection() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try {
-        localStorage.setItem(
-          "sayangin_draft_confess",
-          JSON.stringify({ fromName, toName, message, theme })
-        );
-      } catch {
-        /* diabaikan */
-      }
+      lsSet(
+        LS_KEYS.draftConfess,
+        JSON.stringify({ fromName, toName, message, theme })
+      );
     }, 400);
     return () => clearTimeout(t);
   }, [fromName, toName, message, theme]);
 
   const clearDraft = () => {
-    try {
-      localStorage.setItem(
-        "sayangin_draft_confess",
-        JSON.stringify({ fromName: "", toName: "", message: "", theme: "rose" })
-      );
-    } catch {
-      /* diabaikan */
-    }
+    lsSet(
+      LS_KEYS.draftConfess,
+      JSON.stringify({ fromName: "", toName: "", message: "", theme: "rose" })
+    );
   };
 
   const submit = async () => {
@@ -240,18 +264,19 @@ export default function ConfessSection() {
           toName: toName.trim(),
           message: message.trim(),
           theme,
+          isPublic: showOnWall,
+          unlockAt: unlockDateFor(unlockPreset),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat confess");
       setLink(`${window.location.origin}/?k=${data.slug}`);
       setStatusUrl(`${window.location.origin}/?s=${data.senderKey}`);
+      setScheduled(!!unlockDateFor(unlockPreset));
       clearDraft();
       // simpan ke daftar pribadi (localStorage) biar bisa dipantau lagi kapan pun
       try {
-        const saved = JSON.parse(
-          localStorage.getItem("sayangin_confessions") ?? "[]"
-        ) as Array<Record<string, string>>;
+        const saved = JSON.parse(lsGet(LS_KEYS.confessions) ?? "[]") as Array<Record<string, string>>;
         saved.unshift({
           slug: data.slug,
           senderKey: data.senderKey,
@@ -260,10 +285,7 @@ export default function ConfessSection() {
           type: "confess",
           createdAt: new Date().toISOString(),
         });
-        localStorage.setItem(
-          "sayangin_confessions",
-          JSON.stringify(saved.slice(0, 20))
-        );
+        lsSet(LS_KEYS.confessions, JSON.stringify(saved.slice(0, 20)));
       } catch {
         /* localStorage mungkin diblokir — status tetap bisa diakses via link */
       }
@@ -293,6 +315,34 @@ export default function ConfessSection() {
       `Pssst... ada surat rahasia buat kamu. Buka di sini ya: ${link}`
     );
     window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  // Web Share API: di HP munculkan share sheet native (WA/IG/TikTok/terserah)
+  const shareNative = async () => {
+    const text = "Pssst... ada surat rahasia buat kamu 🤫";
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: "Degdegin", text, url: link });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text} ${link}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* user batal — diabaikan */
+    }
+  };
+
+  // Flex ke X: CTA ala "aku berani, kamu kapan?" — link rahasia TIDAK ikut
+  const shareX = () => {
+    const text = encodeURIComponent(
+      `Aku baru berani ngirim surat rahasia lewat Degdegin 💌 Kamu kapan?`
+    );
+    window.open(
+      `https://twitter.com/intent/tweet?text=${text}`,
+      "_blank",
+      "noopener"
+    );
   };
 
   return (
@@ -379,35 +429,93 @@ export default function ConfessSection() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-foreground">Tema suratnya</Label>
-                    <div className="grid gap-2.5 sm:grid-cols-3">
-                      {Object.entries(CONFESS_THEMES).map(([key, t]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setTheme(key)}
-                          aria-label={`Tema ${t.name} — ${THEME_TAGS[key]}`}
-                          aria-pressed={theme === key}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            theme === key
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-input"
-                          }`}
-                        >
-                          <span
-                            className={`mb-2 block h-9 w-full rounded-md bg-gradient-to-br ${t.bg} shadow-inner ring-1 ring-black/20`}
-                            aria-hidden
-                          />
-                          <span className="block text-xs font-bold text-foreground">
-                            {t.name}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
-                            {THEME_TAGS[key]}
-                          </span>
-                        </button>
-                      ))}
+                    <Label className="text-foreground">
+                      Tema suratnya{" "}
+                      <span className="font-normal text-muted-foreground">
+                        (ada yang cuma muncul beberapa hari 👀)
+                      </span>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                      {Object.entries(CONFESS_THEMES).map(([key, t]) => {
+                        // hitung sisa hari edisi terbatas — makin makin mepet, makin panas
+                        const daysLeft = t.limited
+                          ? Math.ceil(
+                              (new Date(t.limited.until).getTime() - Date.now()) /
+                                86_400_000
+                            )
+                          : null;
+                        const expired = daysLeft !== null && daysLeft <= 0;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setTheme(key)}
+                            aria-label={`Tema ${t.name} — ${THEME_TAGS[key]}${t.limited ? ` (${t.limited.label})` : ""}`}
+                            aria-pressed={theme === key}
+                            disabled={expired}
+                            className={`relative rounded-lg border p-3 text-left transition ${
+                              theme === key
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-input"
+                            } ${expired ? "hidden" : ""}`}
+                          >
+                            {t.limited && daysLeft !== null && (
+                              <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                                {t.limited.label} · {daysLeft} hari lagi
+                              </span>
+                            )}
+                            <span
+                              className={`mb-2 block h-9 w-full rounded-md bg-gradient-to-br ${t.bg} shadow-inner ring-1 ring-black/20`}
+                              aria-hidden
+                            />
+                            <span className="block text-xs font-bold text-foreground">
+                              {t.name}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                              {THEME_TAGS[key]}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
+
+                  {/* jadwal buka — bikin penerima balik lagi (FOMO + antisipasi) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="unlock" className="text-foreground">
+                      Jadwal buka{" "}
+                      <span className="font-normal text-muted-foreground">
+                        — opsional, rahasia sampai waktunya
+                      </span>
+                    </Label>
+                    <select
+                      id="unlock"
+                      value={unlockPreset}
+                      onChange={(e) => setUnlockPreset(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                      {UNLOCK_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* opt-in dinding publik — mesin viral, isi surat TETAP rahasia */}
+                  <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-secondary/40 p-3.5 transition hover:bg-secondary">
+                    <input
+                      type="checkbox"
+                      checked={showOnWall}
+                      onChange={(e) => setShowOnWall(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-primary"
+                    />
+                    <span className="text-xs leading-relaxed text-foreground">
+                      <b>Tampilkan di Dinding Degdegin</b> — namamu &amp; tema
+                      suratnya ikut pajangan publik biar orang lain ikut
+                      berani. Isi surat <b>100% tetap rahasia</b>, kok.
+                    </span>
+                  </label>
 
                   {error && (
                     <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -439,8 +547,17 @@ export default function ConfessSection() {
                     <Check className="h-5 w-5 text-primary" strokeWidth={3} />
                   </div>
                   <h3 className="font-display text-xl font-bold text-foreground">
-                    Suratmu siap dikirim.
+                    {scheduled
+                      ? "Suratmu terjadwal — dia cuma bisa nunggu 👀"
+                      : "Suratmu siap dikirim."}
                   </h3>
+                  {scheduled && (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Sampai waktunya, dia cuma melihat hitungan mundur dan
+                      pengirimnya rahasia. Antisipasinya bikin deg-degan —
+                      itu gunanya.
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 rounded-md border border-border bg-background p-3 text-left">
                     <span className="flex-1 truncate text-sm font-medium text-foreground">
                       {link}
@@ -477,6 +594,29 @@ export default function ConfessSection() {
                       className="rounded-md bg-[#1faa59] text-white hover:bg-[#189249]"
                     >
                       <Share2 className="mr-2 h-4 w-4" /> Kirim via WA
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={shareNative}
+                      variant="outline"
+                      className="rounded-md border-border text-foreground hover:bg-secondary"
+                    >
+                      <Share2 className="mr-2 h-4 w-4" /> Bagikan
+                    </Button>
+                    <Button
+                      onClick={shareX}
+                      variant="outline"
+                      className="rounded-md border-border text-foreground hover:bg-secondary"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="mr-2 h-4 w-4 fill-current"
+                        aria-hidden
+                      >
+                        <path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.41l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.24 6.93 6.07-6.93Zm-1.29 19.5h2.04L6.49 3.24H4.3l13.31 17.41Z" />
+                      </svg>
+                      Post ke X
                     </Button>
                   </div>
                   <a

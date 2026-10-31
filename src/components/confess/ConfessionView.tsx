@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Heart, Loader2, X } from "lucide-react";
+import { Heart, Loader2, Lock, Share2, X } from "lucide-react";
 
 export type ConfessionData = {
   fromName: string;
@@ -13,10 +13,16 @@ export type ConfessionData = {
   theme: string;
 };
 
-export const CONFESS_THEMES: Record<
-  string,
-  { name: string; bg: string; accent: string; seal: string }
-> = {
+export type ConfessionTheme = {
+  name: string;
+  bg: string;
+  accent: string;
+  seal: string;
+  /** Edisi terbatas: hilang dari pemilih tema setelah tanggal ini (FOMO) */
+  limited?: { until: string; label: string };
+};
+
+export const CONFESS_THEMES: Record<string, ConfessionTheme> = {
   rose: {
     name: "Rose",
     bg: "from-[#2b0a1c] via-[#4a0e2e] to-[#160510]",
@@ -35,12 +41,27 @@ export const CONFESS_THEMES: Record<
     accent: "#c084fc",
     seal: "from-purple-500 to-fuchsia-700",
   },
+  // Edisi terbatas 11.11 — cuma sampai 11 Nov, setelah itu tak bisa dipilih lagi
+  sakura: {
+    name: "Sakura",
+    bg: "from-[#3a0d22] via-[#7e2148] to-[#20060f]",
+    accent: "#ffb7d5",
+    seal: "from-pink-400 to-rose-600",
+    limited: { until: "2026-11-11T23:59:59+07:00", label: "Edisi 11.11" },
+  },
+  matcha: {
+    name: "Matcha",
+    bg: "from-[#0f2118] via-[#1f4d33] to-[#081209]",
+    accent: "#86efac",
+    seal: "from-emerald-500 to-green-700",
+  },
 };
 
 type Stage =
   | "loading"
   | "error"
   | "hidden"
+  | "locked"
   | "closed"
   | "typing"
   | "question"
@@ -215,6 +236,9 @@ export default function ConfessionView({
   const [replySending, setReplySending] = useState(false);
   const [replyError, setReplyError] = useState("");
   const [sentReply, setSentReply] = useState<string | null>(null);
+  // kirim terjadwal: waktu buka surat (ISO) saat stage "locked"
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "sent">("idle");
   const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ritual buka: ketuk & tahan amplop — progres bertahap ala ritual kompetitor,
@@ -274,8 +298,7 @@ export default function ConfessionView({
           ? "segel lilinnya meleleh pelan-pelan…"
           : "hampir… tarik napas dulu 🥹";
 
-  useEffect(() => {
-    // mode pratinjau inline: data sudah diisi via useState awal
+  const load = useCallback(() => {
     if (preview || !slug) return;
     let alive = true;
     fetch(`/api/confess/${slug}${previewKey ? `?p=${previewKey}` : ""}`)
@@ -285,6 +308,11 @@ export default function ConfessionView({
         if (!alive) return;
         if (d.hidden) {
           setStage("hidden");
+          return;
+        }
+        if (d.locked) {
+          setLockedUntil(d.unlockAt);
+          setStage("locked");
           return;
         }
         setIsPreview(!!d.preview);
@@ -308,6 +336,23 @@ export default function ConfessionView({
       alive = false;
     };
   }, [slug, preview, previewKey]);
+
+  useEffect(() => load(), [load]);
+
+  // saat countdown selesai → ambil ulang isi surat otomatis
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    if (stage !== "locked" || !lockedUntil) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stage, lockedUntil]);
+  const remainMs = lockedUntil ? new Date(lockedUntil).getTime() - nowTick : 0;
+  const unlockedJustNow = stage === "locked" && lockedUntil && remainMs <= 0;
+  useEffect(() => {
+    if (!unlockedJustNow) return;
+    const t = setTimeout(() => load(), 800); // kasih jeda dramatis sedetik
+    return () => clearTimeout(t);
+  }, [unlockedJustNow, load]);
 
   // efek mesin ketik
   useEffect(() => {
@@ -394,6 +439,23 @@ export default function ConfessionView({
     setReportState("done");
   };
 
+  // momen paling viral: penerima baru aja jawab IYA — share sekarang gampang
+  const shareHappy = async () => {
+    const text = "Aku baru dikirimin surat rahasia… dan aku jawab IYA 💘";
+    const url = window.location.origin;
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: "Degdegin", text, url });
+        setShareState("sent");
+        return;
+      }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setShareState("copied");
+    } catch {
+      /* user batal share — diabaikan */
+    }
+  };
+
   return (
     <div
       className={`fixed inset-0 z-[100] overflow-y-auto bg-gradient-to-b ${theme.bg}`}
@@ -448,7 +510,7 @@ export default function ConfessionView({
               className="mt-6 rounded-md bg-primary hover:bg-[#b52743]"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayangin
+              Ke Degdegin
             </Button>
           </div>
         )}
@@ -462,6 +524,66 @@ export default function ConfessionView({
               kami. Maaf ya.
             </p>
           </div>
+        )}
+
+        {/* ------ TERKUNCI — KIRIM TERJADWAL (countdown kejutan) ------ */}
+        {stage === "locked" && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center"
+          >
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur">
+              <Lock className="h-8 w-8 text-white/70" strokeWidth={1.5} />
+            </div>
+            <h2 className="mt-6 font-display text-2xl font-bold text-white">
+              Belum waktunya 🤫
+            </h2>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/75">
+              Seseorang sudah menulis sesuatu untukmu — suratnya baru bisa
+              dibuka tepat pada waktunya.
+            </p>
+
+            {/* countdown hidup: hari : jam : menit : detik */}
+            <div
+              className="mt-7 flex items-start gap-2 text-white"
+              role="timer"
+              aria-live="off"
+            >
+              {[
+                { v: Math.floor(Math.max(remainMs, 0) / 86_400_000), k: "hari" },
+                { v: Math.floor(Math.max(remainMs, 0) / 3_600_000) % 24, k: "jam" },
+                { v: Math.floor(Math.max(remainMs, 0) / 60_000) % 60, k: "menit" },
+                { v: Math.floor(Math.max(remainMs, 0) / 1000) % 60, k: "detik" },
+              ].map((u, i) => (
+                <div key={u.k} className="flex items-start gap-2">
+                  <div className="flex min-w-[3.4rem] flex-col items-center rounded-lg border border-white/15 bg-white/5 px-2 py-2.5 backdrop-blur">
+                    <span className="font-display text-2xl font-bold tabular-nums leading-none">
+                      {String(u.v).padStart(2, "0")}
+                    </span>
+                    <span className="mt-1.5 text-[10px] uppercase tracking-wider text-white/50">
+                      {u.k}
+                    </span>
+                  </div>
+                  {i < 3 && (
+                    <span className="pt-2 font-display text-xl text-white/30" aria-hidden>
+                      :
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 text-xs text-white/50">
+              Balik lagi ya — suratnya menungumu di link ini juga 💌
+            </p>
+            <a
+              href="/"
+              className="mt-4 text-xs font-semibold text-[#e8b4bb] underline decoration-white/30 underline-offset-2 transition hover:text-white"
+            >
+              pengen bikin yang kayak gini juga → gratis
+            </a>
+          </motion.div>
         )}
 
         {/* ------ AMPLOP TERTUTUP — ritual ketuk & tahan ------ */}
@@ -600,6 +722,17 @@ export default function ConfessionView({
             <p className="mt-4 text-sm text-white/60">
               Jangan ditunda — chat dia sekarang.
             </p>
+            {!preview && !isPreview && (
+              <button
+                onClick={shareHappy}
+                className="mt-6 flex items-center gap-2 rounded-md border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/10"
+              >
+                <Share2 className="h-4 w-4" />
+                {shareState === "copied"
+                  ? "Teks tersalin — tempel di story-mu!"
+                  : "Bagikan kabar bahagia"}
+              </button>
+            )}
           </motion.div>
         )}
 
@@ -739,7 +872,7 @@ export default function ConfessionView({
           ) : (
             <>
               Dibuat <span className="font-bold text-[#e8b4bb]">gratis</span> di{" "}
-              <span className="font-bold text-white">Sayangin</span>
+              <span className="font-bold text-white">Degdegin</span>
               <a
                 href="/#confess"
                 className="ml-2 underline decoration-white/30 underline-offset-2 hover:text-white/80"

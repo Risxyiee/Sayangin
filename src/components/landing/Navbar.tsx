@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 const LINKS = [
   { href: "#confess", label: "Confess" },
   { href: "#kado", label: "Kado Digital" },
+  { href: "/dinding", label: "Dinding 👀" },
   { href: "#cara", label: "Cara Pakai" },
   { href: "#harga", label: "Harga" },
 ];
@@ -28,13 +29,13 @@ export default function Navbar() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#" className="flex items-baseline gap-0.5" aria-label="Sayangin - beranda">
+        <a href="#" className="flex items-baseline gap-0.5" aria-label="Degdegin - beranda">
           <span
             className={`font-display text-xl font-bold tracking-tight transition-colors ${
               scrolled ? "text-foreground" : "text-white"
             }`}
           >
-            sayang<span className="text-primary">in</span>
+            degdeg<span className="text-primary">in</span>
           </span>
         </a>
 

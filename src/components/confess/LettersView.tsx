@@ -392,7 +392,7 @@ export default function LettersView({
               className="mt-6 rounded-full bg-rose-500 hover:bg-rose-600"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayangin
+              Ke Degdegin
             </Button>
           </div>
         )}
@@ -537,7 +537,7 @@ export default function LettersView({
             <p className="mt-10 text-xs text-white/40">
               Surat-surat ini dibuat gratis di{" "}
               <a href="/" className="font-bold text-rose-300 underline underline-offset-2">
-                Sayangin
+                Degdegin
               </a>{" "}
               — mau bikin buat orang spesialmu?
             </p>

@@ -23,6 +23,7 @@ export async function GET(
         reportCount: true,
         createdAt: true,
         openedAt: true,
+        unlockAt: true,
       },
     });
 
@@ -49,6 +50,21 @@ export async function GET(
     }
 
     if (!isPreview) {
+      // KIRIM TERJADWAL: surat terkunci sampai unlockAt — penerima cuma
+      // melihat countdown (tidak ada isi, tidak naikkan hitungan buka).
+      if (
+        confession.unlockAt &&
+        confession.unlockAt.getTime() > Date.now()
+      ) {
+        return NextResponse.json({
+          locked: true,
+          toName: confession.toName,
+          fromName: confession.fromName,
+          theme: confession.theme,
+          unlockAt: confession.unlockAt.toISOString(),
+        });
+      }
+
       // catat aktivitas buka (untuk halaman status pengirim)
       await db.confession.update({
         where: { slug },
@@ -59,7 +75,7 @@ export async function GET(
       });
     }
 
-    const { senderKey: _sk, reportCount: _rc, views: _v, openedAt: _o, ...safe } =
+    const { senderKey: _sk, reportCount: _rc, views: _v, openedAt: _o, unlockAt: _u, ...safe } =
       confession;
     return NextResponse.json({ ...safe, preview: isPreview });
   } catch (err) {
