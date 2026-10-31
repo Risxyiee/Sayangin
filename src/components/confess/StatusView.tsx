@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Eye,
   Ticket,
+  Music,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 
@@ -57,6 +58,9 @@ type StatusData = {
   giftType?: string;
   coupons?: CouponRow[];
   redeemed?: Record<string, string>;
+  // khusus playlist
+  plTitle?: string;
+  plSongs?: number;
 };
 
 type SavedItem = {
@@ -75,6 +79,7 @@ const GIFT_ICONS: Record<string, string> = {
   photobox: "📸",
   cake: "🎂",
   coupons: "🎫",
+  playlist: "🎵",
 };
 
 function savedIcon(type?: string): string {
@@ -530,6 +535,24 @@ function GiftStatusCard({
               title="Belum dibuka"
               state="waiting"
               detail="Link-nya belum dibuka. Kirim lagi pas dia lagi santai 😌"
+            />
+          )}
+
+          {/* 3a. khusus playlist: ringkasan isi */}
+          {giftType === "playlist" && (
+            <Step
+              icon={<Music className="h-5 w-5" />}
+              title={
+                data.plSongs
+                  ? `${data.plSongs} lagu nunggu didengerin`
+                  : "Playlistnya siap didengerin"
+              }
+              state="soft"
+              detail={
+                data.plTitle
+                  ? `“${data.plTitle}” — tiap lagunya ada catatan kenangan darimu 🎧`
+                  : "Tiap lagunya ada catatan kenangan darimu 🎧"
+              }
             />
           )}
 

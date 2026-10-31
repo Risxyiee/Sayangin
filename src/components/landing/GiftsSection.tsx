@@ -348,7 +348,7 @@ const GIFTS = [
     title: "Playlist Kita",
     desc: "Halaman lagu-lagunya kalian berdua, lengkap dengan piringan hitam berputar dan catatan kenangan di tiap lagu.",
     tag: "playlist Spotify → halaman spesial",
-    soon: true,
+    cta: { href: "#playlist", label: "Racik playlistnya — gratis ↓" },
   },
 ];
 
@@ -408,11 +408,6 @@ export default function GiftsSection() {
                   >
                     {g.cta.label}
                   </a>
-                )}
-                {g.soon && (
-                  <span className="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-xs font-bold text-neutral-400">
-                    🚧 Segera hadir
-                  </span>
                 )}
               </div>
             </motion.article>

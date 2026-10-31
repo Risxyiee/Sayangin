@@ -16,6 +16,8 @@ type BouquetData = { card: string; flowers: string[] };
 type PhotoboxData = { caption: string; note: string; photos: string[] };
 type CakeData = { occasion: string; message: string };
 type CouponsData = { coupons: { title: string; desc?: string }[] };
+type PlaylistSong = { title: string; artist?: string; note?: string; link?: string };
+type PlaylistData = { title: string; message: string; songs: PlaylistSong[] };
 
 type GiftPayload = {
   slug: string;
@@ -23,7 +25,7 @@ type GiftPayload = {
   fromName: string;
   toName: string;
   theme: string;
-  data: BouquetData | PhotoboxData | CakeData | CouponsData;
+  data: BouquetData | PhotoboxData | CakeData | CouponsData | PlaylistData;
   progress: GiftProgress;
   views: number;
   preview?: boolean;
@@ -413,6 +415,125 @@ function CouponsMain({
   );
 }
 
+/* ============ 5. PLAYLIST KITA ============ */
+function ytLink(song: PlaylistSong): string {
+  if (song.link) return song.link;
+  const q = [song.title, song.artist].filter(Boolean).join(" ");
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+}
+
+function PlaylistMain({
+  data,
+  toName,
+  senderName,
+}: {
+  data: PlaylistData;
+  toName: string;
+  senderName: string;
+}) {
+  const [active, setActive] = useState<number | null>(null);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex w-full flex-col items-center"
+    >
+      <p className="font-hand text-3xl text-rose-100">{data.title} 🎵</p>
+      <p className="mt-1 text-sm text-white/60">
+        buat {toName} — dari {senderName}
+      </p>
+
+      {/* piringan hitam berputar + equalizer */}
+      <div className="mt-7 flex items-center justify-center gap-6" aria-hidden>
+        <div className="relative h-28 w-28 shrink-0 anim-spin-slow">
+          <div
+            className="h-full w-full rounded-full bg-neutral-900 shadow-2xl"
+            style={{
+              backgroundImage:
+                "repeating-radial-gradient(circle at center, #1c1c1c 0 2px, #2b2b2b 2px 4px)",
+            }}
+          />
+          <div className="absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-rose-500">
+            <span className="text-sm">♥</span>
+            <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neutral-900" />
+          </div>
+        </div>
+        <div className="flex items-end gap-1 pb-1">
+          {[0.9, 0.5, 1.1, 0.7, 1.3, 0.6].map((d, i) => (
+            <span
+              key={i}
+              className="w-1.5 origin-bottom rounded-t bg-rose-400"
+              style={{ height: 16 + i * 3, animation: `eq-bounce ${d}s ease-in-out infinite` }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* daftar lagu — tap buat dengerin */}
+      <div className="mt-7 w-full space-y-2.5">
+        {data.songs.map((s, i) => {
+          const on = active === i;
+          return (
+            <motion.a
+              key={`${s.title}-${i}`}
+              href={ytLink(s)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setActive(i)}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.07 }}
+              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left shadow-lg transition ${
+                on ? "bg-white ring-2 ring-rose-400" : "bg-white/90 hover:bg-white"
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                  on ? "bg-rose-500 text-white" : "bg-rose-100 text-rose-600"
+                }`}
+              >
+                {on ? "♪" : i + 1}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-rose-950">{s.title}</span>
+                {s.artist && (
+                  <span className="block truncate text-xs text-rose-950/50">{s.artist}</span>
+                )}
+                {s.note && (
+                  <span className="mt-0.5 block font-hand text-[13px] leading-4 text-rose-500">
+                    “{s.note}”
+                  </span>
+                )}
+              </span>
+              <span className={`shrink-0 text-base ${on ? "text-rose-500" : "text-rose-300"}`}>
+                {on ? "🔊" : "▶"}
+              </span>
+            </motion.a>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-xs text-white/50">
+        tap lagunya buat dengerin di YouTube/Spotify 🎧
+      </p>
+
+      {/* catatan penutup */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+        className="grain mt-5 w-full rounded-2xl bg-[#fffaf5] p-6 text-left shadow-2xl"
+      >
+        <p className="whitespace-pre-wrap font-hand text-xl leading-7 text-rose-950">
+          {data.message}
+        </p>
+        <p className="mt-4 text-right font-hand text-lg text-rose-500">— {senderName}</p>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ---------- wrapper kado (amplop kado) ---------- */
 function GiftBox({ emoji }: { emoji: string }) {
   return (
@@ -473,6 +594,7 @@ export default function GiftView({
       case "photobox": return "📸";
       case "cake": return "🎂";
       case "coupons": return "🎫";
+      case "playlist": return "🎵";
       default: return "🎁";
     }
   }, [data?.type]);
@@ -616,6 +738,13 @@ export default function GiftView({
                   progress={data.progress}
                   onRedeem={redeem}
                   slug={slug}
+                />
+              )}
+              {data.type === "playlist" && (
+                <PlaylistMain
+                  data={data.data as PlaylistData}
+                  toName={data.toName}
+                  senderName={senderName}
                 />
               )}
 

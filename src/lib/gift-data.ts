@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-export const GIFT_TYPES = ["bouquet", "photobox", "cake", "coupons"] as const;
+export const GIFT_TYPES = ["bouquet", "photobox", "cake", "coupons", "playlist"] as const;
 export type GiftType = (typeof GIFT_TYPES)[number];
 
 export const GIFT_META: Record<
@@ -31,6 +31,11 @@ export const GIFT_META: Record<
     emoji: "🎫",
     label: "Love Coupons",
     ogTitle: (t) => `Ada kupon cinta buat ${t} 🎟️`,
+  },
+  playlist: {
+    emoji: "🎵",
+    label: "Playlist Kita",
+    ogTitle: (t) => `Ada playlist spesial buat ${t} 🎵`,
   },
 };
 
@@ -83,10 +88,42 @@ export const couponsDataSchema = z.object({
     .max(6, "Maksimal 6 kupon"),
 });
 
+export const playlistSongSchema = z.object({
+  title: z.string().trim().min(1, "Tiap lagu harus ada judulnya").max(80),
+  artist: z.string().trim().max(60).optional().default(""),
+  note: z
+    .string()
+    .trim()
+    .max(120, "Catatannya maksimal 120 karakter")
+    .optional()
+    .default(""),
+  link: z
+    .string()
+    .trim()
+    .max(300, "Linknya kepanjangan")
+    .optional()
+    .default("")
+    .refine(
+      (v) => v === "" || /^https?:\/\/\S+\.\S+/.test(v),
+      "Link lagunya harus diawali http:// atau https://"
+    ),
+});
+
+export const playlistDataSchema = z.object({
+  title: z.string().trim().min(3, "Judul playlistnya minimal 3 karakter").max(60),
+  message: z.string().trim().min(5, "Catatan penutupnya minimal 5 karakter").max(400),
+  songs: z
+    .array(playlistSongSchema)
+    .min(3, "Minimal 3 lagu ya 🎵")
+    .max(15, "Maksimal 15 lagu"),
+});
+
 export type BouquetData = z.infer<typeof bouquetDataSchema>;
 export type PhotoboxData = z.infer<typeof photoboxDataSchema>;
 export type CakeData = z.infer<typeof cakeDataSchema>;
 export type CouponsData = z.infer<typeof couponsDataSchema>;
+export type PlaylistSong = z.infer<typeof playlistSongSchema>;
+export type PlaylistData = z.infer<typeof playlistDataSchema>;
 
 export type GiftProgress = { redeemed?: Record<string, string> };
 
@@ -105,6 +142,15 @@ export function giftTexts(type: string, data: unknown): string[] {
         const o = c as { title?: string; desc?: string };
         return `${o.title ?? ""} ${o.desc ?? ""}`;
       });
+    case "playlist":
+      return [
+        String(d.title ?? ""),
+        String(d.message ?? ""),
+        ...(Array.isArray(d.songs) ? d.songs : []).map((s) => {
+          const o = s as { title?: string; artist?: string; note?: string };
+          return `${o.title ?? ""} ${o.artist ?? ""} ${o.note ?? ""}`;
+        }),
+      ];
     default:
       return [];
   }

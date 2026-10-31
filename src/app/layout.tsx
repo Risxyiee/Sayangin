@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Caveat } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-const jakarta = Plus_Jakarta_Sans({
+// Font di-host sendiri (src/fonts) — build & dev nggak perlu fetch ke
+// fonts.googleapis.com lagi: lebih cepat, hermetik, dan aman buat
+// environment offline. File latin variable diunduh dari Google Fonts.
+const jakarta = localFont({
+  src: "../fonts/plus-jakarta-sans-latin.woff2",
   variable: "--font-jakarta",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: "200 800",
+  display: "swap",
 });
 
-const caveat = Caveat({
+const caveat = localFont({
+  src: "../fonts/caveat-latin.woff2",
   variable: "--font-caveat",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

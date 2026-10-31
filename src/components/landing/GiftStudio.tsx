@@ -20,13 +20,14 @@ import {
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 import { FLOWERS, FLOWER_IDS } from "@/lib/gift-data";
 
-type TabKey = "bouquet" | "photobox" | "cake" | "coupons";
+type TabKey = "bouquet" | "photobox" | "cake" | "coupons" | "playlist";
 
 const TABS: { key: TabKey; label: string; emoji: string }[] = [
   { key: "bouquet", label: "Buket", emoji: "💐" },
   { key: "photobox", label: "Photobox", emoji: "📸" },
   { key: "cake", label: "Kue", emoji: "🎂" },
   { key: "coupons", label: "Kupon", emoji: "🎫" },
+  { key: "playlist", label: "Playlist", emoji: "🎵" },
 ];
 
 const CAKE_OCCASIONS = [
@@ -75,6 +76,19 @@ const COUPON_PRESETS: Record<string, { label: string; emoji: string; coupons: { 
       { title: "1× Karaoke Ditemani", desc: "Nyanyi seikhatnya, aku yang dengar" },
     ],
   },
+};
+
+/* Isian awal form playlist — lagu-lagu Indonesia yang relate buat couple */
+const PLAYLIST_PRESET = {
+  title: "Lagu-lagu yang bikin aku inget kamu",
+  message:
+    "Tiap lagu di playlist ini ada ceritanya — ada yang bikin inget first date, ada yang nemenin pas kangen. Kalau kamu kangen aku, buka playlist ini ya. Anggap aja pelukan versi suara. 🤍",
+  songs: [
+    { title: "Monolog", artist: "Pamungkas", note: "lagu yang diputer pas pertama anter kamu", link: "" },
+    { title: "Rumah Ke Rumah", artist: "Hindia", note: "spontan mampir cuma buat lihat kamu", link: "" },
+    { title: "Sial", artist: "Mahalini", note: "yang kamu nyanyiin terus sampe gatel", link: "" },
+    { title: "Sekuat Hatimu", artist: "Vincentius", note: "biar kita sama-sama kuat", link: "" },
+  ],
 };
 
 /* Kompres foto di browser: max 640px, JPEG q~0.72 (≤±60KB/foto) */
@@ -140,6 +154,11 @@ export default function GiftStudio() {
     COUPON_PRESETS.manja.coupons.map((c) => ({ ...c }))
   );
 
+  // playlist
+  const [plTitle, setPlTitle] = useState(PLAYLIST_PRESET.title);
+  const [plMessage, setPlMessage] = useState(PLAYLIST_PRESET.message);
+  const [songs, setSongs] = useState(PLAYLIST_PRESET.songs.map((s) => ({ ...s })));
+
   // tab bisa dipilih dari kartu GiftsSection via anchor #buket dst.
   useEffect(() => {
     const fromHash = () => {
@@ -152,6 +171,7 @@ export default function GiftStudio() {
         cake: "cake",
         kupon: "coupons",
         coupons: "coupons",
+        playlist: "playlist",
       };
       if (map[h]) setTab(map[h]);
     };
@@ -221,6 +241,41 @@ export default function GiftStudio() {
         return;
       }
       data = { occasion, message: message.trim() };
+    } else if (tab === "playlist") {
+      if (plTitle.trim().length < 3) {
+        setError("Judul playlistnya minimal 3 karakter.");
+        return;
+      }
+      if (plMessage.trim().length < 5) {
+        setError("Catatan penutupnya minimal 5 karakter.");
+        return;
+      }
+      if (songs.length < 3) {
+        setError("Minimal 3 lagu ya 🎵");
+        return;
+      }
+      const badSong = songs.findIndex((s) => s.title.trim().length < 1);
+      if (badSong !== -1) {
+        setError(`Lagu #${badSong + 1} belum ada judulnya ya.`);
+        return;
+      }
+      const badLink = songs.findIndex(
+        (s) => s.link.trim() !== "" && !/^https?:\/\/\S+\.\S+/.test(s.link.trim())
+      );
+      if (badLink !== -1) {
+        setError(`Link lagu #${badLink + 1} nggak valid — harus diawali https:// ya.`);
+        return;
+      }
+      data = {
+        title: plTitle.trim(),
+        message: plMessage.trim(),
+        songs: songs.map((s) => ({
+          title: s.title.trim(),
+          artist: s.artist.trim(),
+          note: s.note.trim(),
+          link: s.link.trim(),
+        })),
+      };
     } else {
       const bad = coupons.findIndex((c) => c.title.trim().length < 2);
       if (bad !== -1) {
@@ -296,6 +351,8 @@ export default function GiftStudio() {
     photobox: "Aku bungkus foto-foto kita jadi strip photobox 📸 Buka ya:",
     cake: "Ada kue buat kamu 🎂 Tiup lilinnya — ada pesan spesial di baliknya:",
     coupons: "Aku kasih kamu buku kupon cinta 🎫 Pakai sesuka hatimu ya:",
+    playlist:
+      "Aku buatin playlist buat kita 🎵 Tiap lagunya ada cerita kenangan kita. Dengerin pelan-pelan ya:",
   };
 
   const shareWA = () => {
@@ -318,6 +375,7 @@ export default function GiftStudio() {
       <span id="photobox" aria-hidden className="absolute -top-20" />
       <span id="kue" aria-hidden className="absolute -top-20" />
       <span id="kupon" aria-hidden className="absolute -top-20" />
+      <span id="playlist" aria-hidden className="absolute -top-20" />
 
       <div className="absolute left-1/2 top-1/3 h-72 w-[720px] -translate-x-1/2 rounded-full bg-rose-200/40 blur-[110px]" />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
@@ -351,7 +409,7 @@ export default function GiftStudio() {
           {!link ? (
             <div className="space-y-5">
               {/* pilih tipe kado */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {TABS.map((t) => (
                   <button
                     key={t.key}
@@ -654,6 +712,136 @@ export default function GiftStudio() {
                       </Button>
                     )}
                   </div>
+                </>
+              )}
+
+              {/* ===== FORM PLAYLIST ===== */}
+              {tab === "playlist" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="gs-pltitle" className="text-rose-950">
+                      Judul playlistnya
+                    </Label>
+                    <Input
+                      id="gs-pltitle"
+                      value={plTitle}
+                      onChange={(e) => setPlTitle(e.target.value)}
+                      maxLength={60}
+                      className="border-rose-200 focus-visible:ring-rose-400"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-rose-950">
+                      Lagunya ({songs.length}/15 — minimal 3)
+                    </Label>
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                      {songs.map((s, i) => (
+                        <div
+                          key={i}
+                          className="rounded-xl border border-rose-100 bg-rose-50/40 p-2.5"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                              {i + 1}
+                            </span>
+                            <Input
+                              value={s.title}
+                              onChange={(e) =>
+                                setSongs((ss) =>
+                                  ss.map((v, j) => (j === i ? { ...v, title: e.target.value } : v))
+                                )
+                              }
+                              maxLength={80}
+                              placeholder="judul lagu"
+                              aria-label={`Judul lagu ${i + 1}`}
+                              className="h-8 border-0 bg-transparent px-1 text-sm font-semibold shadow-none focus-visible:ring-0"
+                            />
+                            {songs.length > 3 && (
+                              <button
+                                type="button"
+                                onClick={() => setSongs((ss) => ss.filter((_, j) => j !== i))}
+                                aria-label={`Hapus lagu ${i + 1}`}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-300 transition hover:bg-rose-100 hover:text-rose-500"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            <Input
+                              value={s.artist}
+                              onChange={(e) =>
+                                setSongs((ss) =>
+                                  ss.map((v, j) => (j === i ? { ...v, artist: e.target.value } : v))
+                                )
+                              }
+                              maxLength={60}
+                              placeholder="penyanyi"
+                              aria-label={`Penyanyi lagu ${i + 1}`}
+                              className="h-7 border-0 bg-transparent px-1 text-xs text-rose-950/70 shadow-none focus-visible:ring-0"
+                            />
+                            <Input
+                              value={s.link}
+                              onChange={(e) =>
+                                setSongs((ss) =>
+                                  ss.map((v, j) => (j === i ? { ...v, link: e.target.value } : v))
+                                )
+                              }
+                              maxLength={300}
+                              placeholder="link YouTube/Spotify (opsional)"
+                              aria-label={`Link lagu ${i + 1}`}
+                              className="h-7 border-0 bg-transparent px-1 text-xs text-rose-950/70 shadow-none focus-visible:ring-0"
+                            />
+                          </div>
+                          <Input
+                            value={s.note}
+                            onChange={(e) =>
+                              setSongs((ss) =>
+                                ss.map((v, j) => (j === i ? { ...v, note: e.target.value } : v))
+                              )
+                            }
+                            maxLength={120}
+                            placeholder="catatan kenangan (opsional) — mis. “lagu first date”"
+                            aria-label={`Catatan lagu ${i + 1}`}
+                            className="mt-1 h-7 border-0 bg-transparent px-1 text-xs italic text-rose-950/70 shadow-none focus-visible:ring-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {songs.length < 15 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setSongs((ss) => [...ss, { title: "", artist: "", note: "", link: "" }])
+                        }
+                        className="rounded-full border-rose-300 text-rose-600 hover:bg-rose-50"
+                      >
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Tambah lagu
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gs-plmsg" className="text-rose-950">
+                      Catatan penutup buat dia
+                    </Label>
+                    <Textarea
+                      id="gs-plmsg"
+                      value={plMessage}
+                      onChange={(e) => setPlMessage(e.target.value)}
+                      maxLength={400}
+                      rows={4}
+                      className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                    />
+                    <p className="text-right text-[11px] text-muted-foreground">
+                      {plMessage.length}/400
+                    </p>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Kosongin link? Nanti lagunya dibuka lewat pencarian YouTube otomatis —
+                    tetap gratis, tanpa API. 🎧
+                  </p>
                 </>
               )}
 

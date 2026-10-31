@@ -10,6 +10,7 @@ import {
   couponsDataSchema,
   giftTexts,
   photoboxDataSchema,
+  playlistDataSchema,
   GIFT_TYPES,
   type GiftType,
 } from "@/lib/gift-data";
@@ -29,6 +30,7 @@ const DATA_SCHEMA: Record<GiftType, z.ZodTypeAny> = {
   photobox: photoboxDataSchema,
   cake: cakeDataSchema,
   coupons: couponsDataSchema,
+  playlist: playlistDataSchema,
 };
 
 export async function POST(req: NextRequest) {

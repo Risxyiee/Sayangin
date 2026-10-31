@@ -99,6 +99,20 @@ export async function GET(
         }
       }
 
+      // playlist: sertakan judul + jumlah lagu buat halaman pantauan
+      if (gift.type === "playlist") {
+        try {
+          const data = JSON.parse(gift.data) as { title?: string; songs?: unknown[] };
+          return NextResponse.json({
+            ...base,
+            plTitle: data.title ?? "",
+            plSongs: Array.isArray(data.songs) ? data.songs.length : 0,
+          });
+        } catch {
+          return NextResponse.json({ ...base, plTitle: "", plSongs: 0 });
+        }
+      }
+
       return NextResponse.json(base);
     }
 
