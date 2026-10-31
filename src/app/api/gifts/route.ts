@@ -15,6 +15,7 @@ import {
   type GiftType,
 } from "@/lib/gift-data";
 import { THEME_KEYS, THEME_INVALID_MESSAGE } from "@/lib/themes";
+import { withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 const createSchema = z.object({
@@ -76,24 +77,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let slug = makeSlug();
-    for (let i = 0; i < 5; i++) {
-      const exists = await db.gift.findUnique({ where: { slug } });
-      if (!exists) break;
-      slug = makeSlug();
-    }
-
-    const gift = await db.gift.create({
-      data: {
-        slug,
-        senderKey: makeToken(16),
-        type,
-        fromName: fromName ?? "",
-        toName,
-        theme: THEMES.has(theme) ? theme : "rose",
-        data: JSON.stringify(data),
-      },
-      select: { slug: true, id: true, senderKey: true },
+    // withDbRetry: kalau kena koneksi zombie Hyperdrive, ulang sekali di
+    // koneksi baru — pengguna tidak melihat errornya.
+    const gift = await withDbRetry(async () => {
+      let slug = makeSlug();
+      for (let i = 0; i < 5; i++) {
+        const exists = await db.gift.findUnique({ where: { slug } });
+        if (!exists) break;
+        slug = makeSlug();
+      }
+      return db.gift.create({
+        data: {
+          slug,
+          senderKey: makeToken(16),
+          type,
+          fromName: fromName ?? "",
+          toName,
+          theme: THEMES.has(theme) ? theme : "rose",
+          data: JSON.stringify(data),
+        },
+        select: { slug: true, id: true, senderKey: true },
+      });
     });
 
     return NextResponse.json(

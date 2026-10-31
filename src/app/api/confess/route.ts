@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { makeSlug, makeToken } from "@/lib/token";
@@ -83,26 +83,29 @@ export async function POST(req: NextRequest) {
       unlock = d;
     }
 
-    let slug = makeSlug();
-    // pastikan unik
-    for (let i = 0; i < 5; i++) {
-      const exists = await db.confession.findUnique({ where: { slug } });
-      if (!exists) break;
-      slug = makeSlug();
-    }
-
     const senderKey = makeToken(16);
-    const confession = await db.confession.create({
-      data: {
-        slug,
-        senderKey,
-        fromName: fromName ?? "",
-        toName,
-        message,
-        theme,
-        isPublic,
-        ...(unlock ? { unlockAt: unlock } : {}),
-      },
+    // withDbRetry: kalau kena koneksi zombie Hyperdrive, ulang sekali di
+    // koneksi baru — pengguna tidak melihat errornya.
+    const confession = await withDbRetry(async () => {
+      let slug = makeSlug();
+      // pastikan unik
+      for (let i = 0; i < 5; i++) {
+        const exists = await db.confession.findUnique({ where: { slug } });
+        if (!exists) break;
+        slug = makeSlug();
+      }
+      return db.confession.create({
+        data: {
+          slug,
+          senderKey,
+          fromName: fromName ?? "",
+          toName,
+          message,
+          theme,
+          isPublic,
+          ...(unlock ? { unlockAt: unlock } : {}),
+        },
+      });
     });
 
     return NextResponse.json(

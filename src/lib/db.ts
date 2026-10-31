@@ -128,3 +128,22 @@ if (!globalForPrisma.prisma) {
 }
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+
+// ── Perisai anti-zombie ──────────────────────────────────────────────────────
+// Koneksi origin yang "mati diam" (query terkirim, jawaban tak kunjung datang)
+// kadang masih muncul di cache Hyperdrive. Timeout ketat di pool memotongnya
+// dlm 10 dtk; helper ini melangkahi rasa sakitnya: begitu kena kesalahan koneksi
+// macet, SEGERA ulangi sekali di koneksi baru (baru saja dibuka → respons
+// puluhan ms). Kesalahan validasi/bisnis TIDAK diulang.
+const RETRYABLE = /query read timeout|connection terminated|timeout exceeded|ECONNRESET|socket hang up/i
+
+export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!RETRYABLE.test(msg)) throw err
+    console.warn('[db] koneksi macet terdeteksi, ulang sekali di koneksi baru:', msg)
+    return await fn()
+  }
+}
