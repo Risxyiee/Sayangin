@@ -74,13 +74,14 @@ export async function GET() {
   const hd = hyperdriveUrl();
   const direct = process.env.DATABASE_URL?.trim() || undefined;
 
-  const out: Record<string, unknown> = {
+  const hdInfo: Record<string, unknown> = { present: !!hd, target: describe(hd) };
+  if (hd) Object.assign(hdInfo, await probe(hd));
+
+  const out = {
     time: new Date().toISOString(),
-    hyperdrive: { present: !!hd, target: describe(hd) },
+    hyperdrive: hdInfo,
     databaseUrl: { present: !!direct, target: describe(direct) },
   };
-
-  if (hd) out.hyperdrive = { ...out.hyperdrive, ...(await probe(hd)) };
 
   // Jalur fallback (pg TLS langsung) diketahui bermasalah di runtime Workers —
   // jangan diprobe otomatis; keberadaan & bentuk URL-nya saja sudah cukup.
