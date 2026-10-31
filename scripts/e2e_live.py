@@ -62,6 +62,7 @@ print(res.status, "ada branding:", "Kangenin" in html)
 
 print("== 7. GET /api/status/[senderKey] (pantauan pengirim) ==")
 code, out = req(f"/api/status/{skey}")
-print(code, "jumlah item:", len(out) if isinstance(out, list) else out)
+print(code, {k: out.get(k) for k in ("type", "toName", "theme", "views")} if isinstance(out, dict) else out)
+assert code == 200, "GAGAL muat status pengirim!"
 
 print("\nSELESAI — rangkaian E2E berhasil" )
