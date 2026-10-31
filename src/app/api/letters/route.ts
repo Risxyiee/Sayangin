@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { makeSlug, makeToken } from "@/lib/token";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
+import { describeError } from "@/lib/log-error";
 
 const letterSchema = z.object({
   title: z.string().trim().min(2, "Judul surat minimal 2 karakter").max(80),
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("POST /api/letters error:", err);
+    console.error("POST /api/letters error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal membuat surat. Coba lagi ya." },
       { status: 500 }

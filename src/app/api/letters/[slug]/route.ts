@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { describeError } from "@/lib/log-error";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -84,7 +85,7 @@ export async function GET(
       letters,
     });
   } catch (err) {
-    console.error("GET /api/letters/[slug] error:", err);
+    console.error("GET /api/letters/[slug] error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal memuat surat." },
       { status: 500 }

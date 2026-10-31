@@ -14,6 +14,7 @@ import {
   GIFT_TYPES,
   type GiftType,
 } from "@/lib/gift-data";
+import { describeError } from "@/lib/log-error";
 
 const createSchema = z.object({
   type: z.enum(GIFT_TYPES),
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("POST /api/gifts error:", err);
+    console.error("POST /api/gifts error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal membuat kado. Coba lagi ya." },
       { status: 500 }

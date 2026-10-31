@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
+import { describeError } from "@/lib/log-error";
 
 const replySchema = z.object({
   reply: z
@@ -82,7 +83,7 @@ export async function POST(
       repliedAt: updated.repliedAt?.toISOString() ?? null,
     });
   } catch (err) {
-    console.error("POST /api/confess/[slug]/reply error:", err);
+    console.error("POST /api/confess/[slug]/reply error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal mengirim balasan. Coba lagi ya." },
       { status: 500 }

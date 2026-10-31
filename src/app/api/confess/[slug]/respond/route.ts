@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { describeError } from "@/lib/log-error";
 
 const respondSchema = z.object({
   response: z.enum(["yes", "later"]),
@@ -37,7 +38,7 @@ export async function POST(
 
     return NextResponse.json(updated);
   } catch (err) {
-    console.error("POST /api/confess/[slug]/respond error:", err);
+    console.error("POST /api/confess/[slug]/respond error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal menyimpan respons." },
       { status: 500 }

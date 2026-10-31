@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { describeError } from "@/lib/log-error";
 
 // Penerima menekan "mulai" → jam mingguan mulai berdetak.
 // Sengaja tombol eksplisit (bukan otomatis saat buka link) supaya
@@ -26,7 +27,7 @@ export async function POST(
 
     return NextResponse.json({ startedAt: startedAt.toISOString() });
   } catch (err) {
-    console.error("POST /api/letters/[slug]/start error:", err);
+    console.error("POST /api/letters/[slug]/start error:", describeError(err), err);
     return NextResponse.json({ error: "Gagal memulai." }, { status: 500 });
   }
 }

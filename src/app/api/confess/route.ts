@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { makeSlug, makeToken } from "@/lib/token";
+import { describeError } from "@/lib/log-error";
 
 const confessSchema = z.object({
   fromName: z.string().trim().max(40).optional().default(""),
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("POST /api/confess error:", err);
+    console.error("POST /api/confess error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal membuat confess. Coba lagi ya." },
       { status: 500 }

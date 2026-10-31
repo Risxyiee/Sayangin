@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import type { CouponsData, GiftProgress } from "@/lib/gift-data";
+import { describeError } from "@/lib/log-error";
 
 const redeemSchema = z.object({
   index: z.number().int().min(0).max(9),
@@ -83,7 +84,7 @@ export async function POST(
 
     return NextResponse.json({ ok: true, progress: next });
   } catch (err) {
-    console.error("POST /api/gifts/[slug]/redeem error:", err);
+    console.error("POST /api/gifts/[slug]/redeem error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal memakai kupon. Coba lagi ya." },
       { status: 500 }

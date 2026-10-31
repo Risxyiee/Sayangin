@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import type { GiftProgress } from "@/lib/gift-data";
+import { describeError } from "@/lib/log-error";
 
 // Penerima: GET /api/gifts/<slug>
 // - catat mampir pertama (openedAt) + views utk halaman status pengirim
@@ -70,7 +71,7 @@ export async function GET(
       preview: isPreview,
     });
   } catch (err) {
-    console.error("GET /api/gifts/[slug] error:", err);
+    console.error("GET /api/gifts/[slug] error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal memuat kado." },
       { status: 500 }

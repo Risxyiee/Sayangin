@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { describeError } from "@/lib/log-error";
 
 const reportSchema = z.object({
   slug: z.string().trim().min(3).max(30),
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
       { status: 404 }
     );
   } catch (err) {
-    console.error("POST /api/report error:", err);
+    console.error("POST /api/report error:", describeError(err), err);
     return NextResponse.json(
       { error: "Gagal mengirim laporan. Coba lagi ya." },
       { status: 500 }
