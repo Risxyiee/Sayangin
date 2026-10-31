@@ -39,19 +39,13 @@ const LEET: Record<string, string> = {
   "5": "s", "$": "s", "7": "t", "9": "g",
 };
 
-/** Ringkas huruf berulang 3+ jadi 1 (anjiiiir → anjir) */
+/** Ringkas huruf berulang 2+ jadi 1 (anjiiiir → anjir, anjinggg → anjing) */
 function collapseRuns(s: string): string {
   let out = "";
-  let run = 0;
   let prev = "";
   for (const ch of s) {
-    if (ch === prev) {
-      run += 1;
-      if (run >= 3) continue; // skip huruf ke-3 dst
-    } else {
-      prev = ch;
-      run = 1;
-    }
+    if (ch === prev) continue; // skip huruf kedua dst
+    prev = ch;
     out += ch;
   }
   return out;
@@ -85,7 +79,8 @@ export function findProhibited(text: string): string | null {
   const flat = flatten(text);
 
   for (const banned of PROHIBITED) {
-    const b = collapseRuns(banned.toLowerCase()).replace(/[^a-z]/g, "");
+    const raw = banned.toLowerCase().replace(/[^a-z]/g, "");
+    const b = collapseRuns(raw);
     if (!b) continue;
 
     // frasa multi-kata → cocokkan di teks utuh yang diratakan
@@ -95,7 +90,15 @@ export function findProhibited(text: string): string | null {
     }
 
     for (const tok of tokens) {
-      if (tok === b || (b.length >= 6 && tok.includes(b))) return banned;
+      // ejaan asli juga dicek (biar kata dgn huruf ganda sah
+      // seperti "nigger" tetap kena tanpa memblokir "niger")
+      if (
+        tok === b ||
+        tok === raw ||
+        (b.length >= 6 && tok.includes(b)) ||
+        (raw.length >= 6 && tok.includes(raw))
+      )
+        return banned;
     }
   }
   return null;

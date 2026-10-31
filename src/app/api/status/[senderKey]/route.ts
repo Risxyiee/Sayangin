@@ -20,6 +20,7 @@ export async function GET(
         theme: true,
         response: true,
         views: true,
+        reportCount: true,
         createdAt: true,
         openedAt: true,
         respondedAt: true,
@@ -27,9 +28,11 @@ export async function GET(
     });
 
     if (confession) {
+      const { reportCount, ...c } = confession;
       return NextResponse.json({
         type: "confess",
-        ...confession,
+        hidden: reportCount >= 3,
+        ...c,
       });
     }
 
@@ -41,6 +44,7 @@ export async function GET(
     if (set) {
       return NextResponse.json({
         type: "letters",
+        hidden: set.reportCount >= 3,
         slug: set.slug,
         fromName: set.fromName,
         toName: set.toName,

@@ -16,6 +16,8 @@ import {
   Loader2,
   ChevronDown,
   BookOpenCheck,
+  ShieldAlert,
+  Eye,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 
@@ -36,6 +38,7 @@ type StatusData = {
   views: number;
   createdAt: string;
   openedAt: string | null;
+  hidden?: boolean;
   // khusus confess
   response?: string | null;
   respondedAt?: string | null;
@@ -235,6 +238,27 @@ function LettersStatusCard({
         </div>
 
         <div className="mt-5 space-y-3">
+          {/* 0. kadonya ditinjau tim (dilaporkan >=3x) */}
+          {data.hidden && (
+            <Step
+              icon={<ShieldAlert className="h-5 w-5" />}
+              title="Kadonya lagi ditinjau tim"
+              state="waiting"
+              detail={
+                <>
+                  Konten ini dilaporkan beberapa kali dan sementara disembunyikan
+                  dari penerima.{" "}
+                  <a
+                    href={`/?k=${data.slug}&p=${senderKey}`}
+                    className="font-semibold text-amber-300 underline decoration-amber-400/50 underline-offset-2"
+                  >
+                    lihat kadonya →
+                  </a>
+                </>
+              }
+            />
+          )}
+
           {/* 1. terkirim */}
           <Step
             icon={<Check className="h-5 w-5" />}
@@ -243,6 +267,13 @@ function LettersStatusCard({
             detail={
               <>
                 Link aktif selamanya.{" "}
+                <a
+                  href={`/?k=${data.slug}&p=${senderKey}`}
+                  className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                >
+                  pratinjau <Eye className="h-3 w-3" />
+                </a>{" "}
+                ·{" "}
                 <button
                   onClick={shareAgain}
                   className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
@@ -505,6 +536,27 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
               </p>
 
               <div className="mt-5 space-y-3">
+                {/* 0. kadonya ditinjau tim (dilaporkan >=3x) */}
+                {data.hidden && (
+                  <Step
+                    icon={<ShieldAlert className="h-5 w-5" />}
+                    title="Kadonya lagi ditinjau tim"
+                    state="waiting"
+                    detail={
+                      <>
+                        Konten ini dilaporkan beberapa kali dan sementara
+                        disembunyikan dari penerima.{" "}
+                        <a
+                          href={`/?k=${data.slug}&p=${senderKey}`}
+                          className="font-semibold text-amber-300 underline decoration-amber-400/50 underline-offset-2"
+                        >
+                          lihat kadonya →
+                        </a>
+                      </>
+                    }
+                  />
+                )}
+
                 {/* 1. terkirim */}
                 <Step
                   icon={<Check className="h-5 w-5" />}
@@ -512,7 +564,14 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                   state="done"
                   detail={
                     <>
-                      Link-nya sudah jadi & aktif selamanya.{" "}
+                      Link-nya sudah jadi &amp; aktif selamanya.{" "}
+                      <a
+                        href={`/?k=${data.slug}&p=${senderKey}`}
+                        className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                      >
+                        pratinjau <Eye className="h-3 w-3" />
+                      </a>{" "}
+                      ·{" "}
                       <button
                         onClick={shareAgain}
                         className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"

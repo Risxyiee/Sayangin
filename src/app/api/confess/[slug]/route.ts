@@ -36,8 +36,9 @@ export async function GET(
     const p = req.nextUrl.searchParams.get("p") ?? "";
     const isPreview = !!confession.senderKey && p === confession.senderKey;
 
-    // konten dilaporkan >=3x → disembunyikan sampai direview
-    if (confession.reportCount >= 3) {
+    // konten dilaporkan >=3x → disembunyikan dari penerima sampai direview.
+    // pengirim (pratinjau) tetap boleh melihat tulisannya sendiri.
+    if (confession.reportCount >= 3 && !isPreview) {
       return NextResponse.json({
         hidden: true,
         toName: confession.toName,
