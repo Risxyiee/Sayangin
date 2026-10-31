@@ -18,7 +18,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
   // halaman status pengirim → jangan bocorkan apa pun, jangan diindeks
   if (s) {
     return {
-      title: "Pantau kado kamu — Degdegin",
+      title: "Pantau kado kamu — Kangenin",
       robots: { index: false, follow: false },
     };
   }
@@ -93,7 +93,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
     }
 
     // slug nggak dikenal → tetap jangan poluti indeks
-    return { title: "Degdegin", robots: { index: false, follow: false } };
+    return { title: "Kangenin", robots: { index: false, follow: false } };
   }
 
   return {};

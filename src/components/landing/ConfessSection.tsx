@@ -322,7 +322,7 @@ export default function ConfessSection() {
     const text = "Pssst... ada surat rahasia buat kamu 🤫";
     try {
       if (typeof navigator.share === "function") {
-        await navigator.share({ title: "Degdegin", text, url: link });
+        await navigator.share({ title: "Kangenin", text, url: link });
         return;
       }
       await navigator.clipboard.writeText(`${text} ${link}`);
@@ -336,7 +336,7 @@ export default function ConfessSection() {
   // Flex ke X: CTA ala "aku berani, kamu kapan?" — link rahasia TIDAK ikut
   const shareX = () => {
     const text = encodeURIComponent(
-      `Aku baru berani ngirim surat rahasia lewat Degdegin 💌 Kamu kapan?`
+      `Aku baru berani ngirim surat rahasia lewat Kangenin 💌 Kamu kapan?`
     );
     window.open(
       `https://twitter.com/intent/tweet?text=${text}`,
@@ -511,7 +511,7 @@ export default function ConfessSection() {
                       className="mt-0.5 h-4 w-4 accent-primary"
                     />
                     <span className="text-xs leading-relaxed text-foreground">
-                      <b>Tampilkan di Dinding Degdegin</b> — namamu &amp; tema
+                      <b>Tampilkan di Dinding Kangenin</b> — namamu &amp; tema
                       suratnya ikut pajangan publik biar orang lain ikut
                       berani. Isi surat <b>100% tetap rahasia</b>, kok.
                     </span>

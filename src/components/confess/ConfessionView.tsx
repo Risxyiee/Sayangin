@@ -445,7 +445,7 @@ export default function ConfessionView({
     const url = window.location.origin;
     try {
       if (typeof navigator.share === "function") {
-        await navigator.share({ title: "Degdegin", text, url });
+        await navigator.share({ title: "Kangenin", text, url });
         setShareState("sent");
         return;
       }
@@ -510,7 +510,7 @@ export default function ConfessionView({
               className="mt-6 rounded-md bg-primary hover:bg-[#b52743]"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Degdegin
+              Ke Kangenin
             </Button>
           </div>
         )}
@@ -872,7 +872,7 @@ export default function ConfessionView({
           ) : (
             <>
               Dibuat <span className="font-bold text-[#e8b4bb]">gratis</span> di{" "}
-              <span className="font-bold text-white">Degdegin</span>
+              <span className="font-bold text-white">Kangenin</span>
               <a
                 href="/#confess"
                 className="ml-2 underline decoration-white/30 underline-offset-2 hover:text-white/80"

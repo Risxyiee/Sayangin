@@ -4,14 +4,14 @@ import { db } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 import WallGrid, { type WallItem } from "@/components/wall/WallGrid";
 
-// Dinding Degdegin: feed publik yang bisa diindeks Google — mesin
+// Dinding Kangenin: feed publik yang bisa diindeks Google — mesin
 // discovery + FOMO ("orang lain udah berani, kamu kapan?").
 export const metadata: Metadata = {
-  title: "Dinding Degdegin — yang barusan berani ngirim",
+  title: "Dinding Kangenin — yang barusan berani ngirim",
   description:
     "Confess yang barusan dikirim orang-orang berani. Isi suratnya tetap rahasia — cuma nama & temanya yang kelihatan. Kapan giliranmu?",
   openGraph: {
-    title: "Dinding Degdegin — yang barusan berani ngirim",
+    title: "Dinding Kangenin — yang barusan berani ngirim",
     description:
       "Isi suratnya rahasia, namanya yang kelihatan. Lihat yang barusan berani — lalu tulis versimu sendiri.",
     images: [{ url: "/api/og", width: 1200, height: 630 }],
@@ -68,10 +68,10 @@ export default async function DindingPage() {
           <Link
             href="/"
             className="flex items-baseline gap-0.5"
-            aria-label="Degdegin - beranda"
+            aria-label="Kangenin - beranda"
           >
             <span className="font-display text-xl font-bold tracking-tight text-white">
-              degdeg<span className="text-primary">in</span>
+              kangen<span className="text-primary">in</span>
             </span>
           </Link>
           <Link
@@ -96,7 +96,7 @@ export default async function DindingPage() {
             }}
           />
           <div className="relative z-10 mx-auto max-w-2xl px-4">
-            <p className="kicker !text-[#d9a0a6]">Dinding Degdegin</p>
+            <p className="kicker !text-[#d9a0a6]">Dinding Kangenin</p>
             <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-white sm:text-5xl">
               Yang barusan <em className="text-[#e8b4bb]">berani</em> ngirim.
             </h1>
@@ -134,8 +134,8 @@ export default async function DindingPage() {
       <footer className="border-t border-white/10 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 text-xs text-white/40 sm:flex-row sm:px-6">
           <span>
-            degdeg<span className="text-primary">in</span> — bikin dia
-            deg-degan
+            kangen<span className="text-primary">in</span> — bikin dia
+            kangen sama kamu
           </span>
           <div className="flex gap-4">
             <Link href="/" className="transition-colors hover:text-white">

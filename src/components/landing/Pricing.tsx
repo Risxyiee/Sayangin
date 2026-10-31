@@ -15,7 +15,7 @@ const PLANS = [
       "Kartu ucapan sederhana",
       "3 tema warna",
       "Link aktif selamanya",
-      "Watermark kecil Degdegin",
+      "Watermark kecil Kangenin",
     ],
     cta: "Confess Gratis",
     href: "#confess",
@@ -69,7 +69,7 @@ export default function Pricing() {
             Semua <em className="text-primary">gratis</em> selama masa uji coba.
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            Degdegin masih tahap uji — semua kado premium dibuka gratis.
+            Kangenin masih tahap uji — semua kado premium dibuka gratis.
             Cukup pakai dan lihat yang paling disukai; nanti harganya tetap
             di bawah Rp50rb.
           </p>

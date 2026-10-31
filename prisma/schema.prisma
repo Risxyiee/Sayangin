@@ -21,7 +21,7 @@ model Confession {
   repliedAt   DateTime?
   views       Int       @default(0)
   reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
-  // opt-in tampil di Dinding Degdegin (cuma nama & tema, ISI SURAT TIDAK) — mesin FOMO
+  // opt-in tampil di Dinding Kangenin (cuma nama & tema, ISI SURAT TIDAK) — mesin FOMO
   isPublic    Boolean   @default(false)
   // kirim terjadwal: surat terkunci sampai waktu ini (countdown kejutan)
   unlockAt    DateTime?
@@ -32,7 +32,7 @@ model Confession {
   reactions ReactionCount?
 }
 
-// Reaksi pengunjung Dinding Degdegin per confess — kolom tetap biar
+// Reaksi pengunjung Dinding Kangenin per confess — kolom tetap biar
 // increment-nya atomik tanpa upsert baris per reaksi.
 model ReactionCount {
   id           String     @id @default(cuid())

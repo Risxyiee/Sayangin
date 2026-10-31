@@ -15,7 +15,7 @@ const confessSchema = z.object({
     .min(5, "Pesan minimal 5 karakter")
     .max(600, "Pesan maksimal 600 karakter"),
   theme: z.enum(["rose", "sunset", "midnight", "sakura", "galaksi"]).optional().default("rose"),
-  // opt-in tampil di Dinding Degdegin (cuma nama & tema — isi surat tidak)
+  // opt-in tampil di Dinding Kangenin (cuma nama & tema — isi surat tidak)
   isPublic: z.boolean().optional().default(false),
   // kirim terjadwal: ISO string, wajib masa depan, maks 30 hari ke depan
   unlockAt: z.string().datetime({ offset: true }).optional().nullable(),

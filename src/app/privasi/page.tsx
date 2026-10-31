@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Kebijakan Privasi — Degdegin",
+  title: "Kebijakan Privasi — Kangenin",
   description:
-    "Data apa yang disimpan Degdegin, berapa lama, dan bagaimana privasi pengirim & penerima dijaga.",
+    "Data apa yang disimpan Kangenin, berapa lama, dan bagaimana privasi pengirim & penerima dijaga.",
 };
 
 const SECTIONS: Array<{ title: string; body: string[] }> = [

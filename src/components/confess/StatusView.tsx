@@ -695,10 +695,10 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
   const flexStory = async () => {
     const url = window.location.origin;
     const text =
-      "Aku baru berani ngirim surat rahasia lewat Degdegin 💌 Kamu kapan?";
+      "Aku baru berani ngirim surat rahasia lewat Kangenin 💌 Kamu kapan?";
     try {
       if (typeof navigator.share === "function") {
-        await navigator.share({ title: "Degdegin", text, url });
+        await navigator.share({ title: "Kangenin", text, url });
         return;
       }
       window.open(
@@ -724,7 +724,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
           <a href="/" className="flex items-center gap-1.5">
             <Heart className="h-5 w-5 fill-rose-500 text-rose-500" />
             <span className="text-sm font-extrabold text-white">
-              degdeg<span className="text-rose-500">.in</span>
+              kangen<span className="text-rose-500">.in</span>
             </span>
           </a>
           <button
@@ -762,7 +762,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
               href="/"
               className="mt-5 inline-block rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-[#b52743]"
             >
-              Ke Degdegin
+              Ke Kangenin
             </a>
           </div>
         )}

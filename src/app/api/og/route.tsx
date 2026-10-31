@@ -182,7 +182,7 @@ export async function GET(req: Request) {
             }}
           />
           <div style={{ fontSize: 28, fontWeight: 700, color: "#ffffff", display: "flex" }}>
-            degdeg
+            kangen
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color: "#f43f5e", display: "flex" }}>
             .in

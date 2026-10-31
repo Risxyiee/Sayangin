@@ -29,13 +29,13 @@ export default function Navbar() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#" className="flex items-baseline gap-0.5" aria-label="Degdegin - beranda">
+        <a href="#" className="flex items-baseline gap-0.5" aria-label="Kangenin - beranda">
           <span
             className={`font-display text-xl font-bold tracking-tight transition-colors ${
               scrolled ? "text-foreground" : "text-white"
             }`}
           >
-            degdeg<span className="text-primary">in</span>
+            kangen<span className="text-primary">in</span>
           </span>
         </a>
 

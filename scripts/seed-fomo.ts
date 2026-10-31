@@ -1,5 +1,5 @@
 // Seed data uji fitur FOMO — sekali pakai (idempoten-ish: kosongkan dulu).
-// Jalankan: DATABASE_URL=postgresql://postgres:postgres@localhost:54329/degdegin bun scripts/seed-fomo.ts
+// Jalankan: DATABASE_URL=postgresql://postgres:postgres@localhost:54329/kangenin bun scripts/seed-fomo.ts
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();

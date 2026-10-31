@@ -109,7 +109,7 @@ function LetterCard() {
             style={{ transform: "translateZ(26px)" }}
           >
             <div className="text-[7px] font-bold uppercase leading-tight tracking-[0.15em] text-primary/70">
-              degdegin
+              kangenin
               <br />
               pos
               <br />
@@ -231,7 +231,7 @@ export default function Hero() {
           </p>
 
           <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/60 lg:mx-0">
-            Degdegin mengubah pesanmu jadi surat yang dikirim sebagai link
+            Kangenin mengubah pesanmu jadi surat yang dikirim sebagai link
             anonim — dia buka, baca pelan-pelan, lalu menjawab. Namamu baru
             muncul kalau jawabannya <i>iya</i>. Sudah jadian? Ada kado
             digitalnya juga.

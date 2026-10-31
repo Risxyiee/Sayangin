@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Bantuan — Degdegin",
+  title: "Bantuan — Kangenin",
   description:
-    "Cara pakai Degdegin: confess anonim, Open When Letters, kado digital. Pertanyaan yang paling sering ditanyakan, dijawab to the point.",
+    "Cara pakai Kangenin: confess anonim, Open When Letters, kado digital. Pertanyaan yang paling sering ditanyakan, dijawab to the point.",
 };
 
 const QA = [
@@ -63,7 +63,7 @@ export default function BantuanPage() {
         Bantuan
       </h1>
       <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-        Semua yang sering ditanyakan soal Degdegin — dijawab to the point.
+        Semua yang sering ditanyakan soal Kangenin — dijawab to the point.
       </p>
 
       <div className="mt-10 space-y-3">

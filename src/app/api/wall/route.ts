@@ -5,7 +5,7 @@ import { describeError } from "@/lib/log-error";
 
 export const runtime = "nodejs";
 
-// Dinding Degdegin: feed publik confess yang pengirimnya ikut opt-in.
+// Dinding Kangenin: feed publik confess yang pengirimnya ikut opt-in.
 // ATASAN PENTING: isi surat TIDAK PERNAH ikut — cuma nama, tema, waktu,
 // status jawaban (bukan isinya), dan reaksi. Intrigasi = mesin FOMO,
 // privasi = kepercayaan.
