@@ -50,7 +50,12 @@ function makeClient(): PrismaClient {
   const hd = hyperdriveConnectionString()
   if (hd) {
     console.log('[db] memakai binding Hyperdrive (pooling + TLS via Cloudflare)')
-    const adapter = new PrismaPg({ connectionString: hd, max: 5 })
+    const adapter = new PrismaPg({
+      connectionString: hd,
+      max: 5,
+      connectionTimeoutMillis: 10_000,
+      query_timeout: 10_000,
+    })
     return new PrismaClient({ adapter })
   }
 
@@ -65,6 +70,8 @@ function makeClient(): PrismaClient {
   const adapter = new PrismaPg({
     ...(connectionString ? { connectionString } : {}),
     max: 5,
+    connectionTimeoutMillis: 10_000,
+    query_timeout: 10_000,
     ...(forceSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   })
   return new PrismaClient({
