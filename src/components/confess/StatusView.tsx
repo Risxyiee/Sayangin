@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
+  Lock,
   Mail,
   MailOpen,
   Check,
@@ -14,19 +15,34 @@ import {
   MessageCircle,
   Loader2,
   ChevronDown,
+  BookOpenCheck,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 
+type LetterStatus = {
+  order: number;
+  title: string;
+  unlockDays: number;
+  views: number;
+  openedAt: string | null;
+};
+
 type StatusData = {
+  type: "confess" | "letters";
   slug: string;
   fromName: string;
   toName: string;
   theme: string;
-  response: string | null;
   views: number;
   createdAt: string;
   openedAt: string | null;
-  respondedAt: string | null;
+  // khusus confess
+  response?: string | null;
+  respondedAt?: string | null;
+  // khusus letters
+  startedAt?: string | null;
+  total?: number;
+  letters?: LetterStatus[];
 };
 
 type SavedItem = {
@@ -34,6 +50,7 @@ type SavedItem = {
   senderKey: string;
   toName: string;
   theme: string;
+  type?: "confess" | "letters";
   createdAt: string;
 };
 
@@ -102,6 +119,256 @@ function Step({
   );
 }
 
+/* daftar kado tersimpan (localStorage) — dipakai confess & letters */
+function SavedListBox({
+  saved,
+  senderKey,
+  listOpen,
+  setListOpen,
+}: {
+  saved: SavedItem[];
+  senderKey: string;
+  listOpen: boolean;
+  setListOpen: (v: boolean) => void;
+}) {
+  if (saved.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04]">
+      <button
+        onClick={() => setListOpen(!listOpen)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        aria-expanded={listOpen}
+      >
+        <span className="text-xs font-bold text-white/80">
+          Confess & kado lain kamu ({saved.length})
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-white/50 transition-transform ${
+            listOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      <AnimatePresence>
+        {listOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-1.5 px-3 pb-3">
+              {saved.map((s) => (
+                <a
+                  key={s.senderKey}
+                  href={`/?s=${s.senderKey}`}
+                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition ${
+                    s.senderKey === senderKey
+                      ? "bg-rose-500/20 text-rose-200"
+                      : "bg-white/5 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="font-semibold">
+                    {s.type === "letters" ? "📚 " : "💌 "}Buat {s.toName}
+                  </span>
+                  <span className="text-white/40">{relTime(s.createdAt)}</span>
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* kartu status khusus Open When Letters */
+function LettersStatusCard({
+  data,
+  shareAgain,
+  saved,
+  senderKey,
+}: {
+  data: StatusData;
+  shareAgain: () => void;
+  saved: SavedItem[];
+  senderKey: string;
+}) {
+  const [listOpen, setListOpen] = useState(false);
+  const DAY = 24 * 3600000;
+  const now = Date.now();
+  const startedMs = data.startedAt ? new Date(data.startedAt).getTime() : null;
+  const letters = data.letters ?? [];
+  const readCount = letters.filter((l) => l.openedAt).length;
+  const unlockedCount = startedMs
+    ? letters.filter((l) => startedMs + l.unlockDays * DAY <= now).length
+    : 0;
+  const nextLocked = letters.find(
+    (l) => !l.openedAt && startedMs && startedMs + l.unlockDays * DAY > now
+  );
+  const nextIn = nextLocked && startedMs
+    ? startedMs + nextLocked.unlockDays * DAY - now
+    : 0;
+  const nextInDays = Math.max(1, Math.ceil(nextIn / 86400000));
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-3">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur">
+        <p className="font-hand text-2xl text-rose-200">{letters.length} surat buat {data.toName},</p>
+        <p className="text-xs text-white/50">
+          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang 🤍 • "}
+          dikirim {relTime(data.createdAt)}
+        </p>
+
+        {/* progress bar */}
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-rose-400 to-rose-600"
+              initial={{ width: 0 }}
+              animate={{ width: `${letters.length ? (readCount / letters.length) * 100 : 0}%` }}
+              transition={{ duration: 0.8 }}
+            />
+          </div>
+          <span className="shrink-0 text-xs font-bold text-rose-200">
+            {readCount}/{letters.length} dibaca
+          </span>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {/* 1. terkirim */}
+          <Step
+            icon={<Check className="h-5 w-5" />}
+            title="Surat-surat terkirim"
+            state="done"
+            detail={
+              <>
+                Link aktif selamanya.{" "}
+                <button
+                  onClick={shareAgain}
+                  className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                >
+                  kirim ulang <Share2 className="h-3 w-3" />
+                </button>
+              </>
+            }
+          />
+
+          {/* 2. dibuka */}
+          {data.openedAt ? (
+            <Step
+              icon={<MailOpen className="h-5 w-5" />}
+              title={`Udah dibuka! (${data.views}x)`}
+              state="done"
+              detail={
+                data.startedAt
+                  ? "Dia udah mulai bacanya — surat pertama langsung kebuka."
+                  : "Dia udah lihat link-nya tapi belum tekan “mulai”. Sabar ya 😌"
+              }
+            />
+          ) : (
+            <Step
+              icon={<Mail className="h-5 w-5" />}
+              title="Belum dibuka"
+              state="waiting"
+              detail="Link-nya belum dibuka. Kasih tahu dia bahwa ini spesial — pelan-pelan aja. 😌"
+            />
+          )}
+
+          {/* 3. progres baca */}
+          {startedMs ? (
+            <Step
+              icon={<BookOpenCheck className="h-5 w-5" />}
+              title={
+                readCount === letters.length
+                  ? "Semua suratnya sudah dibaca 🥹"
+                  : `${unlockedCount - readCount > 0 ? "Ada surat baru yang belum dibaca!" : "Menunggu minggu berikutnya..."}`
+              }
+              state={unlockedCount - readCount > 0 ? "highlight" : "done"}
+              pulse={unlockedCount - readCount > 0}
+              detail={
+                <>
+                  Perjalanan dimulai {relTime(data.startedAt!)}.
+                  {nextLocked && unlockedCount - readCount <= 0
+                    ? ` Surat berikutnya (“${nextLocked.title}”) terbuka dalam ${nextInDays} hari.`
+                    : ""}
+                </>
+              }
+            />
+          ) : (
+            <Step
+              icon={<Clock className="h-5 w-5" />}
+              title="Belum mulai baca"
+              state="soft"
+              detail="Waktu buka baru berjalan setelah dia tekan “mulai” di halamannya."
+            />
+          )}
+
+          {/* daftar per surat */}
+          <div className="space-y-1.5 pt-1">
+            {letters.map((l) => {
+              const unlockMs = startedMs !== null ? startedMs + l.unlockDays * DAY : null;
+              const isUnlocked = unlockMs !== null && unlockMs <= now;
+              const daysLeft = unlockMs ? Math.ceil((unlockMs - now) / 86400000) : null;
+              return (
+                <div
+                  key={l.order}
+                  className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-left"
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                      l.openedAt
+                        ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                        : isUnlocked
+                          ? "border-rose-400/60 bg-rose-500/20 text-rose-300"
+                          : "border-white/15 bg-white/5 text-white/40"
+                    }`}
+                  >
+                    {l.openedAt ? (
+                      <BookOpenCheck className="h-4 w-4" />
+                    ) : isUnlocked ? (
+                      <MailOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-white/90">
+                      {l.order + 1}. {l.title}
+                    </p>
+                    <p className="text-[11px] text-white/45">
+                      {l.openedAt
+                        ? `dibaca ${relTime(l.openedAt)} • ${l.views}x`
+                        : isUnlocked
+                          ? "sudah bisa dibuka — belum dibaca"
+                          : daysLeft
+                            ? `terbuka dalam ${daysLeft} hari lagi`
+                            : "menunggu dia mulai"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <SavedListBox saved={saved} senderKey={senderKey} listOpen={listOpen} setListOpen={setListOpen} />
+
+      <a
+        href="/#openwhen"
+        className="flex items-center justify-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 py-3.5 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20"
+      >
+        <Plus className="h-4 w-4" /> Bikin set surat lagi
+      </a>
+
+      <p className="pt-2 text-center text-[11px] leading-relaxed text-white/40">
+        Simpan link halaman ini ({typeof window !== "undefined" ? window.location.href.slice(0, 40) : ""}…)
+        — ini satu-satunya cara buat lihat status.
+      </p>
+    </motion.div>
+  );
+}
+
 export default function StatusView({ senderKey }: { senderKey: string }) {
   const [data, setData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,10 +397,11 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
     fetchStatus();
   }, [fetchStatus]);
 
-  // auto-refresh selama belum ada jawaban (biar user balik-balik 😄)
+  // auto-refresh: confess nunggu jawaban (12s), letters pantau progres baca (60s)
   useEffect(() => {
-    if (!data || data.response) return;
-    const t = setInterval(fetchStatus, 12000);
+    if (!data) return;
+    if (data.type === "confess" && data.response) return;
+    const t = setInterval(fetchStatus, data.type === "letters" ? 60000 : 12000);
     return () => clearInterval(t);
   }, [data, fetchStatus]);
 
@@ -149,9 +417,14 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
 
   const shareAgain = () => {
     const link = `${window.location.origin}/?k=${data?.slug}`;
-    const text = encodeURIComponent(
-      `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
-    );
+    const text =
+      data?.type === "letters"
+        ? encodeURIComponent(
+            `Aku bikinin surat-surat kecil buat kamu 💌 Satu boleh dibuka tiap minggu — pelan-pelan aja ya: ${link}`
+          )
+        : encodeURIComponent(
+            `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
+          );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
@@ -181,7 +454,9 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
         </div>
 
         <h1 className="mt-8 text-2xl font-extrabold leading-tight text-white">
-          Pantau confess kamu 👀
+          {data?.type === "letters"
+            ? "Pantau surat mingguanmu 👀"
+            : "Pantau confess kamu 👀"}
         </h1>
         <p className="mt-1 text-sm text-white/60">
           Halaman ini update otomatis — biarkan tab-nya terbuka.
@@ -209,7 +484,10 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
         )}
 
         {/* STATUS CARD */}
-        {!loading && !error && data && (
+        {!loading && !error && data && data.type === "letters" && (
+          <LettersStatusCard data={data} shareAgain={shareAgain} saved={saved} senderKey={senderKey} />
+        )}
+        {!loading && !error && data && data.type === "confess" && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -316,53 +594,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
             </div>
 
             {/* daftar confess lain dari localStorage */}
-            {saved.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04]">
-                <button
-                  onClick={() => setListOpen((v) => !v)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left"
-                  aria-expanded={listOpen}
-                >
-                  <span className="text-xs font-bold text-white/80">
-                    Confess & kado lain kamu ({saved.length})
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-white/50 transition-transform ${
-                      listOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence>
-                  {listOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-1.5 px-3 pb-3">
-                        {saved.map((s) => (
-                          <a
-                            key={s.senderKey}
-                            href={`/?s=${s.senderKey}`}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition ${
-                              s.senderKey === senderKey
-                                ? "bg-rose-500/20 text-rose-200"
-                                : "bg-white/5 text-white/70 hover:bg-white/10"
-                            }`}
-                          >
-                            <span className="font-semibold">Buat {s.toName}</span>
-                            <span className="text-white/40">
-                              {relTime(s.createdAt)}
-                            </span>
-                          </a>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+            <SavedListBox saved={saved} senderKey={senderKey} listOpen={listOpen} setListOpen={setListOpen} />
 
             <a
               href="/#confess"

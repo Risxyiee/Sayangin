@@ -234,6 +234,7 @@ export default function ConfessSection() {
           senderKey: data.senderKey,
           toName: toName.trim(),
           theme,
+          type: "confess",
           createdAt: new Date().toISOString(),
         });
         localStorage.setItem(

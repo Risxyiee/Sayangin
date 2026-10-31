@@ -48,7 +48,7 @@ function rnd(i: number, salt: number): number {
 }
 
 /* ---------- falling emoji pieces (confetti / hearts) ---------- */
-function FallingPieces({ active, kind }: { active: boolean; kind: "confetti" | "hearts" }) {
+export function FallingPieces({ active, kind }: { active: boolean; kind: "confetti" | "hearts" }) {
   const pieces = useMemo(() => {
     const chars =
       kind === "confetti"

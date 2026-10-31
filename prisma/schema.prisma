@@ -21,3 +21,33 @@ model Confession {
   openedAt    DateTime?
   respondedAt DateTime?
 }
+
+// Open When Letters: satu set berisi beberapa surat,
+// tiap surat terbuka dengan jeda mingguan sejak penerima mulai.
+model LetterSet {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  senderKey String    @unique
+  fromName  String    @default("")
+  toName    String
+  theme     String    @default("rose")
+  views     Int       @default(0)
+  createdAt DateTime  @default(now())
+  openedAt  DateTime? // pertama kali link dibuka (mampir)
+  startedAt DateTime? // penerima menekan "mulai" → jam sandiwaranya berdetak
+  letters   Letter[]
+}
+
+model Letter {
+  id         String    @id @default(cuid())
+  setId      String
+  set        LetterSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  order      Int
+  title      String
+  body       String
+  unlockDays Int       @default(0) // 0 = langsung, 7 = minggu ke-1, dst.
+  views      Int       @default(0)
+  openedAt   DateTime?
+
+  @@index([setId])
+}

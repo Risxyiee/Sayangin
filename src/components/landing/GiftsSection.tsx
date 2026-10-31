@@ -309,8 +309,9 @@ const GIFTS = [
     anim: <OpenWhenAnim />,
     emoji: "💌",
     title: "Open When Letters",
-    desc: "5 surat terkunci: buka pas kangen, pas gabut, pas missing you banget. Favorit couple LDR di seluruh Indonesia.",
+    desc: "5 surat terkunci: satu terbuka tiap minggu — biar dia balik lagi, lagi, dan lagi. Favorit couple LDR di seluruh Indonesia.",
     tag: "surat tangan → digital",
+    cta: { href: "#openwhen", label: "Bikin sekarang — gratis ↓" },
   },
   {
     id: "photobox",
@@ -395,6 +396,14 @@ export default function GiftsSection() {
                 <span className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
                   {g.tag}
                 </span>
+                {g.cta && (
+                  <a
+                    href={g.cta.href}
+                    className="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/25 transition hover:bg-rose-600"
+                  >
+                    {g.cta.label}
+                  </a>
+                )}
               </div>
             </motion.article>
           ))}
