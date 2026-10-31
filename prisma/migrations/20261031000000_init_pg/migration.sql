@@ -1,6 +1,9 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "Confession" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "senderKey" TEXT,
     "fromName" TEXT NOT NULL DEFAULT '',
@@ -9,17 +12,19 @@ CREATE TABLE "Confession" (
     "theme" TEXT NOT NULL DEFAULT 'rose',
     "response" TEXT,
     "reply" TEXT,
-    "repliedAt" DATETIME,
+    "repliedAt" TIMESTAMP(3),
     "views" INTEGER NOT NULL DEFAULT 0,
     "reportCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "openedAt" DATETIME,
-    "respondedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "openedAt" TIMESTAMP(3),
+    "respondedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Confession_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "LetterSet" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "senderKey" TEXT NOT NULL,
     "fromName" TEXT NOT NULL DEFAULT '',
@@ -27,29 +32,32 @@ CREATE TABLE "LetterSet" (
     "theme" TEXT NOT NULL DEFAULT 'rose',
     "views" INTEGER NOT NULL DEFAULT 0,
     "reportCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "openedAt" DATETIME,
-    "startedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "openedAt" TIMESTAMP(3),
+    "startedAt" TIMESTAMP(3),
+
+    CONSTRAINT "LetterSet_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Letter" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "setId" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
     "unlockDays" INTEGER NOT NULL DEFAULT 0,
     "views" INTEGER NOT NULL DEFAULT 0,
-    "openedAt" DATETIME,
+    "openedAt" TIMESTAMP(3),
     "reply" TEXT,
-    "repliedAt" DATETIME,
-    CONSTRAINT "Letter_setId_fkey" FOREIGN KEY ("setId") REFERENCES "LetterSet" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "repliedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Letter_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Gift" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "senderKey" TEXT NOT NULL,
     "type" TEXT NOT NULL,
@@ -60,8 +68,10 @@ CREATE TABLE "Gift" (
     "progress" TEXT NOT NULL DEFAULT '{}',
     "views" INTEGER NOT NULL DEFAULT 0,
     "reportCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "openedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "openedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Gift_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -84,4 +94,7 @@ CREATE UNIQUE INDEX "Gift_slug_key" ON "Gift"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Gift_senderKey_key" ON "Gift"("senderKey");
+
+-- AddForeignKey
+ALTER TABLE "Letter" ADD CONSTRAINT "Letter_setId_fkey" FOREIGN KEY ("setId") REFERENCES "LetterSet"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

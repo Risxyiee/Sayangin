@@ -55,3 +55,7 @@ server.log
 .env
 db/*.db
 db/*.db-journal
+
+# Cloudflare build output & state
+.open-next/
+.wrangler/
