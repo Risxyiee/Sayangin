@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
+import { makeSlug, makeToken } from "@/lib/token";
 
 const confessSchema = z.object({
   fromName: z.string().trim().max(40).optional().default(""),
@@ -16,24 +17,6 @@ const confessSchema = z.object({
 });
 
 const THEMES = new Set(["rose", "sunset", "midnight"]);
-
-function makeToken(length = 16): string {
-  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-  let s = "";
-  for (let i = 0; i < length; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return s;
-}
-
-function makeSlug(): string {
-  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-  let s = "";
-  for (let i = 0; i < 8; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return s;
-}
 
 export async function POST(req: NextRequest) {
   try {

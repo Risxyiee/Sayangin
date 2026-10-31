@@ -158,6 +158,9 @@ ISSUES = [
 
 setup_sheet(ws, title="Issue Tracker — Sayangin (15 isu, siap dieksekusi)", last_col=LAST1)
 
+# status pengerjaan (update tiap ada isu yang selesai)
+STATUS = {"S-01": "Selesai", "S-02": "Selesai"}
+
 # subtitle
 ws.cell(row=3, column=2, value="Hasil audit kode 31 Okt 2026 · urutan eksekusi ada di sheet 'Urutan Kerja'").font = font_caption()
 
@@ -187,6 +190,8 @@ for i, row in enumerate(ISSUES):
             horizontal="center", vertical="top")
     ws.cell(row=r, column=8).alignment = Alignment(
         horizontal="left", vertical="top", wrap_text=True)
+    # kolom Status (K)
+    ws.cell(row=r, column=11, value=STATUS.get(row[0], "Belum mulai"))
     # "≈ 2,5–3 minggu..." hanya di baris total, bukan data
 
 DATA_END = DATA_START + len(ISSUES) - 1
