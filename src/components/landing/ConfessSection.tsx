@@ -19,6 +19,13 @@ type Phase = "closed" | "opening" | "letter" | "question" | "yes";
 const DEMO_MSG =
   "Hei... aku udah lama pengen bilang ini. Setiap kamu ketawa, aku ikut senyum. Aku suka kamu. Sudah lama.";
 
+/* cerita di balik tiap tema — ala kartu template kompetitor, gratis semua */
+const THEME_TAGS: Record<string, string> = {
+  rose: "klasik — rahasia paling manis",
+  sunset: "hangat kayak senja jam 6",
+  midnight: "malam berbintang, dalam",
+};
+
 /* ---------- demo looping di dalam HP ---------- */
 function PhoneDemo() {
   const [phase, setPhase] = useState<Phase>("closed");
@@ -173,6 +180,46 @@ export default function ConfessSection() {
   }>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
+  /* draft tersimpan otomatis (localStorage) — pulih saat balik ke halaman */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sayangin_draft_confess");
+      if (!raw) return;
+      const d = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof d.fromName === "string") setFromName(d.fromName);
+      if (typeof d.toName === "string") setToName(d.toName);
+      if (typeof d.message === "string") setMessage(d.message);
+      if (typeof d.theme === "string" && CONFESS_THEMES[d.theme]) setTheme(d.theme);
+    } catch {
+      /* localStorage mungkin diblokir */
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          "sayangin_draft_confess",
+          JSON.stringify({ fromName, toName, message, theme })
+        );
+      } catch {
+        /* diabaikan */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [fromName, toName, message, theme]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.setItem(
+        "sayangin_draft_confess",
+        JSON.stringify({ fromName: "", toName: "", message: "", theme: "rose" })
+      );
+    } catch {
+      /* diabaikan */
+    }
+  };
+
   const submit = async () => {
     setError("");
     if (toName.trim().length < 1) {
@@ -199,6 +246,7 @@ export default function ConfessSection() {
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat confess");
       setLink(`${window.location.origin}/?k=${data.slug}`);
       setStatusUrl(`${window.location.origin}/?s=${data.senderKey}`);
+      clearDraft();
       // simpan ke daftar pribadi (localStorage) biar bisa dipantau lagi kapan pun
       try {
         const saved = JSON.parse(
@@ -325,36 +373,37 @@ export default function ConfessSection() {
                       className="resize-none"
                     />
                     <p className="text-right text-xs text-muted-foreground">
-                      {message.length}/600
+                      {message.length}/600 · draft tersimpan otomatis di
+                      perangkatmu
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label className="text-foreground">Tema suratnya</Label>
-                    <div className="flex gap-2.5">
+                    <div className="grid gap-2.5 sm:grid-cols-3">
                       {Object.entries(CONFESS_THEMES).map(([key, t]) => (
                         <button
                           key={key}
                           type="button"
                           onClick={() => setTheme(key)}
-                          aria-label={`Tema ${t.name}`}
+                          aria-label={`Tema ${t.name} — ${THEME_TAGS[key]}`}
                           aria-pressed={theme === key}
-                          className={`flex items-center gap-2 rounded-md border px-3.5 py-2 text-xs font-semibold transition ${
+                          className={`rounded-lg border p-3 text-left transition ${
                             theme === key
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-border text-muted-foreground hover:border-input"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-input"
                           }`}
                         >
                           <span
-                            className={`h-3.5 w-3.5 rounded-full ${
-                              key === "rose"
-                                ? "bg-[#9d1c34]"
-                                : key === "sunset"
-                                  ? "bg-[#b45309]"
-                                  : "bg-[#292524]"
-                            }`}
+                            className={`mb-2 block h-9 w-full rounded-md bg-gradient-to-br ${t.bg} shadow-inner ring-1 ring-black/20`}
+                            aria-hidden
                           />
-                          {t.name}
+                          <span className="block text-xs font-bold text-foreground">
+                            {t.name}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                            {THEME_TAGS[key]}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -452,6 +501,8 @@ export default function ConfessSection() {
                       setLink("");
                       setStatusUrl("");
                       setMessage("");
+                      setFromName("");
+                      setToName("");
                     }}
                     className="text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
                   >
@@ -471,9 +522,25 @@ export default function ConfessSection() {
             className="relative"
           >
             <PhoneDemo />
-            <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              Ini simulasi yang diterima dia — coba sendiri lewat form di
-              sebelah.
+            <div className="mt-6 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                Ini simulasi yang diterima dia — coba sendiri lewat form di
+                sebelah.
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPreviewData({
+                    fromName: "",
+                    toName: "Kamu",
+                    message: DEMO_MSG,
+                    theme: "rose",
+                  })
+                }
+                className="text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                atau buka contoh suratnya fullscreen
+              </button>
             </div>
           </motion.div>
         </div>

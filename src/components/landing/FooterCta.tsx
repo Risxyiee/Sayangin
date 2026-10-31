@@ -39,7 +39,7 @@ export default function FooterCta() {
             </span>
             <span>— confess &amp; kado digital, dibuat di Indonesia</span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             <a href="#confess" className="transition-colors hover:text-foreground">
               Confess
             </a>
@@ -48,6 +48,15 @@ export default function FooterCta() {
             </a>
             <a href="#harga" className="transition-colors hover:text-foreground">
               Harga
+            </a>
+            <a href="/bantuan" className="transition-colors hover:text-foreground">
+              Bantuan
+            </a>
+            <a href="/tentang" className="transition-colors hover:text-foreground">
+              Tentang
+            </a>
+            <a href="/privasi" className="transition-colors hover:text-foreground">
+              Privasi
             </a>
           </div>
           <p className="text-xs">© 2026 Sayangin</p>

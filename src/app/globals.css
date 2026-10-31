@@ -271,3 +271,10 @@
 .anim-drift { animation: drift 9s ease-in-out infinite; }
 .anim-spin-slow { animation: spin-slow 7s linear infinite; }
 .anim-wiggle { animation: wiggle 2.4s ease-in-out infinite; }
+
+/* wobble amplop saat ritual ketuk-&-tahan (ConfessionView) */
+@keyframes wobble-x {
+  0%, 100% { transform: rotate(-1.4deg); }
+  50% { transform: rotate(1.4deg); }
+}
+.anim-wobble { animation: wobble-x 0.45s ease-in-out infinite; }

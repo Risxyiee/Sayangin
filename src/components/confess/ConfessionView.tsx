@@ -217,6 +217,63 @@ export default function ConfessionView({
   const [sentReply, setSentReply] = useState<string | null>(null);
   const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  /* ritual buka: ketuk & tahan amplop — progres bertahap ala ritual kompetitor,
+     tapi tetap pakai identitas amplop + segel lilin. Fallback: dobel-klik / tombol. */
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [releasedEarly, setReleasedEarly] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopHold = () => {
+    if (holdTimer.current) {
+      clearInterval(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
+  const openNow = () => {
+    stopHold();
+    setHoldProgress(0);
+    setTyped("");
+    setStage("typing");
+  };
+
+  const startHold = () => {
+    if (stage !== "closed") return;
+    setReleasedEarly(false);
+    stopHold();
+    holdTimer.current = setInterval(() => {
+      setHoldProgress((p) => Math.min(100, p + 2)); // ~2,5 detik sampai terbuka
+    }, 50);
+  };
+
+  const cancelHold = () => {
+    if (stage !== "closed") return;
+    stopHold();
+    setHoldProgress((p) => {
+      if (p >= 100) return p; // efek samping ditangani effect di bawah
+      if (p > 12) setReleasedEarly(true);
+      return 0;
+    });
+  };
+
+  // terbuka otomatis saat tahan penuh
+  useEffect(() => {
+    if (stage === "closed" && holdProgress >= 100) openNow();
+  }, [holdProgress, stage]);
+
+  // bersihkan timer ritual saat pindah stage / unmount
+  useEffect(() => stopHold, [stopHold]);
+
+  const ritualCopy = releasedEarly
+    ? "eh, lepas? tahan terus sampai terbuka ya 🙈"
+    : holdProgress === 0
+      ? "ketuk & tahan amplopnya, jangan takut"
+      : holdProgress < 35
+        ? "amplopnya bergetar heboh…"
+        : holdProgress < 70
+          ? "segel lilinnya meleleh pelan-pelan…"
+          : "hampir… tarik napas dulu 🥹";
+
   useEffect(() => {
     // mode pratinjau inline: data sudah diisi via useState awal
     if (preview || !slug) return;
@@ -407,7 +464,7 @@ export default function ConfessionView({
           </div>
         )}
 
-        {/* ------ AMPLOP TERTUTUP ------ */}
+        {/* ------ AMPLOP TERTUTUP — ritual ketuk & tahan ------ */}
         {data && stage === "closed" && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -418,20 +475,52 @@ export default function ConfessionView({
             <p className="mt-1 text-sm tracking-wide text-white/60">
               seseorang meninggalkan surat untukmu
             </p>
-            <div className="mt-10 anim-float">
-              <Envelope open={false} accent={theme.accent} />
-            </div>
-            <Button
-              size="lg"
-              onClick={() => {
-                setTyped("");
-                setStage("typing");
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Ketuk dan tahan amplopnya untuk membuka surat"
+              onPointerDown={startHold}
+              onPointerUp={cancelHold}
+              onPointerLeave={cancelHold}
+              onPointerCancel={cancelHold}
+              onDoubleClick={openNow}
+              onKeyDown={(e) => {
+                if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+                  e.preventDefault();
+                  startHold();
+                }
               }}
-              className="mt-14 rounded-md bg-primary px-8 text-base font-semibold text-white transition-colors hover:bg-[#b52743]"
+              onKeyUp={(e) => {
+                if (e.key === " " || e.key === "Enter") cancelHold();
+              }}
+              className="mt-10 cursor-pointer touch-none select-none rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              style={{
+                transform: `scale(${1 + (holdProgress / 100) * 0.07})`,
+                transition: "transform 0.15s ease-out",
+              }}
             >
-              Buka Suratnya
-            </Button>
-            <p className="mt-3 text-xs text-white/40">tap amplopnya, jangan takut</p>
+              <div className={holdProgress > 0 ? "anim-wobble" : "anim-float"}>
+                <Envelope open={false} accent={theme.accent} />
+              </div>
+            </div>
+            <div
+              className="mt-8 h-1.5 w-44 overflow-hidden rounded-full bg-white/10"
+              aria-hidden
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-300 transition-[width] duration-100"
+                style={{ width: `${holdProgress}%` }}
+              />
+            </div>
+            <p className="mt-3 h-5 text-xs text-white/50" aria-live="polite">
+              {ritualCopy}
+            </p>
+            <button
+              onClick={openNow}
+              className="mt-1 text-[11px] text-white/25 underline underline-offset-2 transition-colors hover:text-white/60"
+            >
+              buka langsung tanpa ritual
+            </button>
           </motion.div>
         )}
 
