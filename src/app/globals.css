@@ -30,26 +30,31 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+  Design language: "surat & kertas" — kertas hangat, tinta pekat,
+  satu aksen merah stempel. Tanpa gradien, tanpa glow.
+  Judul memakai serif editorial (Georgia stack — tersedia di semua OS).
+*/
 :root {
-  --radius: 1rem;
-  --background: #fff8f9;
-  --foreground: #3d1128;
-  --card: #ffffff;
-  --card-foreground: #3d1128;
-  --popover: #ffffff;
-  --popover-foreground: #3d1128;
-  --primary: #e11d63;
-  --primary-foreground: #fff8f9;
-  --secondary: #ffe4ec;
-  --secondary-foreground: #9d174d;
-  --muted: #fbe9ef;
-  --muted-foreground: #a15778;
-  --accent: #ffe4ec;
-  --accent-foreground: #9d174d;
-  --destructive: #dc2626;
-  --border: #f9d8e3;
-  --input: #f9d8e3;
-  --ring: #e11d63;
+  --radius: 0.625rem;
+  --background: #faf8f3;
+  --foreground: #211d1a;
+  --card: #fffefa;
+  --card-foreground: #211d1a;
+  --popover: #fffefa;
+  --popover-foreground: #211d1a;
+  --primary: #9d1c34;
+  --primary-foreground: #fdf6f0;
+  --secondary: #f0e9de;
+  --secondary-foreground: #57534e;
+  --muted: #f0ebe2;
+  --muted-foreground: #78716c;
+  --accent: #f3e7dc;
+  --accent-foreground: #9d1c34;
+  --destructive: #b3261e;
+  --border: #e6dfd3;
+  --input: #ddd4c7;
+  --ring: #9d1c34;
 }
 
 @layer base {
@@ -59,6 +64,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  ::selection {
+    background: #9d1c34;
+    color: #fdf6f0;
+  }
 }
 
 /* ============ Utilities ============ */
@@ -66,18 +75,30 @@
   font-family: var(--font-caveat), cursive;
 }
 
+/* Judul editorial — serif klasik, tidak bergantung font unduhan */
+.font-display {
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
+  letter-spacing: -0.01em;
+}
+
+/* Kickers kecil ala koran/majalah */
+.kicker {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9d1c34;
+}
+
+/* Nama-nama lama tetap ada supaya tidak ada referensi yang rusak,
+   tapi nilainya sekarang flat — bukan gradien/glowslop. */
 .text-gradient-rose {
-  background: linear-gradient(120deg, #ff5f9e 0%, #e11d63 45%, #ff8a5c 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #9d1c34;
 }
 
 .glass-dark {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1d1917;
+  border: 1px solid #3b3630;
 }
 
 .preserve-3d {
@@ -88,12 +109,12 @@
   perspective: 1200px;
 }
 
-/* CSS heart shape */
+/* CSS heart shape — sekarang merah stempel solid */
 .heart-shape {
   position: relative;
   width: 100%;
   height: 100%;
-  background: linear-gradient(140deg, #ff7eb3 0%, #e11d63 60%, #a3124b 100%);
+  background: #9d1c34;
   transform: rotate(-45deg);
   border-radius: 0;
 }
@@ -224,8 +245,8 @@
 }
 
 @keyframes seal-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 99, 0.5); }
-  50% { box-shadow: 0 0 24px 6px rgba(225, 29, 99, 0.45); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(157, 28, 52, 0.5); }
+  50% { box-shadow: 0 0 24px 6px rgba(157, 28, 52, 0.45); }
 }
 
 @keyframes pop-in {

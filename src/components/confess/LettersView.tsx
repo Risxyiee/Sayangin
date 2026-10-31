@@ -164,7 +164,7 @@ function EnvelopeCard({
         ) : state === "read" ? (
           <>sudah dibaca — tap buka lagi</>
         ) : (
-          <>tap buka sekarang 💌</>
+          <>tap buka sekarang</>
         )}
       </p>
       {senderAccent && <span className="sr-only">surat dari pengirim rahasia</span>}
@@ -359,7 +359,6 @@ export default function LettersView({
       {isPreview && (
         <div className="fixed bottom-4 left-1/2 z-[110] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/90 px-4 py-2.5 text-xs text-amber-100 shadow-xl backdrop-blur">
-            <span aria-hidden>👀</span>
             <span className="flex-1">
               Pratinjau — hitungan &amp; status <b>gak tercatat</b>.
             </span>
@@ -385,7 +384,6 @@ export default function LettersView({
         {/* ------ ERROR ------ */}
         {stage === "error" && (
           <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
-            <div className="text-5xl">🥲</div>
             <h2 className="mt-4 text-xl font-bold">Suratnya nggak ketemu</h2>
             <p className="mt-2 text-sm text-white/70">
               Link-nya mungkin salah atau sudah dihapus.
@@ -394,7 +392,7 @@ export default function LettersView({
               className="mt-6 rounded-full bg-rose-500 hover:bg-rose-600"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayang.in
+              Ke Sayangin
             </Button>
           </div>
         )}
@@ -406,7 +404,7 @@ export default function LettersView({
             <h2 className="mt-4 text-xl font-bold">Suratnya lagi ditinjau</h2>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
               Konten ini dilaporkan beberapa kali dan sedang diperiksa tim
-              kami. Maaf ya 🙏
+              kami. Maaf ya.
             </p>
           </div>
         )}
@@ -460,7 +458,7 @@ export default function LettersView({
               <p className="font-bold text-white">Aturannya sederhana:</p>
               <p className="mt-1.5">
                 Satu surat boleh dibuka tiap minggu — pelan-pelan, biar tiap
-                kata beneran kerasa. 💌
+                kata beneran kerasa.
               </p>
             </div>
 
@@ -475,7 +473,7 @@ export default function LettersView({
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menyiapkan...
                 </>
               ) : (
-                <>💌 Iya, aku siap mulai</>
+                <>Iya, aku siap mulai</>
               )}
             </Button>
             <p className="mt-3 text-xs text-white/40">
@@ -492,7 +490,7 @@ export default function LettersView({
             className="flex w-full flex-col items-center"
           >
             <p className="font-hand text-3xl text-rose-200">
-              Buat {data.toName} 🤍
+              Buat {data.toName}
             </p>
             <p className="mt-1 text-sm text-white/60">
               {openedCount === 0
@@ -531,7 +529,7 @@ export default function LettersView({
                 animate={{ opacity: 1, scale: 1 }}
                 className="mt-8 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-5 text-sm leading-relaxed text-rose-100"
               >
-                Semua suratnya sudah kamu baca 🥹 Semoga hari-harimu jadi lebih
+                Semua suratnya sudah kamu baca. Semoga hari-harimu jadi lebih
                 hangat. — <span className="font-semibold">{senderName}</span>
               </motion.div>
             )}
@@ -539,7 +537,7 @@ export default function LettersView({
             <p className="mt-10 text-xs text-white/40">
               Surat-surat ini dibuat gratis di{" "}
               <a href="/" className="font-bold text-rose-300 underline underline-offset-2">
-                Sayang.in
+                Sayangin
               </a>{" "}
               — mau bikin buat orang spesialmu?
             </p>
@@ -547,7 +545,7 @@ export default function LettersView({
               <div className="mt-2 text-[11px] text-white/35">
                 {reportState === "done" ? (
                   <span className="text-emerald-300/70">
-                    Laporan terkirim — terima kasih 🙏
+                    Laporan terkirim — terima kasih.
                   </span>
                 ) : (
                   <button
@@ -587,7 +585,7 @@ export default function LettersView({
                   {reading.title}
                 </p>
                 <p className="mt-1 font-hand text-2xl text-rose-700">
-                  Hai {data?.toName} 🌷
+                  Hai {data?.toName},
                 </p>
                 <p className="mt-4 min-h-[140px] whitespace-pre-wrap text-[15px] leading-relaxed text-rose-950/90">
                   {reading.first ? typed : reading.body}
@@ -611,7 +609,7 @@ export default function LettersView({
                         className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-left"
                       >
                         <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
-                          ✉️ Balasanmu terkirim
+                          Balasanmu terkirim
                         </p>
                         <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-emerald-900">
                           {current.reply}
@@ -622,7 +620,7 @@ export default function LettersView({
                   if (isPreview) {
                     return (
                       <p className="mt-4 text-center text-[11px] text-rose-400">
-                        penerima bisa bales tiap surat dari sini ✍️
+                        penerima bisa bales tiap surat dari sini
                       </p>
                     );
                   }
@@ -634,7 +632,7 @@ export default function LettersView({
                           onClick={() => setReplyOpen(true)}
                           className="w-full rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-100"
                         >
-                          ✍️ Balas surat ini
+                          Balas surat ini
                         </button>
                       ) : (
                         <div className="space-y-2">
@@ -643,7 +641,7 @@ export default function LettersView({
                             onChange={(e) => setReplyText(e.target.value)}
                             maxLength={400}
                             rows={3}
-                            placeholder="Tulis balasanmu… bakal dibaca pengirimnya di halaman pantauannya 🤍"
+                            placeholder="Tulis balasanmu… bakal dibaca pengirimnya di halaman pantauannya."
                             className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
                           />
                           <div className="flex items-center justify-between">

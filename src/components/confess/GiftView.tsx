@@ -51,7 +51,7 @@ function BouquetMain({ data, senderName }: { data: BouquetData; senderName: stri
       animate={{ opacity: 1, y: 0 }}
       className="flex w-full flex-col items-center"
     >
-      <p className="font-hand text-3xl text-rose-100">Buket buat kamu 🌷</p>
+      <p className="font-hand text-3xl text-rose-100">Buket buat kamu</p>
 
       {/* buket: kertas bungkus + bunga naik satu-satu */}
       <div className="relative mt-8 h-72 w-64" aria-hidden>
@@ -149,7 +149,7 @@ function CakeMain({ data, toName, senderName }: { data: CakeData; toName: string
       className="flex w-full flex-col items-center"
     >
       <p className="font-hand text-3xl text-rose-100">
-        {headline}, {toName}! 🎉
+        {headline}, {toName}!
       </p>
 
       <div className="relative mt-6 flex h-56 w-full flex-col items-center justify-end">
@@ -193,7 +193,7 @@ function CakeMain({ data, toName, senderName }: { data: CakeData; toName: string
             onClick={() => setLit(false)}
             className="mt-4 rounded-full bg-rose-500 px-8 text-base font-semibold shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-600"
           >
-            <Wind className="mr-2 h-5 w-5" /> Tiup lilinnya 💨
+            <Wind className="mr-2 h-5 w-5" /> Tiup lilinnya
           </Button>
         </>
       ) : (
@@ -204,7 +204,7 @@ function CakeMain({ data, toName, senderName }: { data: CakeData; toName: string
           className="mt-6 w-full"
         >
           <p className="text-center font-hand text-xl text-amber-200">
-            yeay! semoga semua permintaannya terkabul ✨
+            semoga semua permintaannya terkabul.
           </p>
           <div className="grain mt-4 w-full rounded-2xl bg-[#fffaf5] p-6 text-left shadow-2xl">
             <p className="whitespace-pre-wrap font-hand text-xl leading-7 text-rose-950">
@@ -408,7 +408,7 @@ function CouponsMain({
       {err && <p className="mt-3 text-xs text-amber-300">{err}</p>}
       <p className="mt-5 text-center text-[11px] leading-relaxed text-white/40">
         Tunjukin kupon yang udah dicaput ke {senderName === "Seseorang" ? "pengirimnya" : senderName} —
-        berlaku sampai kapan pun 💗
+        berlaku sampai kapan pun
       </p>
       <span className="sr-only">kupon cinta {slug}</span>
     </motion.div>
@@ -535,7 +535,7 @@ function PlaylistMain({
 }
 
 /* ---------- wrapper kado (amplop kado) ---------- */
-function GiftBox({ emoji }: { emoji: string }) {
+function GiftBox() {
   return (
     <div className="relative h-40 w-40" aria-hidden>
       <div className="absolute bottom-0 left-1/2 h-28 w-28 -translate-x-1/2 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 shadow-2xl" />
@@ -547,7 +547,6 @@ function GiftBox({ emoji }: { emoji: string }) {
         <div className="h-6 w-7 -rotate-[24deg] rounded-full bg-rose-300" />
         <div className="h-6 w-7 rotate-[24deg] rounded-full bg-rose-300" />
       </div>
-      <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-4xl anim-float">{emoji}</span>
     </div>
   );
 }
@@ -588,17 +587,6 @@ export default function GiftView({
 
   const theme = CONFESS_THEMES[data?.theme ?? "rose"] ?? CONFESS_THEMES.rose;
   const senderName = data?.fromName?.trim() || "Seseorang";
-  const giftEmoji = useMemo(() => {
-    switch (data?.type) {
-      case "bouquet": return "💐";
-      case "photobox": return "📸";
-      case "cake": return "🎂";
-      case "coupons": return "🎫";
-      case "playlist": return "🎵";
-      default: return "🎁";
-    }
-  }, [data?.type]);
-
   const redeem = async (index: number): Promise<boolean> => {
     if (!data) return false;
     try {
@@ -638,7 +626,6 @@ export default function GiftView({
       {isPreview && (
         <div className="fixed bottom-4 left-1/2 z-[110] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/90 px-4 py-2.5 text-xs text-amber-100 shadow-xl backdrop-blur">
-            <span aria-hidden>👀</span>
             <span className="flex-1">
               Pratinjau — hitungan &amp; status <b>gak tercatat</b>.
             </span>
@@ -664,7 +651,6 @@ export default function GiftView({
         {/* ERROR */}
         {stage === "error" && (
           <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
-            <div className="text-5xl">🥲</div>
             <h2 className="mt-4 text-xl font-bold">Kadonya nggak ketemu</h2>
             <p className="mt-2 text-sm text-white/70">
               Link-nya mungkin salah atau sudah dihapus.
@@ -673,7 +659,7 @@ export default function GiftView({
               className="mt-6 rounded-full bg-rose-500 hover:bg-rose-600"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayang.in
+              Ke Sayangin
             </Button>
           </div>
         )}
@@ -685,7 +671,7 @@ export default function GiftView({
             <h2 className="mt-4 text-xl font-bold">Kadonya lagi ditinjau</h2>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
               Konten ini dilaporkan beberapa kali dan sedang diperiksa tim
-              kami. Maaf ya 🙏
+              kami. Maaf ya.
             </p>
           </div>
         )}
@@ -702,17 +688,17 @@ export default function GiftView({
               ada kado spesial dari {senderName}
             </p>
             <div className="mt-10 anim-float">
-              <GiftBox emoji={giftEmoji} />
+              <GiftBox />
             </div>
             <Button
               size="lg"
               onClick={() => setStage("main")}
               className="mt-12 rounded-full bg-rose-500 px-8 text-base font-semibold shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-600"
             >
-              🎁 Buka Kadonya
+              Buka Kadonya
             </Button>
             <p className="mt-3 text-xs text-white/40">
-              siap-siap, ini bukan kado biasa ✨
+              siap-siap, ini bukan kado biasa.
             </p>
           </motion.div>
         )}
@@ -753,7 +739,7 @@ export default function GiftView({
                 <p>
                   Kadonya dibuat <span className="text-rose-300">GRATIS</span> di{" "}
                   <a href="/#kado" className="font-bold text-white">
-                    Sayang.in
+                    Sayangin
                   </a>{" "}
                   — <a href="/#kado" className="underline decoration-rose-400/60 underline-offset-2 hover:text-rose-200">mau kasih yang spesial juga →</a>
                 </p>
@@ -761,7 +747,7 @@ export default function GiftView({
                   <div className="mt-3">
                     {reportState === "done" ? (
                       <span className="text-emerald-300/70">
-                        Laporan terkirim — terima kasih 🙏
+                        Laporan terkirim — terima kasih.
                       </span>
                     ) : (
                       <button

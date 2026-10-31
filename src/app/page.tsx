@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 type Params = { searchParams: Promise<{ k?: string; s?: string; p?: string }> };
 
 // Metadata dinamis: link kado yang di-share ke WA/Twitter tampil
-// sebagai kartu penasaran ("Ada surat rahasia buat Sari 💌"),
+// sebagai kartu penasaran ("Ada surat rahasia buat Sari"),
 // bukan judul situs generik. Ini kunci viral loop.
 export async function generateMetadata({ searchParams }: Params): Promise<Metadata> {
   const { k, s } = await searchParams;
@@ -18,7 +18,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
   // halaman status pengirim → jangan bocorkan apa pun, jangan diindeks
   if (s) {
     return {
-      title: "Pantau kado kamu — Sayang.in",
+      title: "Pantau kado kamu — Sayangin",
       robots: { index: false, follow: false },
     };
   }
@@ -41,7 +41,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
     ]);
 
     if (letterSet) {
-      const title = `${letterSet._count.letters} surat kecil buat ${letterSet.toName} 📬`;
+      const title = `${letterSet._count.letters} surat kecil buat ${letterSet.toName}`;
       const description =
         "Seseorang bikinin surat-surat kecil buat kamu — satu surat bisa dibuka tiap minggu. Buka yang pertama sekarang.";
       return {
@@ -76,7 +76,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
     }
 
     if (confession) {
-      const title = `Ada surat rahasia buat ${confession.toName} 💌`;
+      const title = `Ada surat rahasia buat ${confession.toName}`;
       const description =
         "Seseorang yang diam-diam perhatian ngirim sesuatu buat kamu. Buka sekarang — siapa tahu dia juga punya perasaan yang sama.";
       return {
@@ -93,7 +93,7 @@ export async function generateMetadata({ searchParams }: Params): Promise<Metada
     }
 
     // slug nggak dikenal → tetap jangan poluti indeks
-    return { title: "Sayang.in", robots: { index: false, follow: false } };
+    return { title: "Sayangin", robots: { index: false, follow: false } };
   }
 
   return {};

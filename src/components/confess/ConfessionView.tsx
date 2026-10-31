@@ -56,41 +56,68 @@ function rnd(i: number, salt: number): number {
   return h / 4294967296;
 }
 
-/* ---------- falling emoji pieces (confetti / hearts) ---------- */
+/* ---------- falling pieces (partikel CSS — hati & titik, tanpa emoji) ---------- */
 export function FallingPieces({ active, kind }: { active: boolean; kind: "confetti" | "hearts" }) {
   const pieces = useMemo(() => {
-    const chars =
-      kind === "confetti"
-        ? ["❤️", "💗", "✨", "🌹", "🎉", "😘"]
-        : ["💗", "🤍", "✨"];
-    return Array.from({ length: 34 }, (_, i) => ({
+    return Array.from({ length: 30 }, (_, i) => ({
       id: i,
       left: rnd(i, 20) * 96,
       delay: rnd(i, 21) * 1.6,
       duration: 3.2 + rnd(i, 22) * 2.6,
-      size: 14 + rnd(i, 23) * 18,
+      size: 8 + rnd(i, 23) * 12,
       sway: `${rnd(i, 24) * 120 - 60}px`,
-      char: chars[Math.floor(rnd(i, 25) * chars.length)],
+      isHeart: kind === "hearts" ? true : rnd(i, 26) > 0.5,
+      tone: kind === "confetti" ? rnd(i, 27) : rnd(i, 25),
     }));
   }, [kind]);
 
   if (!active) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden" aria-hidden>
-      {pieces.map((p) => (
-        <span
-          key={p.id}
-          className="absolute top-[-8vh] select-none"
-          style={{
-            left: `${p.left}%`,
-            fontSize: p.size,
-            animation: `petal-fall ${p.duration}s linear ${p.delay}s infinite`,
-            ["--sway" as string]: p.sway,
-          }}
-        >
-          {p.char}
-        </span>
-      ))}
+      {pieces.map((p) =>
+        p.isHeart ? (
+          <span
+            key={p.id}
+            className="absolute top-[-8vh]"
+            style={{
+              left: `${p.left}%`,
+              width: p.size,
+              height: p.size,
+              opacity: 0.5 + p.tone * 0.4,
+              animation: `petal-fall ${p.duration}s linear ${p.delay}s infinite`,
+              ["--sway" as string]: p.sway,
+            }}
+          >
+            <span
+              className="heart-shape block"
+              style={{
+                background:
+                  kind === "confetti"
+                    ? p.tone > 0.66
+                      ? "#e8b4bb"
+                      : p.tone > 0.33
+                        ? "#9d1c34"
+                        : "#fdf6f0"
+                    : "#c96b7d",
+              }}
+            />
+          </span>
+        ) : (
+          <span
+            key={p.id}
+            className="absolute top-[-8vh] rounded-full"
+            style={{
+              left: `${p.left}%`,
+              width: p.size * 0.4,
+              height: p.size * 0.4,
+              background: p.tone > 0.5 ? "#d9a441" : "#fdf6f0",
+              opacity: 0.6,
+              animation: `petal-fall ${p.duration}s linear ${p.delay}s infinite`,
+              ["--sway" as string]: p.sway,
+            }}
+          />
+        )
+      )}
     </div>
   );
 }
@@ -100,7 +127,7 @@ function Envelope({ open, accent }: { open: boolean; accent: string }) {
   return (
     <div className="perspective-1200 relative h-[150px] w-[230px] sm:h-[170px] sm:w-[260px]">
       {/* amplop belakang */}
-      <div className="absolute inset-0 rounded-xl bg-rose-100 shadow-2xl" />
+      <div className="absolute inset-0 rounded-md bg-[#f6efe4] shadow-2xl" />
       {/* surat yang keluar */}
       <motion.div
         initial={{ y: 14, scale: 0.94, opacity: 0 }}
@@ -110,28 +137,28 @@ function Envelope({ open, accent }: { open: boolean; accent: string }) {
             : { y: 14, scale: 0.94, opacity: 0 }
         }
         transition={{ duration: 0.7, ease: "easeOut" }}
-        className="absolute left-1/2 top-2 h-[120px] w-[86%] -translate-x-1/2 rounded-md bg-white p-3 shadow-lg"
+        className="absolute left-1/2 top-2 h-[120px] w-[86%] -translate-x-1/2 rounded-sm bg-white p-3 shadow-lg"
       >
-        <div className="font-hand text-lg leading-5 text-rose-900">
-          Buat kamu yang spesial 💌
+        <div className="font-hand text-lg leading-5 text-neutral-800">
+          Buat kamu yang spesial
         </div>
         <div className="mt-2 space-y-1.5">
-          <div className="h-1.5 w-4/5 rounded bg-rose-100" />
-          <div className="h-1.5 w-3/5 rounded bg-rose-100" />
+          <div className="h-1.5 w-4/5 rounded-sm bg-neutral-200" />
+          <div className="h-1.5 w-3/5 rounded-sm bg-neutral-200" />
         </div>
       </motion.div>
       {/* amplop depan */}
       <div
-        className="absolute inset-0 z-10 rounded-xl border border-rose-200/60 bg-gradient-to-br from-rose-200 to-rose-300 shadow-xl"
+        className="absolute inset-0 z-10 rounded-md bg-[#efe5d4] shadow-lg"
         style={{ clipPath: "polygon(0 18%, 50% 62%, 100% 18%, 100% 100%, 0 100%)" }}
       />
       {/* segitiga kiri-kanan */}
       <div
-        className="absolute inset-0 z-10 rounded-xl bg-rose-300/70"
+        className="absolute inset-0 z-10 rounded-md bg-[#e9dcc6]/80"
         style={{ clipPath: "polygon(0 18%, 50% 62%, 0 100%)" }}
       />
       <div
-        className="absolute inset-0 z-10 rounded-xl bg-rose-200/70"
+        className="absolute inset-0 z-10 rounded-md bg-[#eee2cf]/80"
         style={{ clipPath: "polygon(100% 18%, 50% 62%, 100% 100%)" }}
       />
       {/* flap */}
@@ -140,7 +167,7 @@ function Envelope({ open, accent }: { open: boolean; accent: string }) {
         animate={{ rotateX: open ? 180 : 0 }}
         transition={{ duration: 0.65, ease: "easeInOut" }}
         style={{ transformOrigin: "top", clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
-        className="absolute left-0 top-0 z-20 h-[58%] w-full rounded-t-xl bg-gradient-to-b from-rose-300 to-rose-400"
+        className="absolute left-0 top-0 z-20 h-[58%] w-full rounded-t-md bg-[#e5d7bf]"
       />
       {/* segel lilin */}
       <motion.div
@@ -149,7 +176,7 @@ function Envelope({ open, accent }: { open: boolean; accent: string }) {
         className="absolute left-1/2 top-[46%] z-30 -translate-x-1/2"
       >
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${CONFESS_THEMES.rose.seal} shadow-lg`}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-[#9d1c34] shadow-lg"
           style={{ animation: open ? undefined : "seal-glow 2s ease-in-out infinite" }}
         >
           <Heart className="h-5 w-5 fill-white text-white" />
@@ -331,9 +358,8 @@ export default function ConfessionView({
       {isPreview && !onClose && (
         <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/90 px-4 py-2.5 text-xs text-amber-100 shadow-xl backdrop-blur">
-            <span aria-hidden>👀</span>
             <span className="flex-1">
-              Pratinjau — hitungan &amp; status <b>gak tercatat</b>.
+              Pratinjau — hitungan &amp; status <b>tidak tercatat</b>.
             </span>
             <a
               href={`/?s=${previewKey}`}
@@ -356,29 +382,27 @@ export default function ConfessionView({
 
         {/* ------ ERROR ------ */}
         {stage === "error" && (
-          <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
-            <div className="text-5xl">🥲</div>
-            <h2 className="mt-4 text-xl font-bold">Suratnya nggak ketemu</h2>
+          <div className="rounded-lg bg-white/10 p-8 text-white backdrop-blur">
+            <h2 className="font-display text-xl font-bold">Suratnya tidak ketemu</h2>
             <p className="mt-2 text-sm text-white/70">
               Link confess-nya mungkin salah atau sudah dihapus.
             </p>
             <Button
-              className="mt-6 rounded-full bg-rose-500 hover:bg-rose-600"
+              className="mt-6 rounded-md bg-primary hover:bg-[#b52743]"
               onClick={() => (window.location.href = "/")}
             >
-              Ke Sayang.in
+              Ke Sayangin
             </Button>
           </div>
         )}
 
         {/* ------ KONTEN DILAPORKAN ------ */}
         {stage === "hidden" && (
-          <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
-            <div className="text-5xl">🕵️</div>
-            <h2 className="mt-4 text-xl font-bold">Suratnya lagi ditinjau</h2>
+          <div className="rounded-lg bg-white/10 p-8 text-white backdrop-blur">
+            <h2 className="font-display text-xl font-bold">Suratnya sedang ditinjau</h2>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
               Konten ini dilaporkan beberapa kali dan sedang diperiksa tim
-              kami. Maaf ya 🙏
+              kami. Maaf ya.
             </p>
           </div>
         )}
@@ -403,9 +427,9 @@ export default function ConfessionView({
                 setTyped("");
                 setStage("typing");
               }}
-              className="mt-14 rounded-full bg-rose-500 px-8 text-base font-semibold shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-600"
+              className="mt-14 rounded-md bg-primary px-8 text-base font-semibold text-white transition-colors hover:bg-[#b52743]"
             >
-              💌 Buka Suratnya
+              Buka Suratnya
             </Button>
             <p className="mt-3 text-xs text-white/40">tap amplopnya, jangan takut</p>
           </motion.div>
@@ -419,18 +443,18 @@ export default function ConfessionView({
             transition={{ duration: 0.5 }}
             className="w-full"
           >
-            <div className="grain relative rounded-2xl bg-[#fffaf5] p-6 text-left shadow-2xl sm:p-8">
-              <p className="font-hand text-2xl text-rose-700">
-                Hai {data.toName} 🌷
+            <div className="grain relative rounded-lg bg-[#fffaf5] p-6 text-left shadow-2xl sm:p-8">
+              <p className="font-hand text-2xl text-[#9d1c34]">
+                Hai {data.toName},
               </p>
-              <p className="mt-4 min-h-[120px] whitespace-pre-wrap text-[15px] leading-relaxed text-rose-950/90">
+              <p className="mt-4 min-h-[120px] whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-800">
                 {typed}
                 {stage === "typing" && (
-                  <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-rose-500 align-middle" />
+                  <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-primary align-middle" />
                 )}
               </p>
-              <p className="mt-6 text-right font-hand text-xl text-rose-500">
-                — {data.fromName?.trim() || "Seseorang 🤍"}
+              <p className="mt-6 text-right font-hand text-xl text-neutral-600">
+                — {data.fromName?.trim() || "Seseorang"}
               </p>
             </div>
 
@@ -446,17 +470,17 @@ export default function ConfessionView({
                 <Button
                   size="lg"
                   onClick={() => respond("yes")}
-                  className="rounded-full bg-rose-500 text-base font-semibold shadow-lg shadow-rose-500/30 hover:scale-105 hover:bg-rose-600"
+                  className="rounded-md bg-primary text-base font-semibold text-white transition-colors hover:bg-[#b52743]"
                 >
-                  Iya, aku juga suka kamu 💗
+                  Iya, aku juga suka kamu
                 </Button>
                 <Button
                   size="lg"
                   variant="ghost"
                   onClick={() => respond("later")}
-                  className="rounded-full border border-white/20 bg-white/5 text-base text-white/85 hover:bg-white/10"
+                  className="rounded-md border border-white/20 bg-white/5 text-base text-white/85 hover:bg-white/10"
                 >
-                  Beri aku waktu dulu 🥲
+                  Beri aku waktu dulu
                 </Button>
               </motion.div>
             )}
@@ -471,19 +495,21 @@ export default function ConfessionView({
             transition={{ type: "spring", stiffness: 200, damping: 14 }}
             className="flex flex-col items-center"
           >
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-rose-500/20 text-6xl anim-heartbeat">
-              💗
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 anim-heartbeat">
+              <div className="relative h-12 w-12">
+                <div className="heart-shape" />
+              </div>
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-white">
+            <h2 className="mt-6 font-display text-3xl font-bold text-white">
               Selamat, {data.toName}!
             </h2>
             <p className="mt-3 max-w-xs text-white/80">
               Yang mengirim surat ini adalah{" "}
-              <span className="font-bold text-rose-300">{senderName}</span>. Dia
+              <span className="font-bold text-[#e8b4bb]">{senderName}</span>. Dia
               pasti lagi senyum-senyum sendiri nunggu jawaban ini.
             </p>
             <p className="mt-4 text-sm text-white/60">
-              Jangan ditunda — chat dia sekarang! 📱
+              Jangan ditunda — chat dia sekarang.
             </p>
           </motion.div>
         )}
@@ -495,8 +521,10 @@ export default function ConfessionView({
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center"
           >
-            <div className="text-6xl">🤍</div>
-            <h2 className="mt-6 text-2xl font-bold text-white">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/15">
+              <Heart className="h-8 w-8 text-white/50" strokeWidth={1.5} />
+            </div>
+            <h2 className="mt-6 font-display text-2xl font-bold text-white">
               Nggak apa-apa, kok
             </h2>
             <p className="mt-3 max-w-xs text-white/75">
@@ -505,7 +533,7 @@ export default function ConfessionView({
               berani hari ini.
             </p>
             <p className="mt-2 text-sm text-white/50">
-              Kalau suatu hari kamu penasaran... link ini tetap ada. 😉
+              Kalau suatu hari kamu penasaran... link ini tetap ada.
             </p>
             {answered === "later" && (
               <button
@@ -527,31 +555,31 @@ export default function ConfessionView({
             className="mt-8 w-full max-w-sm"
           >
             {sentReply ? (
-              <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-left backdrop-blur">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                  ✉️ Balasanmu terkirim
+              <div className="rounded-lg border border-white/20 bg-white/5 p-4 text-left backdrop-blur">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">
+                  Balasanmu terkirim
                 </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-emerald-50">
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
                   {sentReply}
                 </p>
               </div>
             ) : isPreview || preview ? (
               <p className="text-center text-xs text-white/50">
-                penerima bisa nulis balasan buatmu dari sini ✍️
+                penerima bisa nulis balasan buatmu dari sini
               </p>
             ) : (
               <div>
                 {!replyOpen ? (
                   <button
                     onClick={() => setReplyOpen(true)}
-                    className="w-full rounded-full border border-white/20 bg-white/5 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/10"
+                    className="w-full rounded-md border border-white/20 bg-white/5 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/10"
                   >
-                    ✍️ Tulis balasan buat dia
+                    Tulis balasan buat dia
                   </button>
                 ) : (
-                  <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur">
+                  <div className="space-y-3 rounded-lg border border-white/10 bg-white/5 p-4 text-left backdrop-blur">
                     <p className="text-sm font-semibold text-white/90">
-                      Balas suratnya — bakal dibaca di halaman pantauan pengirimnya 🤍
+                      Balas suratnya — bakal dibaca di halaman pantauan pengirimnya.
                     </p>
                     <Textarea
                       value={replyText}
@@ -564,19 +592,19 @@ export default function ConfessionView({
                     <div className="flex flex-wrap gap-1.5">
                       {(stage === "yes"
                         ? [
-                            "Iya, aku juga suka kamu. Kenapa baru ngomong sekarang? 😳💗",
-                            "Seneng banget baca suratnya. Aku kira cuma aku 🥹",
+                            "Iya, aku juga suka kamu. Kenapa baru ngomong sekarang?",
+                            "Seneng banget baca suratnya. Aku kira cuma aku.",
                           ]
                         : [
-                            "Aku butuh waktu buat mikirnya, tapi makasih udah berani bilang 🥲",
-                            "Baca suratnya bikin senyum-senyum sendiri. Pelan-pelan ya 🤍",
+                            "Aku butuh waktu buat mikirnya, tapi makasih udah berani bilang.",
+                            "Baca suratnya bikin senyum-senyum sendiri. Pelan-pelan ya.",
                           ]
                       ).map((t) => (
                         <button
                           key={t}
                           type="button"
                           onClick={() => setReplyText(t)}
-                          className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-left text-[11px] text-white/70 transition hover:bg-white/10 hover:text-white"
+                          className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-left text-[11px] text-white/70 transition hover:bg-white/10 hover:text-white"
                         >
                           {t.length > 34 ? `${t.slice(0, 34)}…` : t}
                         </button>
@@ -599,14 +627,14 @@ export default function ConfessionView({
                           type="button"
                           onClick={sendReply}
                           disabled={replySending}
-                          className="rounded-full bg-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow transition hover:bg-rose-600 disabled:opacity-60"
+                          className="rounded-md bg-primary px-4 py-1.5 text-xs font-bold text-white transition hover:bg-[#b52743] disabled:opacity-60"
                         >
                           {replySending ? "mengirim…" : "kirim balasan →"}
                         </button>
                       </div>
                     </div>
                     {replyError && (
-                      <p className="text-xs text-rose-300">{replyError}</p>
+                    <p className="text-xs text-[#e8b4bb]">{replyError}</p>
                     )}
                   </div>
                 )}
@@ -618,22 +646,22 @@ export default function ConfessionView({
         {/* watermark viral */}
         <div className="mt-16 text-xs text-white/40">
           {preview ? (
-            <span>Beginilah yang bakal dilihat dia ✨</span>
+            <span>Beginilah yang bakal dilihat dia.</span>
           ) : (
             <>
-              Dibuat <span className="text-rose-300">GRATIS</span> di{" "}
-              <span className="font-bold text-white">Sayang.in</span>
+              Dibuat <span className="font-bold text-[#e8b4bb]">gratis</span> di{" "}
+              <span className="font-bold text-white">Sayangin</span>
               <a
                 href="/#confess"
-                className="ml-2 underline decoration-rose-400/60 underline-offset-2 hover:text-rose-200"
+                className="ml-2 underline decoration-white/30 underline-offset-2 hover:text-white/80"
               >
                 mau confess juga →
               </a>
               {!isPreview && slug && (
                 <div className="mt-3">
                   {reportState === "done" ? (
-                    <span className="text-emerald-300/70">
-                      Laporan terkirim — terima kasih 🙏
+                    <span className="text-white/50">
+                      Laporan terkirim — terima kasih.
                     </span>
                   ) : (
                     <button

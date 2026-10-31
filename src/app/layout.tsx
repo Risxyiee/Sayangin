@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
   ),
-  title: "Sayang.in — Confess & Kado Digital buat Orang yang Kamu Sayang",
+  title: "Sayangin — surat untuk orang yang kamu sayang",
   description:
-    "Suka sama seseorang tapi malu ngomong? Kirim confess anonim gratis. Sudah pacaran? Kirim kado digital: buket bunga, surat Open When, photobox, kue ulang tahun, dan timeline kisah kalian. Semua di bawah Rp50rb.",
+    "Tulis pengakuan sebagai surat anonim, kirim cukup lewat link. Sudah jadian? Kirim kado digital: buket bunga, surat Open When, photobox, kue tiup lilin. Gratis untuk confess.",
   keywords: [
     "confess anonim",
     "kado digital",
@@ -35,20 +35,19 @@ export const metadata: Metadata = {
     "website buat pacar",
     "hadiah anniversary",
   ],
-  authors: [{ name: "Sayang.in" }],
+  authors: [{ name: "Sayangin" }],
   openGraph: {
-    title: "Sayang.in — Confess tanpa malu, kado digital tanpa ribet",
+    title: "Sayangin — surat untuk orang yang kamu sayang",
     description:
-      "Confess anonim gratis + kado digital lengkap di bawah Rp50rb. Bikin dia nangis (bahagia).",
-    siteName: "Sayang.in",
+      "Confess anonim gratis lewat link, plus kado digital sekali bayar. Ditulis kamu, dibuka dia.",
+    siteName: "Sayangin",
     type: "website",
     images: [{ url: "/api/og", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sayang.in — Confess tanpa malu, kado digital tanpa ribet",
-    description:
-      "Confess anonim gratis + kado digital lengkap di bawah Rp50rb.",
+    title: "Sayangin — surat untuk orang yang kamu sayang",
+    description: "Confess anonim gratis lewat link, plus kado digital sekali bayar.",
   },
 };
 

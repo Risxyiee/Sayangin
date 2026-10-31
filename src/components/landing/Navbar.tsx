@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart } from "lucide-react";
 
 const LINKS = [
   { href: "#confess", label: "Confess" },
@@ -24,21 +23,18 @@ export default function Navbar() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/85 shadow-sm shadow-rose-100 backdrop-blur-md"
-          : "bg-transparent"
+          ? "border-b border-border bg-background/95 backdrop-blur-sm"
+          : "border-b border-transparent bg-transparent"
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#" className="flex items-center gap-2" aria-label="Sayang.in - beranda">
-          <span className="relative flex h-8 w-8 items-center justify-center">
-            <Heart className="h-7 w-7 fill-rose-500 text-rose-500 anim-heartbeat" />
-          </span>
+        <a href="#" className="flex items-baseline gap-0.5" aria-label="Sayangin - beranda">
           <span
-            className={`text-lg font-extrabold tracking-tight ${
-              scrolled ? "text-rose-950" : "text-white"
+            className={`font-display text-xl font-bold tracking-tight transition-colors ${
+              scrolled ? "text-foreground" : "text-white"
             }`}
           >
-            sayang<span className="text-rose-500">.in</span>
+            sayang<span className="text-primary">in</span>
           </span>
         </a>
 
@@ -47,10 +43,10 @@ export default function Navbar() {
             <a
               key={l.href}
               href={l.href}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-md px-3.5 py-2 text-sm transition-colors ${
                 scrolled
-                  ? "text-rose-950/70 hover:bg-rose-50 hover:text-rose-700"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
+                  ? "text-muted-foreground hover:text-foreground"
+                  : "text-white/70 hover:text-white"
               }`}
             >
               {l.label}
@@ -60,9 +56,13 @@ export default function Navbar() {
 
         <a
           href="#confess"
-          className="rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:scale-105 hover:bg-rose-600"
+          className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+            scrolled
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-white text-neutral-900 hover:bg-white/90"
+          }`}
         >
-          Buat Confess
+          Tulis surat
         </a>
       </nav>
     </header>

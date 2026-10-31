@@ -249,7 +249,7 @@ function LettersStatusCard({
       <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur">
         <p className="font-hand text-2xl text-rose-200">{letters.length} surat buat {data.toName},</p>
         <p className="text-xs text-white/50">
-          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang 🤍 • "}
+          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang • "}
           dikirim {relTime(data.createdAt)}
         </p>
 
@@ -342,7 +342,7 @@ function LettersStatusCard({
               icon={<BookOpenCheck className="h-5 w-5" />}
               title={
                 readCount === letters.length
-                  ? "Semua suratnya sudah dibaca 🥹"
+                  ? "Semua suratnya sudah dibaca."
                   : `${unlockedCount - readCount > 0 ? "Ada surat baru yang belum dibaca!" : "Menunggu minggu berikutnya..."}`
               }
               state={unlockedCount - readCount > 0 ? "highlight" : "done"}
@@ -351,7 +351,7 @@ function LettersStatusCard({
                 <>
                   Perjalanan dimulai {relTime(data.startedAt!)}.
                   {replyCount > 0 && (
-                    <> Dia sudah bales {replyCount} surat — cek di bawah! 🥹</>
+                    <> Dia sudah bales {replyCount} surat — cek di bawah.</>
                   )}
                   {nextLocked && unlockedCount - readCount <= 0
                     ? ` Surat berikutnya (“${nextLocked.title}”) terbuka dalam ${nextInDays} hari.`
@@ -412,7 +412,7 @@ function LettersStatusCard({
                     {l.reply && (
                       <div className="mt-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1.5 text-left">
                         <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-300">
-                          ✉️ dibalas {l.repliedAt ? relTime(l.repliedAt) : ""}
+                          dibalas {l.repliedAt ? relTime(l.repliedAt) : ""}
                         </p>
                         <p className="mt-0.5 whitespace-pre-wrap text-[11px] leading-4 text-emerald-100/90">
                           {l.reply}
@@ -470,7 +470,7 @@ function GiftStatusCard({
           {icon} Buat {data.toName},
         </p>
         <p className="text-xs text-white/50">
-          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang 🤍 • "}
+          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang • "}
           dikirim {relTime(data.createdAt)} • {data.views}x dibuka
         </p>
 
@@ -563,14 +563,14 @@ function GiftStatusCard({
                 icon={<Ticket className="h-5 w-5" />}
                 title={
                   usedCount === coupons.length
-                    ? "Semua kuponnya udah dipakai! 🎉"
+                    ? "Semua kuponnya udah dipakai."
                     : usedCount > 0
                       ? `${usedCount} dari ${coupons.length} kupon udah dipakai`
                       : "Belum ada kupon yang dipakai"
                 }
                 state={usedCount > 0 ? "highlight" : "soft"}
                 pulse={usedCount > 0 && usedCount < coupons.length}
-                detail="Dia bakal nunjukin kupon yang udah dicaput — siap-siap tepati ya 😉"
+                detail="Dia bakal nunjukin kupon yang udah dicaput — siap-siap tepati ya."
               />
               <div className="space-y-1.5 pt-1">
                 {coupons.map((c, i) => {
@@ -680,14 +680,14 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
     const text =
       data?.type === "letters"
         ? encodeURIComponent(
-            `Aku bikinin surat-surat kecil buat kamu 💌 Satu boleh dibuka tiap minggu — pelan-pelan aja ya: ${link}`
+            `Aku bikinin surat-surat kecil buat kamu. Satu boleh dibuka tiap minggu — pelan-pelan aja ya: ${link}`
           )
         : data?.type === "gift"
           ? encodeURIComponent(
-              `Aku ada kado spesial buat kamu 🎁 Buka ya: ${link}`
+              `Aku ada kado spesial buat kamu. Buka ya: ${link}`
             )
           : encodeURIComponent(
-              `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
+              `Pssst... ada surat rahasia buat kamu. Buka di sini ya: ${link}`
             );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -719,10 +719,10 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
 
         <h1 className="mt-8 text-2xl font-extrabold leading-tight text-white">
           {data?.type === "letters"
-            ? "Pantau surat mingguanmu 👀"
+            ? "Pantau surat mingguanmu"
             : data?.type === "gift"
-              ? "Pantau kado digitalmu 👀"
-              : "Pantau confess kamu 👀"}
+              ? "Pantau kado digitalmu"
+              : "Pantau confess kamu"}
         </h1>
         <p className="mt-1 text-sm text-white/60">
           Halaman ini update otomatis — biarkan tab-nya terbuka.
@@ -737,14 +737,13 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
 
         {/* ERROR */}
         {!loading && error && (
-          <div className="mt-10 rounded-2xl bg-white/10 p-6 text-center backdrop-blur">
-            <div className="text-4xl">🥲</div>
-            <p className="mt-3 text-sm text-white/75">{error}</p>
+          <div className="mt-10 rounded-lg bg-white/10 p-6 text-center backdrop-blur">
+            <p className="text-sm text-white/75">{error}</p>
             <a
               href="/"
-              className="mt-5 inline-block rounded-full bg-rose-500 px-6 py-2.5 text-sm font-bold text-white hover:bg-rose-600"
+              className="mt-5 inline-block rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-[#b52743]"
             >
-              Ke Sayang.in
+              Ke Sayangin
             </a>
           </div>
         )}
@@ -769,7 +768,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
               <p className="text-xs text-white/50">
                 {data.fromName?.trim()
                   ? `dari ${data.fromName} • `
-                  : "dari Seseorang 🤍 • "}
+                  : "dari Seseorang • "}
                 dikirim {relTime(data.createdAt)}
               </p>
 
@@ -831,7 +830,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                         Pertama kali {relTime(data.openedAt)}.{" "}
                         {data.response
                           ? ""
-                          : "Dia lagi baca... tunggu jawabannya 😳"}
+                          : "Dia lagi baca... tunggu jawabannya."}
                       </>
                     }
                   />
@@ -848,7 +847,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                 {data.response === "yes" ? (
                   <Step
                     icon={<Heart className="h-5 w-5 fill-rose-400 text-rose-400" />}
-                    title="IYA! Dia juga suka kamu 🎉"
+                    title="Iya — dia juga suka kamu"
                     state="highlight"
                     pulse
                     detail={
@@ -857,7 +856,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                         sekarang sebelum momennya lewat.{" "}
                         <a
                           href={`https://wa.me/?text=${encodeURIComponent(
-                            `Hai ${data.toName}! Jadi... katanya kamu juga suka aku? 😳💗`
+                            `Hai ${data.toName}! Jadi... katanya kamu juga suka aku?`
                           )}`}
                           target="_blank"
                           className="inline-flex items-center gap-1 font-semibold text-emerald-300 underline decoration-emerald-400/50 underline-offset-2"
@@ -882,7 +881,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                     pulse={!!data.openedAt}
                     detail={
                       data.openedAt
-                        ? "Dia udah baca tapi belum jawab. Deg-degan ya 😅"
+                        ? "Dia udah baca tapi belum jawab. Deg-degan ya."
                         : "Kadang butuh beberapa jam — atau beberapa keberanian."
                     }
                   />
@@ -892,7 +891,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                 {data.reply ? (
                   <Step
                     icon={<MessageCircle className="h-5 w-5" />}
-                    title="Ada balasan dari dia! 💌"
+                    title="Ada balasan dari dia."
                     state="highlight"
                     pulse
                     detail={
@@ -902,7 +901,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                         </span>
                         <span className="mt-1.5 block">
                           dikirim {relTime(data.repliedAt ?? data.createdAt)} — ini
-                          tulisan tangannya langsung 🥹
+                          tulisan tangannya langsung.
                         </span>
                       </span>
                     }
@@ -914,7 +913,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                       title="Nunggu balasan tertulis..."
                       state="soft"
                       pulse
-                      detail="Dia udah jawab, tapi belum nulis balasan. Balasan bisa muncul kapan aja — cek lagi nanti 😉"
+                      detail="Dia udah jawab, tapi belum nulis balasan. Balasan bisa muncul kapan aja — cek lagi nanti."
                     />
                   )
                 )}

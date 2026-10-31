@@ -14,7 +14,6 @@ import {
   Loader2,
   Plus,
   Share2,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
@@ -22,33 +21,32 @@ import { FLOWERS, FLOWER_IDS } from "@/lib/gift-data";
 
 type TabKey = "bouquet" | "photobox" | "cake" | "coupons" | "playlist";
 
-const TABS: { key: TabKey; label: string; emoji: string }[] = [
-  { key: "bouquet", label: "Buket", emoji: "💐" },
-  { key: "photobox", label: "Photobox", emoji: "📸" },
-  { key: "cake", label: "Kue", emoji: "🎂" },
-  { key: "coupons", label: "Kupon", emoji: "🎫" },
-  { key: "playlist", label: "Playlist", emoji: "🎵" },
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "bouquet", label: "Buket" },
+  { key: "photobox", label: "Photobox" },
+  { key: "cake", label: "Kue" },
+  { key: "coupons", label: "Kupon" },
+  { key: "playlist", label: "Playlist" },
 ];
 
 const CAKE_OCCASIONS = [
-  { key: "ultah", label: "Ulang Tahun 🎂" },
-  { key: "anniversary", label: "Anniversary 🥂" },
-  { key: "graduasi", label: "Wisuda 🎓" },
+  { key: "ultah", label: "Ulang Tahun" },
+  { key: "anniversary", label: "Anniversary" },
+  { key: "graduasi", label: "Wisuda" },
 ] as const;
 
 const CAKE_DEFAULT_MSG: Record<string, string> = {
   ultah:
-    "Selamat ulang tahun, sayang! Semoga panjang umur, sehat selalu, dan semua mimpimu satu-satu kejadian. Makasih udah lahir ke dunia — dunia jadi lebih manis ada kamu. 🎂💗",
+    "Selamat ulang tahun, sayang! Semoga panjang umur, sehat selalu, dan semua mimpimu satu-satu kejadian. Makasih udah lahir ke dunia — dunia jadi lebih manis ada kamu.",
   anniversary:
-    "Selamat anniversary buat kita! Nggak kerasa udah sejauh ini bareng kamu. Makasih udah sabar, udah setia, udah jadi rumah. Ke depannya masih kamu terus ya. 🥂🤍",
+    "Selamat anniversary buat kita! Nggak kerasa udah sejauh ini bareng kamu. Makasih udah sabar, udah setia, udah jadi rumah. Ke depannya masih kamu terus ya.",
   graduasi:
-    "YEAY selamat wisuda! Kamu berhasil, dan aku bangga banget. Dari bangku kuliah sampai dunia nyata — aku bakal tetap di barisan depan dukung kamu. 🎓✨",
+    "YEAY selamat wisuda! Kamu berhasil, dan aku bangga banget. Dari bangku kuliah sampai dunia nyata — aku bakal tetap di barisan depan dukung kamu.",
 };
 
-const COUPON_PRESETS: Record<string, { label: string; emoji: string; coupons: { title: string; desc: string }[] }> = {
+const COUPON_PRESETS: Record<string, { label: string; coupons: { title: string; desc: string }[] }> = {
   manja: {
     label: "Couple manja",
-    emoji: "🥰",
     coupons: [
       { title: "1× Pelukan Gratis", desc: "berlaku kapan pun, tanpa syarat" },
       { title: "1× Nonton Pilihanmu", desc: "film apa pun, aku nggak protes" },
@@ -58,9 +56,8 @@ const COUPON_PRESETS: Record<string, { label: string; emoji: string; coupons: { 
   },
   servis: {
     label: "Jasa & servis",
-    emoji: "🛠️",
     coupons: [
-      { title: "1× Anter Ke Mana Pun", desc: "dalam batas kota wajar ya 😌" },
+      { title: "1× Anter Ke Mana Pun", desc: "dalam batas kota wajar ya" },
       { title: "1× Masak Menu Favoritmu", desc: "bukti nyata sayang lewat perut" },
       { title: "1× Gantian Nyuci", desc: "hemat listrik, gabung aja" },
       { title: "1× Bantuin Tugas", desc: "kalau aku bisa, kalau nggak kita cari bareng" },
@@ -68,7 +65,6 @@ const COUPON_PRESETS: Record<string, { label: string; emoji: string; coupons: { 
   },
   lucu: {
     label: "Random lucu",
-    emoji: "😹",
     coupons: [
       { title: "1× Hak Menang Argumen", desc: "sekali aja, jangan dibiasain" },
       { title: "1× Bebas Joni Sehari", desc: "aku nggak nanya kamu dimana" },
@@ -82,7 +78,7 @@ const COUPON_PRESETS: Record<string, { label: string; emoji: string; coupons: { 
 const PLAYLIST_PRESET = {
   title: "Lagu-lagu yang bikin aku inget kamu",
   message:
-    "Tiap lagu di playlist ini ada ceritanya — ada yang bikin inget first date, ada yang nemenin pas kangen. Kalau kamu kangen aku, buka playlist ini ya. Anggap aja pelukan versi suara. 🤍",
+    "Tiap lagu di playlist ini ada ceritanya — ada yang bikin inget first date, ada yang nemenin pas kangen. Kalau kamu kangen aku, buka playlist ini ya. Anggap aja pelukan versi suara.",
   songs: [
     { title: "Monolog", artist: "Pamungkas", note: "lagu yang diputer pas pertama anter kamu", link: "" },
     { title: "Rumah Ke Rumah", artist: "Hindia", note: "spontan mampir cuma buat lihat kamu", link: "" },
@@ -137,12 +133,12 @@ export default function GiftStudio() {
   // bouquet
   const [flowers, setFlowers] = useState<string[]>(["rose", "tulip", "rose", "sunflower"]);
   const [card, setCard] = useState(
-    "Ini buket yang nggak akan pernah layu, kayak perasaanku. Tiap lihat bunga, inget ya — ada yang tiap hari mikirin kamu. 🤍"
+    "Ini buket yang nggak akan pernah layu, kayak perasaanku. Tiap lihat bunga, inget ya — ada yang tiap hari mikirin kamu."
   );
 
   // photobox
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null, null]);
-  const [caption, setCaption] = useState("kita, versi paling fav 🤍");
+  const [caption, setCaption] = useState("kita, versi paling fav");
   const [note, setNote] = useState("");
 
   // cake
@@ -210,14 +206,14 @@ export default function GiftStudio() {
   const submit = async () => {
     setError("");
     if (toName.trim().length < 1) {
-      setError("Isi dulu nama dia ya 😊");
+      setError("Isi dulu nama dia, ya.");
       return;
     }
 
     let data: unknown;
     if (tab === "bouquet") {
       if (flowers.length < 3) {
-        setError("Pilih minimal 3 bunga buat buketnya ya 🌷");
+        setError("Pilih minimal 3 bunga buat buketnya, ya.");
         return;
       }
       if (card.trim().length < 5) {
@@ -227,7 +223,7 @@ export default function GiftStudio() {
       data = { card: card.trim(), flowers };
     } else if (tab === "photobox") {
       if (photoCount < 3) {
-        setError("Pilih minimal 3 foto buat strip-nya ya 📸");
+        setError("Pilih minimal 3 foto buat strip-nya, ya.");
         return;
       }
       if (caption.trim().length < 2) {
@@ -251,7 +247,7 @@ export default function GiftStudio() {
         return;
       }
       if (songs.length < 3) {
-        setError("Minimal 3 lagu ya 🎵");
+        setError("Minimal 3 lagu, ya.");
         return;
       }
       const badSong = songs.findIndex((s) => s.title.trim().length < 1);
@@ -347,12 +343,12 @@ export default function GiftStudio() {
   };
 
   const WA_TEXT: Record<TabKey, string> = {
-    bouquet: "Aku ada buket bunga buat kamu 💐 Bunganya mekar satu-satu pas kamu buka. Lihat ya:",
-    photobox: "Aku bungkus foto-foto kita jadi strip photobox 📸 Buka ya:",
-    cake: "Ada kue buat kamu 🎂 Tiup lilinnya — ada pesan spesial di baliknya:",
-    coupons: "Aku kasih kamu buku kupon cinta 🎫 Pakai sesuka hatimu ya:",
+    bouquet: "Aku ada buket bunga buat kamu. Bunganya mekar satu-satu pas kamu buka. Lihat ya:",
+    photobox: "Aku bungkus foto-foto kita jadi strip photobox. Buka ya:",
+    cake: "Ada kue buat kamu. Tiup lilinnya — ada pesan spesial di baliknya:",
+    coupons: "Aku kasih kamu buku kupon cinta. Pakai sesuka hatimu ya:",
     playlist:
-      "Aku buatin playlist buat kita 🎵 Tiap lagunya ada cerita kenangan kita. Dengerin pelan-pelan ya:",
+      "Aku buatin playlist buat kita. Tiap lagunya ada cerita kenangan kita. Dengerin pelan-pelan ya:",
   };
 
   const shareWA = () => {
@@ -377,7 +373,6 @@ export default function GiftStudio() {
       <span id="kupon" aria-hidden className="absolute -top-20" />
       <span id="playlist" aria-hidden className="absolute -top-20" />
 
-      <div className="absolute left-1/2 top-1/3 h-72 w-[720px] -translate-x-1/2 rounded-full bg-rose-200/40 blur-[110px]" />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -386,14 +381,12 @@ export default function GiftStudio() {
           transition={{ duration: 0.6 }}
           className="mx-auto max-w-2xl text-center"
         >
-          <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-1.5 text-xs font-bold tracking-wide text-rose-700">
-            <Sparkles className="h-3.5 w-3.5" /> STUDIO KADO DIGITAL — GRATIS
-          </span>
-          <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-rose-950 sm:text-4xl">
+          <p className="kicker">Studio kado digital — gratis</p>
+          <h2 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
             Bikin kadonya di sini,{" "}
-            <span className="font-hand text-4xl text-rose-500">kirim sekarang</span> 🎁
+            <em className="text-primary">kirim sekarang.</em>
           </h2>
-          <p className="mt-3 text-base leading-relaxed text-rose-950/70">
+          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
             Buket bunga yang mekar, photobox dari foto kalian, kue yang bisa
             ditiup, sampai kupon cinta anti-lecek — semuanya jadi satu link.
           </p>
@@ -404,7 +397,7 @@ export default function GiftStudio() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="mx-auto mt-10 max-w-2xl rounded-3xl border border-rose-100 bg-white p-6 shadow-xl shadow-rose-100/70 sm:p-7"
+          className="mx-auto mt-10 max-w-2xl rounded-lg border border-border bg-card p-6 sm:p-7"
         >
           {!link ? (
             <div className="space-y-5">
@@ -416,13 +409,12 @@ export default function GiftStudio() {
                     type="button"
                     onClick={() => setTab(t.key)}
                     aria-pressed={tab === t.key}
-                    className={`flex flex-col items-center gap-1 rounded-2xl border py-3 text-xs font-bold transition ${
+                    className={`flex flex-col items-center gap-1 rounded-md border py-3 text-xs font-bold transition ${
                       tab === t.key
-                        ? "border-rose-500 bg-rose-50 text-rose-700 shadow-sm"
-                        : "border-rose-100 text-rose-950/50 hover:border-rose-300"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:border-input"
                     }`}
                   >
-                    <span className="text-xl">{t.emoji}</span>
                     {t.label}
                   </button>
                 ))}
@@ -430,7 +422,7 @@ export default function GiftStudio() {
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="gs-from" className="text-rose-950">
+                  <Label htmlFor="gs-from" className="text-foreground">
                     Nama kamu{" "}
                     <span className="font-normal text-muted-foreground">(kosongin = rahasia)</span>
                   </Label>
@@ -440,12 +432,12 @@ export default function GiftStudio() {
                     value={fromName}
                     onChange={(e) => setFromName(e.target.value)}
                     maxLength={40}
-                    className="border-rose-200 focus-visible:ring-rose-400"
+                    className="border-input focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gs-to" className="text-rose-950">
-                    Nama dia <span className="text-rose-500">*</span>
+                  <Label htmlFor="gs-to" className="text-foreground">
+                    Nama dia <span className="text-primary">*</span>
                   </Label>
                   <Input
                     id="gs-to"
@@ -453,7 +445,7 @@ export default function GiftStudio() {
                     value={toName}
                     onChange={(e) => setToName(e.target.value)}
                     maxLength={40}
-                    className="border-rose-200 focus-visible:ring-rose-400"
+                    className="border-input focus-visible:ring-primary"
                   />
                 </div>
               </div>
@@ -462,7 +454,7 @@ export default function GiftStudio() {
               {tab === "bouquet" && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">Racik bunganya (tap buat nambah)</Label>
+                    <Label className="text-foreground">Racik bunganya (tap buat nambah)</Label>
                     <div className="flex flex-wrap gap-2">
                       {FLOWER_IDS.map((id) => (
                         <button
@@ -470,16 +462,16 @@ export default function GiftStudio() {
                           type="button"
                           onClick={() => pickFlower(id)}
                           aria-label={`Tambah ${FLOWERS[id].label}`}
-                          className="flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-950/70 transition hover:border-rose-400 hover:bg-rose-50"
+                          className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary hover:bg-secondary"
                         >
                           <span className="text-base">{FLOWERS[id].emoji}</span>
-                          {FLOWERS[id].label} <Plus className="h-3 w-3 text-rose-400" />
+                          {FLOWERS[id].label} <Plus className="h-3 w-3 text-muted-foreground" />
                         </button>
                       ))}
                     </div>
-                    <div className="flex min-h-[44px] flex-wrap items-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50/50 p-2">
+                    <div className="flex min-h-[44px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-secondary/50 p-2">
                       {flowers.length === 0 && (
-                        <span className="px-1 text-xs text-rose-950/40">buketnya masih kosong…</span>
+                        <span className="px-1 text-xs text-muted-foreground">buketnya masih kosong…</span>
                       )}
                       {flowers.map((f, i) => (
                         <button
@@ -487,26 +479,26 @@ export default function GiftStudio() {
                           type="button"
                           onClick={() => removeFlower(i)}
                           aria-label={`Hapus bunga ${i + 1}`}
-                          className="group flex items-center gap-1 rounded-full bg-white px-2 py-1 text-sm shadow-sm ring-1 ring-rose-200 transition hover:ring-rose-400"
+                          className="group flex items-center gap-1 rounded-sm bg-card px-2 py-1 text-sm shadow-sm ring-1 ring-border transition hover:ring-primary"
                         >
-                          {FLOWERS[f as keyof typeof FLOWERS]?.emoji ?? "🌷"}
-                          <Trash2 className="h-3 w-3 text-rose-300 group-hover:text-rose-500" />
+                          {FLOWERS[f as keyof typeof FLOWERS]?.emoji ?? "❀"}
+                          <Trash2 className="h-3 w-3 text-muted-foreground group-hover:text-destructive" />
                         </button>
                       ))}
-                      <span className="ml-auto pr-1 text-[11px] text-rose-950/40">
+                      <span className="ml-auto pr-1 text-[11px] text-muted-foreground">
                         {flowers.length}/9
                       </span>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-card" className="text-rose-950">Kartu ucapannya</Label>
+                    <Label htmlFor="gs-card" className="text-foreground">Kartu ucapannya</Label>
                     <Textarea
                       id="gs-card"
                       value={card}
                       onChange={(e) => setCard(e.target.value)}
                       maxLength={400}
                       rows={4}
-                      className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                      className="resize-none text-sm focus-visible:ring-primary"
                     />
                     <p className="text-right text-[11px] text-muted-foreground">{card.length}/400</p>
                   </div>
@@ -517,7 +509,7 @@ export default function GiftStudio() {
               {tab === "photobox" && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">
+                    <Label className="text-foreground">
                       Foto kalian ({photoCount}/4 — minimal 3)
                     </Label>
                     <div className="grid grid-cols-4 gap-2">
@@ -526,8 +518,8 @@ export default function GiftStudio() {
                           key={i}
                           className={`relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed transition ${
                             p
-                              ? "border-rose-300"
-                              : "border-rose-200 bg-rose-50/50 hover:border-rose-400"
+                              ? "border-primary/50"
+                              : "border-input bg-secondary/50 hover:border-primary"
                           }`}
                         >
                           {p ? (
@@ -546,7 +538,7 @@ export default function GiftStudio() {
                               </button>
                             </>
                           ) : (
-                            <span className="flex flex-col items-center gap-1 text-rose-300">
+                            <span className="flex flex-col items-center gap-1 text-muted-foreground">
                               <ImagePlus className="h-5 w-5" />
                               <span className="text-[10px] font-semibold">foto {i + 1}</span>
                             </span>
@@ -565,17 +557,17 @@ export default function GiftStudio() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-caption" className="text-rose-950">Caption strip</Label>
+                    <Label htmlFor="gs-caption" className="text-foreground">Caption strip</Label>
                     <Input
                       id="gs-caption"
                       value={caption}
                       onChange={(e) => setCaption(e.target.value)}
                       maxLength={60}
-                      className="border-rose-200 focus-visible:ring-rose-400"
+                      className="border-input focus-visible:ring-primary"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-note" className="text-rose-950">
+                    <Label htmlFor="gs-note" className="text-foreground">
                       Pesan pendamping <span className="font-normal text-muted-foreground">(opsional)</span>
                     </Label>
                     <Textarea
@@ -584,7 +576,7 @@ export default function GiftStudio() {
                       onChange={(e) => setNote(e.target.value)}
                       maxLength={300}
                       rows={3}
-                      className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                      className="resize-none text-sm focus-visible:ring-primary"
                     />
                     <p className="text-right text-[11px] text-muted-foreground">{note.length}/300</p>
                   </div>
@@ -595,7 +587,7 @@ export default function GiftStudio() {
               {tab === "cake" && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">Buat momen apa?</Label>
+                    <Label className="text-foreground">Buat momen apa?</Label>
                     <div className="flex flex-wrap gap-2">
                       {CAKE_OCCASIONS.map((o) => (
                         <button
@@ -605,8 +597,8 @@ export default function GiftStudio() {
                           aria-pressed={occasion === o.key}
                           className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
                             occasion === o.key
-                              ? "border-rose-500 bg-rose-50 text-rose-700 shadow-sm"
-                              : "border-rose-200 text-rose-950/60 hover:border-rose-300"
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border text-muted-foreground hover:border-input"
                           }`}
                         >
                           {o.label}
@@ -615,7 +607,7 @@ export default function GiftStudio() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-msg" className="text-rose-950">
+                    <Label htmlFor="gs-msg" className="text-foreground">
                       Pesan yang muncul setelah lilin ditiup
                     </Label>
                     <Textarea
@@ -624,7 +616,7 @@ export default function GiftStudio() {
                       onChange={(e) => setMessage(e.target.value)}
                       maxLength={300}
                       rows={4}
-                      className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                      className="resize-none text-sm focus-visible:ring-primary"
                     />
                     <p className="text-right text-[11px] text-muted-foreground">{message.length}/300</p>
                   </div>
@@ -635,32 +627,32 @@ export default function GiftStudio() {
               {tab === "coupons" && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">Isi dari template (bisa diedit)</Label>
+                    <Label className="text-foreground">Isi dari template (bisa diedit)</Label>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(COUPON_PRESETS).map(([key, p]) => (
                         <button
                           key={key}
                           type="button"
                           onClick={() => setCoupons(p.coupons.map((c) => ({ ...c })))}
-                          className="flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-950/70 transition hover:border-rose-400 hover:bg-rose-50"
+                          className="rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary hover:bg-secondary"
                         >
-                          <span>{p.emoji}</span> {p.label}
+                          {p.label}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">
+                    <Label className="text-foreground">
                       Kuponnnya ({coupons.length}/6 — minimal 3)
                     </Label>
                     <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                       {coupons.map((c, i) => (
                         <div
                           key={i}
-                          className="rounded-xl border border-rose-100 bg-rose-50/40 p-2.5"
+                          className="rounded-md border border-border bg-secondary/40 p-2.5"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
                               {i + 1}
                             </span>
                             <Input
@@ -679,7 +671,7 @@ export default function GiftStudio() {
                                 type="button"
                                 onClick={() => setCoupons((cs) => cs.filter((_, j) => j !== i))}
                                 aria-label={`Hapus kupon ${i + 1}`}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-300 transition hover:bg-rose-100 hover:text-rose-500"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -695,7 +687,7 @@ export default function GiftStudio() {
                             maxLength={80}
                             placeholder="ketentuan kecil (opsional)"
                             aria-label={`Ketentuan kupon ${i + 1}`}
-                            className="mt-1 h-7 border-0 bg-transparent px-1 text-xs text-rose-950/60 shadow-none focus-visible:ring-0"
+                            className="mt-1 h-7 border-0 bg-transparent px-1 text-xs text-foreground/60 shadow-none focus-visible:ring-0"
                           />
                         </div>
                       ))}
@@ -706,7 +698,7 @@ export default function GiftStudio() {
                         variant="outline"
                         size="sm"
                         onClick={() => setCoupons((cs) => [...cs, { title: "", desc: "" }])}
-                        className="rounded-full border-rose-300 text-rose-600 hover:bg-rose-50"
+                        className="rounded-md border-border text-foreground hover:bg-secondary"
                       >
                         <Plus className="mr-1 h-3.5 w-3.5" /> Tambah kupon
                       </Button>
@@ -719,7 +711,7 @@ export default function GiftStudio() {
               {tab === "playlist" && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-pltitle" className="text-rose-950">
+                    <Label htmlFor="gs-pltitle" className="text-foreground">
                       Judul playlistnya
                     </Label>
                     <Input
@@ -727,21 +719,21 @@ export default function GiftStudio() {
                       value={plTitle}
                       onChange={(e) => setPlTitle(e.target.value)}
                       maxLength={60}
-                      className="border-rose-200 focus-visible:ring-rose-400"
+                      className="border-input focus-visible:ring-primary"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-rose-950">
+                    <Label className="text-foreground">
                       Lagunya ({songs.length}/15 — minimal 3)
                     </Label>
                     <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                       {songs.map((s, i) => (
                         <div
                           key={i}
-                          className="rounded-xl border border-rose-100 bg-rose-50/40 p-2.5"
+                          className="rounded-md border border-border bg-secondary/40 p-2.5"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
                               {i + 1}
                             </span>
                             <Input
@@ -761,7 +753,7 @@ export default function GiftStudio() {
                                 type="button"
                                 onClick={() => setSongs((ss) => ss.filter((_, j) => j !== i))}
                                 aria-label={`Hapus lagu ${i + 1}`}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-300 transition hover:bg-rose-100 hover:text-rose-500"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -778,7 +770,7 @@ export default function GiftStudio() {
                               maxLength={60}
                               placeholder="penyanyi"
                               aria-label={`Penyanyi lagu ${i + 1}`}
-                              className="h-7 border-0 bg-transparent px-1 text-xs text-rose-950/70 shadow-none focus-visible:ring-0"
+                              className="h-7 border-0 bg-transparent px-1 text-xs text-foreground/70 shadow-none focus-visible:ring-0"
                             />
                             <Input
                               value={s.link}
@@ -790,7 +782,7 @@ export default function GiftStudio() {
                               maxLength={300}
                               placeholder="link YouTube/Spotify (opsional)"
                               aria-label={`Link lagu ${i + 1}`}
-                              className="h-7 border-0 bg-transparent px-1 text-xs text-rose-950/70 shadow-none focus-visible:ring-0"
+                              className="h-7 border-0 bg-transparent px-1 text-xs text-foreground/70 shadow-none focus-visible:ring-0"
                             />
                           </div>
                           <Input
@@ -803,7 +795,7 @@ export default function GiftStudio() {
                             maxLength={120}
                             placeholder="catatan kenangan (opsional) — mis. “lagu first date”"
                             aria-label={`Catatan lagu ${i + 1}`}
-                            className="mt-1 h-7 border-0 bg-transparent px-1 text-xs italic text-rose-950/70 shadow-none focus-visible:ring-0"
+                            className="mt-1 h-7 border-0 bg-transparent px-1 text-xs italic text-foreground/70 shadow-none focus-visible:ring-0"
                           />
                         </div>
                       ))}
@@ -816,14 +808,14 @@ export default function GiftStudio() {
                         onClick={() =>
                           setSongs((ss) => [...ss, { title: "", artist: "", note: "", link: "" }])
                         }
-                        className="rounded-full border-rose-300 text-rose-600 hover:bg-rose-50"
+                        className="rounded-md border-border text-foreground hover:bg-secondary"
                       >
                         <Plus className="mr-1 h-3.5 w-3.5" /> Tambah lagu
                       </Button>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gs-plmsg" className="text-rose-950">
+                    <Label htmlFor="gs-plmsg" className="text-foreground">
                       Catatan penutup buat dia
                     </Label>
                     <Textarea
@@ -832,7 +824,7 @@ export default function GiftStudio() {
                       onChange={(e) => setPlMessage(e.target.value)}
                       maxLength={400}
                       rows={4}
-                      className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                      className="resize-none text-sm focus-visible:ring-primary"
                     />
                     <p className="text-right text-[11px] text-muted-foreground">
                       {plMessage.length}/400
@@ -847,7 +839,7 @@ export default function GiftStudio() {
 
               {/* tema */}
               <div className="space-y-2">
-                <Label className="text-rose-950">Tema halamannya</Label>
+                <Label className="text-foreground">Tema halamannya</Label>
                 <div className="flex gap-3">
                   {Object.entries(CONFESS_THEMES).map(([key, t]) => (
                     <button
@@ -858,17 +850,17 @@ export default function GiftStudio() {
                       aria-pressed={theme === key}
                       className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                         theme === key
-                          ? "border-rose-500 bg-rose-50 text-rose-700 shadow-sm"
-                          : "border-rose-200 text-rose-950/60 hover:border-rose-300"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border text-muted-foreground hover:border-input"
                       }`}
                     >
                       <span
-                        className={`h-4 w-4 rounded-full bg-gradient-to-br ${
+                        className={`h-3.5 w-3.5 rounded-full ${
                           key === "rose"
-                            ? "from-rose-400 to-rose-700"
+                            ? "bg-[#9d1c34]"
                             : key === "sunset"
-                              ? "from-orange-400 to-rose-600"
-                              : "from-purple-400 to-fuchsia-700"
+                              ? "bg-[#b45309]"
+                              : "bg-[#292524]"
                         }`}
                       />
                       {t.name}
@@ -878,40 +870,40 @@ export default function GiftStudio() {
               </div>
 
               {error && (
-                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
+                <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
               )}
 
               <Button
                 onClick={submit}
                 disabled={loading}
-                className="w-full rounded-full bg-rose-500 py-4 text-base font-bold shadow-lg shadow-rose-500/30 hover:bg-rose-600"
+                className="w-full rounded-md bg-primary py-3.5 text-sm font-bold text-white hover:bg-[#b52743]"
               >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Membungkus kadonya...
                   </>
                 ) : (
-                  <>{tabMeta.emoji} Siapkan {tabMeta.label} — Gratis</>
+                  <>Siapkan {tabMeta.label} — gratis</>
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Tanpa akun, tanpa biaya. Link-nya aktif selamanya. 🤍
+                Tanpa akun, tanpa biaya. Link-nya aktif selamanya.
               </p>
             </div>
           ) : (
             <div ref={resultRef} className="space-y-4 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-3xl">
-                {tabMeta.emoji}
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Check className="h-5 w-5 text-primary" strokeWidth={3} />
               </div>
-              <h3 className="text-xl font-extrabold text-rose-950">
-                {tabMeta.label} kamu siap dikirim!
+              <h3 className="font-display text-xl font-bold text-foreground">
+                {tabMeta.label} kamu siap dikirim.
               </h3>
-              <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-left">
-                <span className="flex-1 truncate text-sm font-medium text-rose-900">{link}</span>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-3 text-left">
+                <span className="flex-1 truncate text-sm font-medium text-foreground">{link}</span>
                 <Button
                   size="sm"
                   onClick={copy}
-                  className="shrink-0 rounded-full bg-rose-500 hover:bg-rose-600"
+                  className="shrink-0 rounded-md bg-foreground text-background hover:bg-foreground/85"
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
@@ -920,13 +912,13 @@ export default function GiftStudio() {
                 <Button
                   variant="outline"
                   onClick={() => window.open(previewUrl, "_blank")}
-                  className="rounded-full border-rose-300 text-rose-700 hover:bg-rose-50"
+                  className="rounded-md border-border text-foreground hover:bg-secondary"
                 >
                   <Eye className="mr-2 h-4 w-4" /> Pratinjau
                 </Button>
                 <Button
                   onClick={shareWA}
-                  className="rounded-full bg-emerald-500 hover:bg-emerald-600"
+                  className="rounded-md bg-[#1faa59] text-white hover:bg-[#189249]"
                 >
                   <Share2 className="mr-2 h-4 w-4" /> Kirim via WA
                 </Button>
@@ -935,17 +927,17 @@ export default function GiftStudio() {
                 href={statusUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 py-3 text-sm font-bold text-amber-700 transition hover:bg-amber-100"
+                className="flex items-center justify-center gap-2 rounded-md border border-border bg-secondary py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent"
               >
                 <Eye className="h-4 w-4" /> Pantau: udah dibuka berapa kali?
               </a>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Pratinjau dulu juga nggak apa-apa — hitungannya nggak jalan sampai
-                kamu bagi link aslinya 😉
+                kamu bagi link aslinya.
               </p>
               <button
                 onClick={reset}
-                className="text-xs font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"
+                className="text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
               >
                 buat kado lagi untuk orang lain
               </button>

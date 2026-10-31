@@ -1,7 +1,7 @@
 "use client";
 
 import Navbar from "./Navbar";
-import Hero3D from "./Hero3D";
+import Hero from "./Hero";
 import Marquee from "./Marquee";
 import ConfessSection from "./ConfessSection";
 import StatusTeaser from "./StatusTeaser";
@@ -19,7 +19,7 @@ export default function Landing() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <Hero3D />
+        <Hero />
         <Marquee />
         <ConfessSection />
         <StatusTeaser />

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Heart, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -9,14 +9,14 @@ const PLANS = [
   {
     name: "Gratis",
     price: "Rp0",
-    note: "buat marketing & buat kamu yang mau coba dulu",
+    note: "buat kamu yang mau coba dulu",
     highlight: false,
     features: [
       "Confess anonim + animasi amplop",
       "Kartu ucapan sederhana",
       "3 tema warna",
       "Link aktif selamanya",
-      "Watermark kecil Sayang.in",
+      "Watermark kecil Sayangin",
     ],
     cta: "Confess Gratis",
     href: "#confess",
@@ -33,7 +33,7 @@ const PLANS = [
       "Kartu QR siap cetak buat tempel di hadiah fisik",
     ],
     cta: "Beli via QRIS — Segera",
-    toast: "Fitur bayar sedang disiapkan 🙏 Confess-nya aktif sekarang, gratis!",
+    toast: "Fitur bayar sedang disiapkan. Confess-nya aktif sekarang, gratis!",
   },
   {
     name: "Paket Sayang",
@@ -48,7 +48,7 @@ const PLANS = [
       "Prioritas request fitur",
     ],
     cta: "Beli via QRIS — Segera",
-    toast: "Fitur bayar sedang disiapkan 🙏 Confess-nya aktif sekarang, gratis!",
+    toast: "Fitur bayar sedang disiapkan. Confess-nya aktif sekarang, gratis!",
   },
 ];
 
@@ -56,8 +56,7 @@ export default function Pricing() {
   const { toast } = useToast();
 
   return (
-    <section id="harga" className="relative overflow-hidden py-20 sm:py-28">
-      <div className="absolute left-1/2 top-24 h-72 w-[700px] -translate-x-1/2 rounded-full bg-rose-100/80 blur-[110px]" />
+    <section id="harga" className="relative border-t border-border py-20 sm:py-28">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -66,20 +65,16 @@ export default function Pricing() {
           transition={{ duration: 0.6 }}
           className="mx-auto max-w-xl text-center"
         >
-          <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-1.5 text-xs font-bold tracking-wide text-rose-700">
-            <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" /> HARGA JUJUR
-          </span>
-          <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-rose-950 sm:text-4xl">
-            Semua di bawah{" "}
-            <span className="text-gradient-rose">Rp50rb.</span> Nggak ada
-            langganan.
+          <p className="kicker">Harga</p>
+          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Di bawah <em className="text-primary">Rp50rb</em>, tanpa langganan.
           </h2>
-          <p className="mt-3 text-base text-rose-950/70">
-            Harga segelas boba untuk kado yang bikin dia nangis bahagia.
+          <p className="mt-3 text-base text-muted-foreground">
+            Harga segelas boba untuk kado yang diingat bertahun-tahun.
           </p>
         </motion.div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+        <div className="mt-14 grid gap-5 lg:grid-cols-3">
           {PLANS.map((p, i) => (
             <motion.div
               key={p.name}
@@ -87,28 +82,28 @@ export default function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className={`relative flex flex-col rounded-3xl border p-7 ${
+              className={`relative flex flex-col rounded-lg border p-7 ${
                 p.highlight
-                  ? "border-rose-500 bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-2xl shadow-rose-300 lg:-translate-y-3"
-                  : "border-rose-100 bg-white shadow-sm"
+                  ? "border-[#211d1a] bg-[#211d1a] text-white shadow-[0_20px_48px_-24px_rgba(28,25,23,0.5)] lg:-translate-y-2"
+                  : "border-border bg-card"
               }`}
             >
               {p.highlight && (
-                <span className="absolute -top-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-amber-400 px-4 py-1 text-xs font-extrabold text-amber-950 shadow">
-                  <Sparkles className="h-3 w-3" /> PALING LARIS
+                <span className="absolute -top-3 left-7 whitespace-nowrap rounded-sm bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white">
+                  Paling dipilih
                 </span>
               )}
               <h3
-                className={`text-sm font-bold tracking-wide uppercase ${
-                  p.highlight ? "text-rose-100" : "text-rose-500"
+                className={`text-xs font-bold uppercase tracking-[0.18em] ${
+                  p.highlight ? "text-white/60" : "text-muted-foreground"
                 }`}
               >
                 {p.name}
               </h3>
               <div className="mt-2 flex items-baseline gap-1">
                 <span
-                  className={`text-4xl font-extrabold tracking-tight ${
-                    p.highlight ? "text-white" : "text-rose-950"
+                  className={`font-display text-4xl font-bold tracking-tight ${
+                    p.highlight ? "text-white" : "text-foreground"
                   }`}
                 >
                   {p.price}
@@ -116,7 +111,7 @@ export default function Pricing() {
               </div>
               <p
                 className={`mt-1 text-xs ${
-                  p.highlight ? "text-rose-100/90" : "text-muted-foreground"
+                  p.highlight ? "text-white/60" : "text-muted-foreground"
                 }`}
               >
                 {p.note}
@@ -126,10 +121,10 @@ export default function Pricing() {
                   <li key={f} className="flex items-start gap-2.5 text-sm">
                     <Check
                       className={`mt-0.5 h-4 w-4 shrink-0 ${
-                        p.highlight ? "text-amber-300" : "text-rose-500"
+                        p.highlight ? "text-[#e8b4bb]" : "text-primary"
                       }`}
                     />
-                    <span className={p.highlight ? "text-rose-50" : "text-rose-950/80"}>
+                    <span className={p.highlight ? "text-white/85" : "text-foreground/80"}>
                       {f}
                     </span>
                   </li>
@@ -138,10 +133,10 @@ export default function Pricing() {
               {p.href ? (
                 <a
                   href={p.href}
-                  className={`mt-7 rounded-full py-3.5 text-center text-sm font-bold transition hover:scale-[1.03] ${
+                  className={`mt-7 rounded-md py-3.5 text-center text-sm font-bold transition-colors ${
                     p.highlight
-                      ? "bg-white text-rose-600 shadow-lg"
-                      : "bg-rose-500 text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600"
+                      ? "bg-white text-[#211d1a] hover:bg-white/90"
+                      : "bg-foreground text-background hover:bg-foreground/85"
                   }`}
                 >
                   {p.cta}
@@ -149,12 +144,12 @@ export default function Pricing() {
               ) : (
                 <Button
                   onClick={() =>
-                    toast({ title: "Segera hadir! 🚀", description: p.toast })
+                    toast({ title: "Segera hadir", description: p.toast })
                   }
-                  className={`mt-7 rounded-full py-3.5 text-sm font-bold ${
+                  className={`mt-7 rounded-md py-3.5 text-sm font-bold ${
                     p.highlight
-                      ? "bg-white text-rose-600 hover:bg-rose-50"
-                      : "bg-rose-500 text-white hover:bg-rose-600"
+                      ? "bg-white text-[#211d1a] hover:bg-white/90"
+                      : "bg-foreground text-background hover:bg-foreground/85"
                   }`}
                 >
                   {p.cta}
@@ -166,7 +161,7 @@ export default function Pricing() {
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Gratis tidak akan pernah berbayar untuk confess. Kado premium sekali
-          bayar — aktif selamanya. Pembayaran via QRIS & e-wallet (sedang
+          bayar — aktif selamanya. Pembayaran via QRIS &amp; e-wallet (sedang
           disiapkan).
         </p>
       </div>
