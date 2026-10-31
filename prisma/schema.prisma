@@ -17,6 +17,7 @@ model Confession {
   theme       String    @default("rose")
   response    String?
   views       Int       @default(0)
+  reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
   createdAt   DateTime  @default(now())
   openedAt    DateTime?
   respondedAt DateTime?
@@ -25,17 +26,18 @@ model Confession {
 // Open When Letters: satu set berisi beberapa surat,
 // tiap surat terbuka dengan jeda mingguan sejak penerima mulai.
 model LetterSet {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  senderKey String    @unique
-  fromName  String    @default("")
-  toName    String
-  theme     String    @default("rose")
-  views     Int       @default(0)
-  createdAt DateTime  @default(now())
-  openedAt  DateTime? // pertama kali link dibuka (mampir)
-  startedAt DateTime? // penerima menekan "mulai" → jam sandiwaranya berdetak
-  letters   Letter[]
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  senderKey   String    @unique
+  fromName    String    @default("")
+  toName      String
+  theme       String    @default("rose")
+  views       Int       @default(0)
+  reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
+  createdAt   DateTime  @default(now())
+  openedAt    DateTime? // pertama kali link dibuka (mampir)
+  startedAt   DateTime? // penerima menekan "mulai" → jam sandiwaranya berdetak
+  letters     Letter[]
 }
 
 model Letter {

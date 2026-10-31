@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
+import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 
 const confessSchema = z.object({
   fromName: z.string().trim().max(40).optional().default(""),
@@ -35,6 +37,15 @@ function makeSlug(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // anti-spam: maks 5 confess per 15 menit per IP
+    const rl = rateLimit(req, "confess-create", 5, 15 * 60 * 1000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Sabar ya — kamu udah bikin banyak confess. Coba lagi nanti 😅" },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+      );
+    }
+
     const body = await req.json();
     const parsed = confessSchema.safeParse(body);
     if (!parsed.success) {
@@ -44,6 +55,14 @@ export async function POST(req: NextRequest) {
       );
     }
     const { fromName, toName, message, theme } = parsed.data;
+
+    // moderasi ringan sebelum masuk DB
+    for (const field of [fromName, toName, message]) {
+      const hit = findProhibited(field);
+      if (hit) {
+        return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
+      }
+    }
 
     let slug = makeSlug();
     // pastikan unik

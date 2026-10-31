@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { makeSlug, makeToken } from "@/lib/token";
+import { rateLimit } from "@/lib/rate-limit";
+import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 
 const letterSchema = z.object({
   title: z.string().trim().min(2, "Judul surat minimal 2 karakter").max(80),
@@ -23,6 +25,15 @@ const THEMES = new Set(["rose", "sunset", "midnight"]);
 
 export async function POST(req: NextRequest) {
   try {
+    // anti-spam: maks 5 set surat per 15 menit per IP
+    const rl = rateLimit(req, "letters-create", 5, 15 * 60 * 1000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Sabar ya — kamu udah bikin banyak set surat. Coba lagi nanti 😅" },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+      );
+    }
+
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
@@ -32,6 +43,22 @@ export async function POST(req: NextRequest) {
       );
     }
     const { fromName, toName, theme, letters } = parsed.data;
+
+    // moderasi ringan: nama + semua judul & isi surat
+    for (const field of [fromName, toName]) {
+      if (findProhibited(field)) {
+        return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
+      }
+    }
+    for (let i = 0; i < letters.length; i++) {
+      const hit = findProhibited(`${letters[i].title} ${letters[i].body}`);
+      if (hit) {
+        return NextResponse.json(
+          { error: `Surat #${i + 1} ada kata yang nggak boleh dipakai. Tolong ulang pakai bahasa yang baik ya 🙏` },
+          { status: 400 }
+        );
+      }
+    }
 
     let slug = makeSlug();
     for (let i = 0; i < 5; i++) {

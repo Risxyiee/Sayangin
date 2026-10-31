@@ -196,6 +196,7 @@ export default function OpenWhenSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
   const [statusUrl, setStatusUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -240,6 +241,10 @@ export default function OpenWhenSection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat surat");
       setLink(`${window.location.origin}/?k=${data.slug}`);
+      // pratinjau tanpa mengubah statistik status pengirim
+      setPreviewUrl(
+        `${window.location.origin}/?k=${data.slug}&p=${data.senderKey}`
+      );
       setStatusUrl(`${window.location.origin}/?s=${data.senderKey}`);
       // simpan ke daftar pribadi (sama dgn confess) biar bisa dipantau lagi
       try {
@@ -520,7 +525,7 @@ export default function OpenWhenSection() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => window.open(link, "_blank")}
+                      onClick={() => window.open(previewUrl, "_blank")}
                       className="rounded-full border-rose-300 text-rose-700 hover:bg-rose-50"
                     >
                       <Eye className="mr-2 h-4 w-4" /> Pratinjau
@@ -547,6 +552,7 @@ export default function OpenWhenSection() {
                   <button
                     onClick={() => {
                       setLink("");
+                      setPreviewUrl("");
                       setStatusUrl("");
                     }}
                     className="text-xs font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-600"

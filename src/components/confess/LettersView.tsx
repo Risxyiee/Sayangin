@@ -33,10 +33,11 @@ type LetterSetData = {
   theme: string;
   startedAt: string | null;
   views: number;
+  preview?: boolean;
   letters: LetterCard[];
 };
 
-type Stage = "loading" | "error" | "intro" | "grid" | "reading";
+type Stage = "loading" | "error" | "hidden" | "intro" | "grid" | "reading";
 
 /* PRNG deterministik (pola sama dgn ConfessionView — hindari hydration mismatch) */
 function rnd(i: number, salt: number): number {
@@ -169,9 +170,18 @@ function EnvelopeCard({
 }
 
 /* ---------- pengalaman fullscreen surat mingguan ---------- */
-export default function LettersView({ slug }: { slug: string }) {
+export default function LettersView({
+  slug,
+  previewKey,
+}: {
+  slug: string;
+  /** senderKey dari URL (?p=) — mode pratinjau tanpa mengubah statistik */
+  previewKey?: string;
+}) {
   const [data, setData] = useState<LetterSetData | null>(null);
   const [stage, setStage] = useState<Stage>("loading");
+  const [isPreview, setIsPreview] = useState(false);
+  const [reportState, setReportState] = useState<"idle" | "done">("idle");
   const [starting, setStarting] = useState(false);
   const [shakeId, setShakeId] = useState<string | null>(null);
   const [reading, setReading] = useState<{ title: string; body: string; first: boolean } | null>(null);
@@ -179,20 +189,24 @@ export default function LettersView({ slug }: { slug: string }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/letters/${slug}`)
+    fetch(`/api/letters/${slug}${previewKey ? `?p=${previewKey}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not found");
         const d: LetterSetData = await r.json();
-        if (alive) {
-          setData(d);
-          setStage(d.startedAt ? "grid" : "intro");
+        if (!alive) return;
+        if (d.hidden) {
+          setStage("hidden");
+          return;
         }
+        setIsPreview(!!d.preview);
+        setData(d);
+        setStage(d.startedAt ? "grid" : "intro");
       })
       .catch(() => alive && setStage("error"));
     return () => {
       alive = false;
     };
-  }, [slug]);
+  }, [slug, previewKey]);
 
   const theme = CONFESS_THEMES[data?.theme ?? "rose"] ?? CONFESS_THEMES.rose;
   const senderName = data?.fromName?.trim() || "Seseorang yang sayang kamu";
@@ -241,6 +255,20 @@ export default function LettersView({ slug }: { slug: string }) {
     }
   };
 
+  const sendReport = async () => {
+    if (reportState === "done") return;
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+    } catch {
+      /* tetap tandai terkirim di UI — server yang hitung */
+    }
+    setReportState("done");
+  };
+
   const openLetter = async (letter: LetterCard) => {
     if (!data) return;
     if (!letter.unlocked) {
@@ -282,6 +310,24 @@ export default function LettersView({ slug }: { slug: string }) {
     <div className={`fixed inset-0 z-[100] overflow-y-auto bg-gradient-to-b ${theme.bg}`}>
       <FallingPieces active={stage !== "error" && stage !== "loading"} kind="hearts" />
 
+      {/* banner mode pratinjau (buka lewat ?p=senderKey) */}
+      {isPreview && (
+        <div className="fixed bottom-4 left-1/2 z-[110] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/90 px-4 py-2.5 text-xs text-amber-100 shadow-xl backdrop-blur">
+            <span aria-hidden>👀</span>
+            <span className="flex-1">
+              Pratinjau — hitungan &amp; status <b>gak tercatat</b>.
+            </span>
+            <a
+              href={`/?s=${previewKey}`}
+              className="shrink-0 font-bold text-amber-300 underline underline-offset-2"
+            >
+              ke pantauan →
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="relative z-50 mx-auto flex min-h-full w-full max-w-md flex-col items-center px-4 py-12 text-center">
         {/* ------ LOADING ------ */}
         {stage === "loading" && (
@@ -305,6 +351,18 @@ export default function LettersView({ slug }: { slug: string }) {
             >
               Ke Sayang.in
             </Button>
+          </div>
+        )}
+
+        {/* ------ KONTEN DILAPORKAN ------ */}
+        {stage === "hidden" && (
+          <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
+            <div className="text-5xl">🕵️</div>
+            <h2 className="mt-4 text-xl font-bold">Suratnya lagi ditinjau</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/70">
+              Konten ini dilaporkan beberapa kali dan sedang diperiksa tim
+              kami. Maaf ya 🙏
+            </p>
           </div>
         )}
 
@@ -440,6 +498,22 @@ export default function LettersView({ slug }: { slug: string }) {
               </a>{" "}
               — mau bikin buat orang spesialmu?
             </p>
+            {!isPreview && (
+              <div className="mt-2 text-[11px] text-white/35">
+                {reportState === "done" ? (
+                  <span className="text-emerald-300/70">
+                    Laporan terkirim — terima kasih 🙏
+                  </span>
+                ) : (
+                  <button
+                    onClick={sendReport}
+                    className="underline decoration-white/30 underline-offset-2 transition hover:text-white/60"
+                  >
+                    ada yang salah? lapor konten ini
+                  </button>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 

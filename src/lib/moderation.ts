@@ -1,75 +1,106 @@
-/* ============ Moderasi konten ringan (server-side) ============
- * Tujuan: cegah bullying / ujaran kebencian / spam lewat kado anonim.
- * Bukan AI — wordlist + normalisasi agresif (leetspeak, spasi, simbol).
- * Pelajaran dari NGL: filter ini wajib sebelum produk viral. */
+/**
+ * Moderasi ringan buat konten UGC (confess & surat).
+ *
+ * Filosofi: blokir kata keras (profanity, seksual eksplisit, SARA, ancaman)
+ * sebelum masuk DB. Bukan pengganti review manusia — kombinasi dgn tombol lapor.
+ *
+ * Strategi matching biar gak gampang di-bypass tapi minim false positive:
+ * 1. Normalisasi: lowercase, leet speak (4→a, 3→e, 0→o, 1→i, 5→s),
+ *    dan huruf berulang 3+ kali diringkas (anjiiiir → anjir).
+ * 2. Kata tunggal: cocokkan persis; kalau panjang >= 6 boleh cek "mengandung"
+ *    (nangkep "ngentotan" dkk). Kata pendek harus persis — biar "banjir"
+ *    gak kena "anjir".
+ * 3. Frasa (mis. "bunuh diri"): cek di teks utuh yang sudah diratakan
+ *    (spasi & simbol dibuang).
+ */
 
-// kata dasar yang diblokir keras (seksual eksplisit, SARA, kekerasan, narkoba)
-const HARD_BAN = [
-  // seksual eksplisit (ID+EN)
-  "ngentot", "ngentod", "entot", "kontol", "memek", "memekmu", "pepek", "peler",
-  "titit", "titid", "itil", "toket", "tetek", "gigolo", "bokep", "ngewe", "ewean",
-  "colmek", "coli", "masturbasi", "jilat", "blowjob", "cium pantat", "telanjang",
-  "fuck", "fucking", "dick", "cock", "pussy", "cunt", "bitch", "whore", "slut",
-  "nude", "nudes", "porn", "porno", "horny", "sex", "seks", "rape", "perkosa", "pemerkosa",
-  // SARA & hinaan berat
-  "anjing lo", "bangsat", "bajingan", "tolol lo", "idiot", "imbecil", "retard",
-  "kampret", "pelacur", "lonte", "puki", "pukimak",
-  "penis", "vagina", "gay lo", "lesby lo", "sundal", "haramjada", "haram jadah",
-  // kekerasan / ancaman
-  "bunuh lo", "gawat nyawa", "dibunuh lo", "bakar rumah lo", "ajak bunuh diri",
-  "pergi mati", "dasar mati", "mati aja", "mati sana", "mampus lo", "bias mati",
-  "kill you", "kill yourself", "kys", "i hate you so much",
-  // narkoba / ilegal
-  "jual ganja", "beli ganja", "sabu", "obat bius", "obat tidur kuat",
-  "judi online", "situs slot", "slot gacor", "pinjol", "hack akun", "ambil alih akun",
-  // spam/phishing umum
-  "klik link hadiah", "hadiah gratis klik", "free saldo", "saldo gratis klik",
-];
+// Kata terlarang: profanity kasar, seksual eksplisit, SARA, ancaman kekerasan.
+// Daftar sengaja moderat — perluasan bisa mengikuti laporan pengguna.
+const PROHIBITED = [
+  // profanity kasar (id)
+  "anjing", "anjir", "ajg", "bangsat", "bego", "tolol", "goblok", "bodoh",
+  "jancok", "jancuk", "ngentot", "ngentod", "kontol", "memek", "pepek",
+  "peler", "titit", "bugil", "telanjang", "bokep", "porn", "porno",
+  "sange", "colmek", "pukimak", "celaka", "keparat", "brengsek",
+  "bajingan", "banci",
+  // ancaman / kekerasan
+  "bunuh diri", "gantung diri", "mutilasi", "perkosa", "pemerkosa",
+  "bacok", "tembak mati",
+  // narkoba
+  "narkoba", "ganja", "sabu", "ekstasi",
+  // english yang relevan
+  "fuck", "fucking", "bitch", "bastard", "asshole", "dumbass", "stupid",
+  "retard", "slut", "whore", "pussy", "pornhub",
+  "kill yourself", "kys", "rape", "nigger", "nigga",
+] as const;
 
-// tema sensitif — ditangani dengan pesan khusus yang peduli, bukan cuma ditolak
-const SELF_HARM = ["bunuh diri", "pengen mati", "mau mati", "self harm", "suicide", "end my life"];
-
-// pola link: hampir pasti spam/phishing di konteks kado anonim
-const URL_RE = /(https?:\/\/|www\.|bit\.ly|tinyurl|s\.id|cutt\.ly|t\.ly|\.com\/|\.link\/|\.xyz\/)/i;
-
-function normalize(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/3/g, "e")
-    .replace(/1/g, "i")
-    .replace(/0/g, "o")
-    .replace(/4/g, "a")
-    .replace(/5/g, "s")
-    .replace(/7/g, "t")
-    .replace(/@/g, "a")
-    .replace(/\$/g, "s")
-    .replace(/[!*_'".,;:~`^\\/+|-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export type ModerationVerdict = {
-  ok: boolean;
-  kind?: "selfharm" | "banned" | "link";
-  message?: string;
+const LEET: Record<string, string> = {
+  "4": "a", "@": "a", "3": "e", "0": "o", "1": "i", "!": "i",
+  "5": "s", "$": "s", "7": "t", "9": "g",
 };
 
-export const MSG_BANNED =
-  "Hmm, kata-katanya ketahanin filter kami 🙏 Ini tempat buat sayang-sayangan — coba tulis ulang pake kata-kata yang lebih baik ya.";
-export const MSG_LINK =
-  "Link nggak boleh dipasang di sini ya 🙏 Tulis pakai kata-kata sendiri aja.";
-export const MSG_SELFHARM =
-  "Kalau kamu atau orang yang kamu maksud lagi nggak baik-baik aja, tolong hubungi 119 ext. 8 (SEJIWA) ya 🤍 Sayang.in tempatnya bikin senyum, bukan nyakitin.";
-
-export function moderate(...texts: (string | null | undefined)[]): ModerationVerdict {
-  const joined = texts.filter(Boolean).join(" \n ");
-  const norm = normalize(joined);
-
-  if (URL_RE.test(joined)) return { ok: false, kind: "link", message: MSG_LINK };
-  if (SELF_HARM.some((w) => norm.includes(w)))
-    return { ok: false, kind: "selfharm", message: MSG_SELFHARM };
-  if (HARD_BAN.some((w) => norm.includes(normalize(w))))
-    return { ok: false, kind: "banned", message: MSG_BANNED };
-
-  return { ok: true };
+/** Ringkas huruf berulang 3+ jadi 1 (anjiiiir → anjir) */
+function collapseRuns(s: string): string {
+  let out = "";
+  let run = 0;
+  let prev = "";
+  for (const ch of s) {
+    if (ch === prev) {
+      run += 1;
+      if (run >= 3) continue; // skip huruf ke-3 dst
+    } else {
+      prev = ch;
+      run = 1;
+    }
+    out += ch;
+  }
+  return out;
 }
+
+function normalizeToken(raw: string): string {
+  let s = raw.toLowerCase();
+  s = s.replace(/[4@301!5$79]/g, (c) => LEET[c] ?? c);
+  s = s.replace(/[^a-z]/g, ""); // buang angka/simbol sisa
+  return collapseRuns(s);
+}
+
+/** Teks utuh → huruf saja (buat cek frasa) */
+function flatten(text: string): string {
+  return collapseRuns(text.toLowerCase().replace(/[^a-z]/g, ""));
+}
+
+/**
+ * Cek teks terhadap daftar terlarang.
+ * Return kata yang kena (untuk pesan error) atau null kalau bersih.
+ */
+export function findProhibited(text: string): string | null {
+  if (!text) return null;
+
+  const words = text
+    .toLowerCase()
+    .split(/[\s.,!?;:'"()[\]{}\\/|_\-+=*&#~`^<>]+/)
+    .filter(Boolean);
+
+  const tokens = words.map(normalizeToken).filter((t) => t.length >= 2);
+  const flat = flatten(text);
+
+  for (const banned of PROHIBITED) {
+    const b = collapseRuns(banned.toLowerCase()).replace(/[^a-z]/g, "");
+    if (!b) continue;
+
+    // frasa multi-kata → cocokkan di teks utuh yang diratakan
+    if (banned.includes(" ")) {
+      if (flat.includes(b)) return banned;
+      continue;
+    }
+
+    for (const tok of tokens) {
+      if (tok === b || (b.length >= 6 && tok.includes(b))) return banned;
+    }
+  }
+  return null;
+}
+
+/** Pesan error ramah buat ditampilkan ke user */
+export const MODERATION_ERROR =
+  "Ada kata yang nggak boleh dipakai di sini. Tolong ulang pakai bahasa yang baik ya 🙏";

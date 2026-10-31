@@ -6,8 +6,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Penerima: GET /api/letters/<slug>
 // - catat mampir pertama (openedAt) + views utk halaman status pengirim
 // - isi surat HANYA dikirim kalau suratnya sudah terbuka (anti intip via devtools)
+// - ?p=<senderKey> yang cocok = mode pratinjau pengirim (tanpa hitungan)
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -24,14 +25,30 @@ export async function GET(
       );
     }
 
+    const p = req.nextUrl.searchParams.get("p") ?? "";
+    const isPreview = p === set.senderKey;
+
+    // konten dilaporkan >=3x → disembunyikan sampai direview
+    if (set.reportCount >= 3) {
+      return NextResponse.json({
+        hidden: true,
+        toName: set.toName,
+        fromName: set.fromName,
+        theme: set.theme,
+        letters: [],
+      });
+    }
+
     const now = new Date();
-    await db.letterSet.update({
-      where: { slug },
-      data: {
-        views: { increment: 1 },
-        openedAt: set.openedAt ?? now,
-      },
-    });
+    if (!isPreview) {
+      await db.letterSet.update({
+        where: { slug },
+        data: {
+          views: { increment: 1 },
+          openedAt: set.openedAt ?? now,
+        },
+      });
+    }
 
     const startedAt = set.startedAt;
     const letters = set.letters.map((l) => {
@@ -59,7 +76,8 @@ export async function GET(
       toName: set.toName,
       theme: set.theme,
       startedAt: startedAt?.toISOString() ?? null,
-      views: set.views + 1,
+      views: set.views + (isPreview ? 0 : 1),
+      preview: isPreview,
       letters,
     });
   } catch (err) {

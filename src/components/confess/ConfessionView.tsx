@@ -36,7 +36,15 @@ export const CONFESS_THEMES: Record<
   },
 };
 
-type Stage = "loading" | "error" | "closed" | "typing" | "question" | "yes" | "later";
+type Stage =
+  | "loading"
+  | "error"
+  | "hidden"
+  | "closed"
+  | "typing"
+  | "question"
+  | "yes"
+  | "later";
 
 /* PRNG deterministik berbasis integer (identik di Node & browser — hindari hydration mismatch) */
 function rnd(i: number, salt: number): number {
@@ -158,42 +166,51 @@ function Envelope({ open, accent }: { open: boolean; accent: string }) {
 export default function ConfessionView({
   slug,
   preview,
+  previewKey,
   onClose,
 }: {
   slug?: string;
   preview?: ConfessionData;
+  /** senderKey dari URL (?p=) — mode pratinjau tanpa mengubah statistik */
+  previewKey?: string;
   onClose?: () => void;
 }) {
   const [data, setData] = useState<ConfessionData | null>(preview ?? null);
   const [stage, setStage] = useState<Stage>(preview ? "closed" : "loading");
+  const [isPreview, setIsPreview] = useState(false);
+  const [reportState, setReportState] = useState<"idle" | "done">("idle");
   const [typed, setTyped] = useState("");
   const [answered, setAnswered] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // mode pratinjau: data sudah diisi via useState awal
+    // mode pratinjau inline: data sudah diisi via useState awal
     if (preview || !slug) return;
     let alive = true;
-    fetch(`/api/confess/${slug}`)
+    fetch(`/api/confess/${slug}${previewKey ? `?p=${previewKey}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not found");
         const d = await r.json();
-        if (alive) {
-          setData({
-            fromName: d.fromName ?? "",
-            toName: d.toName,
-            message: d.message,
-            theme: d.theme ?? "rose",
-          });
-          setStage("closed");
+        if (!alive) return;
+        if (d.hidden) {
+          setStage("hidden");
+          return;
         }
+        setIsPreview(!!d.preview);
+        setData({
+          fromName: d.fromName ?? "",
+          toName: d.toName,
+          message: d.message,
+          theme: d.theme ?? "rose",
+        });
+        setStage("closed");
       })
       .catch(() => alive && setStage("error"));
     return () => {
       alive = false;
     };
-  }, [slug, preview]);
+  }, [slug, preview, previewKey]);
 
   // efek mesin ketik
   useEffect(() => {
@@ -217,7 +234,7 @@ export default function ConfessionView({
 
   const respond = async (answer: "yes" | "later") => {
     setAnswered(answer);
-    if (slug) {
+    if (slug && !isPreview) {
       try {
         await fetch(`/api/confess/${slug}/respond`, {
           method: "POST",
@@ -229,6 +246,20 @@ export default function ConfessionView({
       }
     }
     setStage(answer === "yes" ? "yes" : "later");
+  };
+
+  const sendReport = async () => {
+    if (!slug || reportState === "done") return;
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+    } catch {
+      /* tetap tandai terkirim di UI — server yang hitung */
+    }
+    setReportState("done");
   };
 
   const copyReply = async () => {
@@ -260,6 +291,24 @@ export default function ConfessionView({
         </button>
       )}
 
+      {/* banner mode pratinjau (buka lewat ?p=senderKey) */}
+      {isPreview && !onClose && (
+        <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/90 px-4 py-2.5 text-xs text-amber-100 shadow-xl backdrop-blur">
+            <span aria-hidden>👀</span>
+            <span className="flex-1">
+              Pratinjau — hitungan &amp; status <b>gak tercatat</b>.
+            </span>
+            <a
+              href={`/?s=${previewKey}`}
+              className="shrink-0 font-bold text-amber-300 underline underline-offset-2"
+            >
+              ke pantauan →
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="relative z-50 mx-auto flex min-h-full w-full max-w-md flex-col items-center justify-center px-5 py-16 text-center">
         {/* ------ LOADING ------ */}
         {stage === "loading" && (
@@ -283,6 +332,18 @@ export default function ConfessionView({
             >
               Ke Sayang.in
             </Button>
+          </div>
+        )}
+
+        {/* ------ KONTEN DILAPORKAN ------ */}
+        {stage === "hidden" && (
+          <div className="rounded-2xl bg-white/10 p-8 text-white backdrop-blur">
+            <div className="text-5xl">🕵️</div>
+            <h2 className="mt-4 text-xl font-bold">Suratnya lagi ditinjau</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/70">
+              Konten ini dilaporkan beberapa kali dan sedang diperiksa tim
+              kami. Maaf ya 🙏
+            </p>
           </div>
         )}
 
@@ -441,6 +502,22 @@ export default function ConfessionView({
               >
                 mau confess juga →
               </a>
+              {!isPreview && slug && (
+                <div className="mt-3">
+                  {reportState === "done" ? (
+                    <span className="text-emerald-300/70">
+                      Laporan terkirim — terima kasih 🙏
+                    </span>
+                  ) : (
+                    <button
+                      onClick={sendReport}
+                      className="underline decoration-white/30 underline-offset-2 transition hover:text-white/70"
+                    >
+                      ada yang salah? lapor konten ini
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
