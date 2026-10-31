@@ -237,7 +237,7 @@ function PhotoboxMain({ data, toName, senderName }: { data: PhotoboxData; toName
         className="mt-8 w-56 rounded-lg bg-white p-3 pb-14 shadow-2xl"
       >
         <p className="pb-2 text-center text-[10px] font-bold tracking-[0.25em] text-neutral-400">
-          SAYANG.IN ✦ {new Date().getFullYear()}
+          SAYANGIN ✦ {new Date().getFullYear()}
         </p>
         <div className="space-y-2">
           {data.photos.map((src, i) => (
@@ -340,7 +340,7 @@ function CouponsMain({
             >
               <div className="flex items-center justify-between bg-rose-500 px-3 py-1.5">
                 <span className="text-[9px] font-bold tracking-widest text-white">
-                  SAYANG.IN CO.
+                  SAYANGIN CO.
                 </span>
                 <span className="text-[9px] font-bold text-white">NO. {String(i + 1).padStart(2, "0")}</span>
               </div>
