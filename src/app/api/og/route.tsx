@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { GIFT_META, type GiftType } from "@/lib/gift-data";
 
 export const runtime = "nodejs";
@@ -25,14 +25,16 @@ export async function GET(req: Request) {
     sub = "Ditulis diam-diam, dikirim cukup lewat link. Kamu kapan?";
   } else if (k) {
     try {
-      const [confession, letterSet, gift] = await Promise.all([
-        db.confession.findUnique({ where: { slug: k }, select: { toName: true } }),
-        db.letterSet.findUnique({
-          where: { slug: k },
-          select: { toName: true, _count: { select: { letters: true } } },
-        }),
-        db.gift.findUnique({ where: { slug: k }, select: { toName: true, type: true } }),
-      ]);
+      const [confession, letterSet, gift] = await withDbRetry(() =>
+        Promise.all([
+          db.confession.findUnique({ where: { slug: k }, select: { toName: true } }),
+          db.letterSet.findUnique({
+            where: { slug: k },
+            select: { toName: true, _count: { select: { letters: true } } },
+          }),
+          db.gift.findUnique({ where: { slug: k }, select: { toName: true, type: true } }),
+        ])
+      );
       if (confession) {
         heading = `Ada surat rahasia buat ${confession.toName}`;
         sub = "Buka sekarang — siapa tahu dia juga punya perasaan yang sama";

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 
 export const runtime = "nodejs";
@@ -27,11 +27,9 @@ export async function GET() {
   }
 
   try {
-    const [confessions, letters, gifts] = await Promise.all([
-      db.confession.count(),
-      db.letterSet.count(),
-      db.gift.count(),
-    ]);
+    const [confessions, letters, gifts] = await withDbRetry(() =>
+      Promise.all([db.confession.count(), db.letterSet.count(), db.gift.count()])
+    );
     const data: StatsPayload = {
       confessions,
       letters,
