@@ -48,13 +48,14 @@ function isSupabaseHostWithoutSsl(url: string): boolean {
 
 function makeClient(): PrismaClient {
   const hd = hyperdriveConnectionString()
-  // Koneksi pertama lewat Hyperdrive kadang lambat (bootstrap + TLS ke origin).
-  // Timeout longgar + warm-up pool di bawah menjaga request pengguna agar
-  // tidak pernah membayar biaya koneksi dingin.
+  // statement_timeout di sisi server 8 dtk: query yang nangkring di koneksi
+  // mati (zombie) dipotong cepat, client-nya dibuang, pool buka koneksi baru.
   const poolCfg = {
     max: 5,
     connectionTimeoutMillis: 30_000,
     query_timeout: 15_000,
+    statement_timeout: 8_000,
+    idleTimeoutMillis: 10_000,
   } as const
 
   if (hd) {
