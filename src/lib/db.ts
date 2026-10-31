@@ -48,14 +48,20 @@ function isSupabaseHostWithoutSsl(url: string): boolean {
 
 function makeClient(): PrismaClient {
   const hd = hyperdriveConnectionString()
+  // Koneksi pertama lewat Hyperdrive bisa makan 10+ detik (bootstrap binding
+  // + handshake TLS ke origin). Timeout lama + warm-up pool di bawah menjaga
+  // request pengguna agar tidak pernah membayar biaya koneksi dingin.
+  const poolCfg = {
+    max: 5,
+    min: 1, // jaga satu koneksi hangat per isolate
+    connectionTimeoutMillis: 30_000,
+    query_timeout: 15_000,
+    idleTimeoutMillis: 300_000, // idle 10 dtk bawaan terlalu galak → sering cold start
+  } as const
+
   if (hd) {
     console.log('[db] memakai binding Hyperdrive (pooling + TLS via Cloudflare)')
-    const adapter = new PrismaPg({
-      connectionString: hd,
-      max: 5,
-      connectionTimeoutMillis: 10_000,
-      query_timeout: 10_000,
-    })
+    const adapter = new PrismaPg({ connectionString: hd, ...poolCfg })
     return new PrismaClient({ adapter })
   }
 
@@ -69,9 +75,7 @@ function makeClient(): PrismaClient {
   const forceSsl = !!connectionString && isSupabaseHostWithoutSsl(connectionString)
   const adapter = new PrismaPg({
     ...(connectionString ? { connectionString } : {}),
-    max: 5,
-    connectionTimeoutMillis: 10_000,
-    query_timeout: 10_000,
+    ...poolCfg,
     ...(forceSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   })
   return new PrismaClient({
@@ -85,5 +89,12 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 export const db = globalForPrisma.prisma ?? makeClient()
+
+// Warm-up: buka koneksi pertama di background begitu isolate nyala, jadi
+// query request pengguna nanti tinggal memakai koneksi yang sudah siap.
+// Kegagalan diabaikan — query request berikutnya akan mencoba lagi sendiri.
+if (!globalForPrisma.prisma) {
+  void db.$queryRaw`SELECT 1`.catch(() => {})
+}
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
