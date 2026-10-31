@@ -81,7 +81,7 @@ function makePool(connectionString: string | undefined): PgPool {
     connectionTimeoutMillis: 8_000, // gagal cepat, jangan biarkan user nunggu lama
     query_timeout: 4_000, // client-side: koneksi mati diam dipotong 4 dtk (respons sah < 2 dtk)
     statement_timeout: 8_000, // server-side: potong query nangkring
-    idleTimeoutMillis: 2_000, // koneksi nganggur cepat dibuang — data live: koneksi reuse yg idling beberapa detik jadi zombie, koneksi segar 100% sehat; biaya koneksi ulang cuma ±0,3-0,7 dtk
+    idleTimeoutMillis: 0, // JANGAN pakai ulang koneksi antar-request: data live — koneksi reuse = sumber zombie, koneksi segar 100% sehat. Biaya ±0,5 dtk/request; pooling berat tetap di Hyperdrive.
     maxUses: 250, // daur ulang koneksi sebelum menua/jadi zombie
     // catatan: keepAlive TIDAK dipakai — di runtime Workers socket yang menempel
     // (keepalive) berisiko menggleding limit koneksi simultan per isolate dan
