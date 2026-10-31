@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
   await run("raw-select-1", () => db.$queryRaw`SELECT 1 AS one`);
 
   await run("whoami", () =>
-    db.$queryRaw`SELECT current_user AS user, current_database() AS db`
+    db.$queryRaw`SELECT current_user::text AS user, current_database()::text AS db`
   );
 
   await run("count-confession", () => db.confession.count());
@@ -103,6 +103,55 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     { env: envInfo, steps, note: "endpoint debug sementara — hapus setelah diagnosis" },
+    { headers: { "Cache-Control": "no-store" } }
+  );
+}
+
+/**
+ * POST ?key=... — terapkan DDL migrasi yang belum jalan di produksi.
+ * DDL idempoten (aman diulang): ADD COLUMN IF NOT EXISTS + CREATE TABLE IF NOT EXISTS.
+ * Hapus endpoint ini bersama route-nya setelah skema sinkron.
+ */
+const MIGRATION_DDL: string[] = [
+  `ALTER TABLE "Confession" ADD COLUMN IF NOT EXISTS "isPublic" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "Confession" ADD COLUMN IF NOT EXISTS "unlockAt" TIMESTAMP(3)`,
+  `CREATE TABLE IF NOT EXISTS "ReactionCount" (
+      "id" TEXT NOT NULL,
+      "confessionId" TEXT NOT NULL,
+      "heart" INTEGER NOT NULL DEFAULT 0,
+      "laugh" INTEGER NOT NULL DEFAULT 0,
+      "cry" INTEGER NOT NULL DEFAULT 0,
+      "bloom" INTEGER NOT NULL DEFAULT 0,
+      CONSTRAINT "ReactionCount_pkey" PRIMARY KEY ("id")
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ReactionCount_confessionId_key" ON "ReactionCount"("confessionId")`,
+  `DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReactionCount_confessionId_fkey') THEN
+        ALTER TABLE "ReactionCount" ADD CONSTRAINT "ReactionCount_confessionId_fkey"
+          FOREIGN KEY ("confessionId") REFERENCES "Confession"("id")
+          ON DELETE CASCADE ON UPDATE CASCADE;
+      END IF;
+   END $$`,
+];
+
+export async function POST(req: NextRequest) {
+  const key = req.nextUrl.searchParams.get("key");
+  if (key !== DEBUG_KEY) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
+  const results: { ddl: string; ok: boolean; ms: number; error?: string }[] = [];
+  for (const ddl of MIGRATION_DDL) {
+    const t0 = Date.now();
+    try {
+      await db.$executeRawUnsafe(ddl);
+      results.push({ ddl: ddl.slice(0, 60), ok: true, ms: Date.now() - t0 });
+    } catch (e) {
+      results.push({ ddl: ddl.slice(0, 60), ok: false, ms: Date.now() - t0, error: describeError(e) });
+    }
+  }
+  return NextResponse.json(
+    { results },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
