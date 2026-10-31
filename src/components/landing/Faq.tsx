@@ -15,7 +15,7 @@ const FAQS = [
   },
   {
     q: "Gratis sampai kapan? Ada biaya tersembunyi?",
-    a: "Confess selalu gratis, selamanya — kamu juga dipersilakan membagikan reaksinya ke TikTok. Yang berbayar hanya kado premium, semuanya di bawah Rp50rb dan sekali bayar.",
+    a: "Confess selalu gratis, selamanya — kamu juga dipersilakan membagikan reaksinya ke TikTok. Saat ini semua kado premium juga gratis selama masa uji coba; nanti harganya di bawah Rp50rb, sekali bayar, tanpa langganan.",
   },
   {
     q: "Dia harus install aplikasi atau daftar akun?",

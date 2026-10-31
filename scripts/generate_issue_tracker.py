@@ -65,23 +65,23 @@ ISSUES = [
      "npm run db:migrate jalan; tidak ada lagi --accept-data-loss di package.json"],
 
     ["S-03", "P0", "0 — Fondasi", "Infrastruktur",
-     "Belum ada keputusan arsitektur deploy",
+     "Keputusan deploy: Cloudflare + Supabase ✅ (diputuskan 31 Okt)",
      "SQLite file + rate-limit in-memory tidak survivable di serverless/restart; app baru jalan di localhost",
-     "Pilih jalur (lihat sheet 'Keputusan Infra'): A) VPS/Railway + SQLite + Litestream, atau B) Vercel + Turso + Upstash; lalu deploy + pasang domain",
+     "PILIHAN USER: Cloudflare (Pages/Workers via @opennextjs/cloudflare, nodejs_compat) + Supabase Postgres. Migrasi: provider Prisma sqlite → postgresql, koneksi via pooler (port 6543), prisma migrate dari nol",
      1.0,
      "App hidup di domain produksi dengan DB persisten; satu deploy penuh sukses dari repo"],
 
     ["S-04", "P0", "0 — Fondasi", "Infrastruktur",
      "Rate limiter reset tiap restart",
      "src/lib/rate-limit.ts pakai Map per-proses — limit gugur saat restart/deploy, bisa di-bypass spam",
-     "Ikut jalur S-03: jalur A → pindah bucket ke tabel SQLite (atau tetap in-memory + dokumentasi karena 1 instance), jalur B → Upstash Redis",
+     "Di Cloudflare: Upstash Redis (paling gampang, API tinggal diganti) atau Durable Objects. Hindari KV — eventual consistency kurang cocok untuk counter",
      0.5,
-     "Restart server → counter limit tidak reset; ujung-ke-ujung: spam 6x confess kena 429"],
+     "Restart/redeploy → counter limit tidak reset; ujung-ke-ujung: spam 6x confess kena 429"],
 
     ["S-05", "P0", "0 — Fondasi", "Infrastruktur",
      "Nol backup, nol error monitoring",
      "DB berisi surat yang emosional tapi tidak ada backup; error produksi tidak terpantau (tidak ada Sentry)",
-     "Jalur A: Litestream → object storage. Jalur B: backup bawaan Turso. Pasang Sentry free tier (source maps on)",
+     "Supabase free tier tidak ada auto-backup → cron GitHub Actions pg_dump mingguan ke storage; Sentry free tier (source maps on)",
      0.5,
      "Restore drill 1x sukses dari backup; error test muncul di Sentry < 1 menit"],
 
@@ -127,10 +127,10 @@ ISSUES = [
      0.5,
      "Dashboard analytics menampilkan funnel dasar; event test muncul real-time"],
 
-    ["S-12", "P3", "3 — Monetisasi", "Revenue",
-     "Copy menyebut 'sekali bayar' tapi payment belum ada",
-     "Metadata OG menjanjikan kado berbayar; grep midtrans/xendit/stripe = 0 hasil di src/",
-     "Midtrans Snap (QRIS friendly): order per kado, webhook verifikasi tanda tangan, flag isPaid + paidAt di model Gift; kado terkunci sampai terbayar",
+    ["S-12", "P3 — ditunda", "Nanti — setelah fase percobaan", "Revenue",
+     "Payment QRIS ditunda sampai fase percobaan validasi ✅ (keputusan 31 Okt)",
+     "Fase sekarang = uji minat pasar; semua kado gratis. Copy sudah diganti jadi 'gratis selama masa uji' (Pricing, FAQ, Hero, metadata)",
+     "Kalau nanti sinyal bagus: Midtrans Snap (QRIS friendly) — order per kado, webhook verifikasi, flag isPaid + paidAt di model Gift; kado terkunci sampai terbayar",
      2.5,
      "Alur sandbox Midtrans: bayar → webhook → kado terbuka; signature invalid ditolak"],
 
@@ -232,8 +232,8 @@ LAST2 = len(HEAD2) + 1  # col G (7)
 STEPS = [
     [1, "1", "S-01", "Ganti Math.random() → crypto.getRandomValues() untuk slug & senderKey", "Quick win keamanan (15 menit)", "—"],
     [2, "1", "S-02", "Bersihkan script DB, aktifkan prisma migrate + folder migrations", "Migrasi skema tidak lagi merusak data", "—"],
-    [3, "1–2", "S-03", "AMBIL KEPUTUSAN deploy (sheet 3): setup hosting + DB persisten + domain", "GERBANG 1 — app hidup di produksi", "S-02"],
-    [4, "3", "S-04", "Rate limiter ikut jalur yang dipilih (Redis / SQLite-backed)", "Anti-spam survivable restart", "S-03"],
+    [3, "1–2", "S-03", "Setup Cloudflare (adapter OpenNext) + Supabase Postgres + domain — keputusan final 31 Okt", "GERBANG 1 — app hidup di produksi", "S-02"],
+    [4, "3", "S-04", "Rate limiter pindah ke Upstash Redis (atau Durable Objects)", "Anti-spam survivable restart", "S-03"],
     [5, "3", "S-05", "Pasang backup otomatis + Sentry; uji restore 1x", "Bencana = recoverable", "S-03"],
     ["", "", "", "MILESTONE 1 — AMAN DIPROMOSIKAN: boleh sebar link ke publik", "", ""],
     [6, "4–5", "S-06", "Bangun /admin: login password, daftar laporan, hide/unhide/hapus", "Moderasi manusia aktif", "S-03"],
@@ -304,25 +304,25 @@ print_fit(ws2, "4:4")
 # SHEET 3 — KEPUTUSAN INFRA
 # ============================================================
 ws3 = wb.create_sheet("Keputusan Infra")
-HEAD3 = ["Aspek", "Jalur A — VPS/Railway + SQLite + Litestream", "Jalur B — Vercel + Turso + Upstash"]
+HEAD3 = ["Aspek", "Keputusan", "Detail / langkah setup"]
 LAST3 = len(HEAD3) + 1  # col D (4)
 
-DECISIONS = [
-    ["Biaya bulanan", "≈ $5–10 (VPS murah) atau ~$5 Railway", "$0 di tier gratis (perkiraan; naik kalau traffic ramai)"],
-    ["Usaha migrasi", "Minimal — schema SQLite tetap, tinggal deploy + pasang Litestream", "Sedang — ganti provider Prisma ke libsql, ubah rate-limit ke Redis"],
-    ["Backup", "Litestream → object storage (S3/Cloudflare R2), wajib dipasang", "Bawaan Turso (point-in-time restore)"],
-    ["Rate limit", "In-memory cukup — 1 instance, restart jarang", "Wajib pindah ke Upstash Redis"],
-    ["Upront kerja", "± 1 hari ke produksi", "± 2–3 hari (dua layanan baru diintegrasikan)"],
-    ["Cocok jika", "Mau online minggu ini, hemat, skala komunitas", "Mau zero-ops dan siap tumbuh tanpa pikir server"],
-    ["Risiko utama", "Satu server = satu titik gagal; butuh disiplin backup", "Cold start + ketergantungan 2 vendor; integrasi butuh test"],
+CHOSEN = [
+    ["Hosting", "Cloudflare Pages/Workers", "Adapter @opennextjs/cloudflare + nodejs_compat di wrangler.toml; domain mengarah ke Cloudflare"],
+    ["Database", "Supabase Postgres", "schema.prisma: provider \"postgresql\"; DATABASE_URL = pooler Supabase (port 6543, transaction mode) — cocok untuk serverless"],
+    ["Migrasi DB", "prisma migrate dari nol", "Data SQLite lama (db/custom.db) hanya data uji — tidak dibawa; jalankan db:generate + migrate deploy"],
+    ["Rate limit", "Upstash Redis (atau Durable Objects)", "API rate-limit.ts tinggal diganti di dalamnya; hindari Cloudflare KV — eventual consistency tidak cocok untuk counter"],
+    ["Backup", "GitHub Actions cron → pg_dump mingguan", "Supabase free tier tidak ada auto-backup; dump → Cloudflare R2 / storage lain"],
+    ["Monitoring", "Sentry free tier", "Pasang setelah deploy (S-05); error produksi langsung terpantau"],
+    ["Biaya", "$0 — keduanya free tier", "Naik hanya kalau traffic ramai; tier gratis Supabase cukup untuk fase percobaan"],
 ]
 
-setup_sheet(ws3, title="Keputusan Infra — pilih SATU jalur sebelum gerbang 1 (S-03)", last_col=LAST3)
+setup_sheet(ws3, title="Keputusan Infra — DIPUTUSKAN 31 Okt 2026: Cloudflare + Supabase (S-03 ✅)", last_col=LAST3)
 for c, h in enumerate(HEAD3, 2):
     ws3.cell(row=4, column=c, value=h)
 style_header_row(ws3, 4, 2, LAST3)
 
-for i, row in enumerate(DECISIONS):
+for i, row in enumerate(CHOSEN):
     r = 5 + i
     for c, v in enumerate(row, 2):
         ws3.cell(row=r, column=c, value=v)
@@ -333,22 +333,52 @@ for i, row in enumerate(DECISIONS):
         ws3.cell(row=r, column=col).alignment = Alignment(
             horizontal="left", vertical="top", wrap_text=True)
 
-DEC_END = 4 + len(DECISIONS)
+CHOSEN_END = 4 + len(CHOSEN)
 
-# baris rekomendasi (gaya totals)
-REC = DEC_END + 1
-ws3.cell(row=REC, column=2, value="Rekomendasi")
-ws3.cell(row=REC, column=3, value="✔ PILIH JALUR A dulu — cepat ke produksi tanpa migrasi kode besar")
-ws3.cell(row=REC, column=4, value="Simpan sebagai target pindah saat traffic > ± 100 rb view/bulan")
-style_total_row(ws3, REC, 2, LAST3)
+# baris ringkasan (gaya totals)
+SUM3 = CHOSEN_END + 1
+ws3.cell(row=SUM3, column=2, value="Status")
+ws3.cell(row=SUM3, column=3, value="✔ FINAL — payment QRIS ditunda sampai fase percobaan validasi (S-12)")
+ws3.cell(row=SUM3, column=4, value="Lanjut ke S-04 (rate limit) & S-05 (backup) dengan stack ini")
+style_total_row(ws3, SUM3, 2, LAST3)
 for col in (2, 3, 4):
-    ws3.cell(row=REC, column=col).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    ws3.cell(row=SUM3, column=col).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-note3 = REC + 2
+# --- tabel referensi: jalur lain yang tidak dipilih ---
+REF_CAPTION = SUM3 + 2
+ws3.cell(row=REF_CAPTION, column=2,
+         value="Referensi — dua jalur lain yang tidak dipilih (kalau nanti butuh pindah):").font = font_subheader()
+ws3.row_dimensions[REF_CAPTION].height = 22
+
+REF_HEAD = SUM3 + 3
+REF_HEADS = ["Jalur", "Kekuatan", "Kenapa tidak sekarang"]
+for c, h in enumerate(REF_HEADS, 2):
+    ws3.cell(row=REF_HEAD, column=c, value=h)
+style_header_row(ws3, REF_HEAD, 2, LAST3)
+
+REFS = [
+    ["Jalur A — VPS/Railway + SQLite + Litestream",
+     "Paling cepat ke produksi; schema SQLite tidak berubah",
+     "Butuh kelola server sendiri; Cloudflare+Supabase sudah dipilih dan free tier"],
+    ["Jalur B — Vercel + Turso + Upstash",
+     "Zero-ops serverless; Turso SQLite-compatible (migrasi paling gampang)",
+     "User memilih Postgres Supabase + Cloudflare; struktur tetap tersimpan sebagai referensi"],
+]
+for i, row in enumerate(REFS):
+    r = REF_HEAD + 1 + i
+    for c, v in enumerate(row, 2):
+        ws3.cell(row=r, column=c, value=v)
+    style_data_row(ws3, r, 2, LAST3, i)
+    ws3.row_dimensions[r].height = None
+    ws3.cell(row=r, column=2).font = Font(name=FONT_NAME, size=11, bold=HEADER_BOLD, color=PRIMARY)
+    for col in (3, 4):
+        ws3.cell(row=r, column=col).alignment = Alignment(
+            horizontal="left", vertical="top", wrap_text=True)
+
+REF_END = REF_HEAD + len(REFS)
+note3 = REF_END + 2
 ws3.cell(row=note3, column=2,
-         value="Catatan teknis jalur B: di schema.prisma ganti provider ke \"libsql\" + DATABASE_URL ke Turso; rate-limit.ts pindah bucket ke Redis (API sama).").font = font_caption()
-ws3.cell(row=note3 + 1, column=2,
-         value="Jalur A wajib: litestream.yml (replicate ke R2) sebagai systemd service — backup diverifikasi lewat restore drill S-05.").font = font_caption()
+         value="Urutan kerja tetap: S-01 (crypto) → S-02 (migrate) → setup stack ini (S-03) → S-04 → S-05 = Milestone 1 'Aman dipromosikan'.").font = font_caption()
 
 W3 = {2: 16, 3: 40, 4: 40}
 for c, w in W3.items():

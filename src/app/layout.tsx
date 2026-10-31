@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Sayangin — surat untuk orang yang kamu sayang",
     description:
-      "Confess anonim gratis lewat link, plus kado digital sekali bayar. Ditulis kamu, dibuka dia.",
+      "Confess anonim gratis lewat link, plus kado digital — semua gratis selama masa uji coba. Ditulis kamu, dibuka dia.",
     siteName: "Sayangin",
     type: "website",
     images: [{ url: "/api/og", width: 1200, height: 630 }],
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Sayangin — surat untuk orang yang kamu sayang",
-    description: "Confess anonim gratis lewat link, plus kado digital sekali bayar.",
+    description: "Confess anonim gratis lewat link, plus kado digital — gratis selama masa uji coba.",
   },
 };
 

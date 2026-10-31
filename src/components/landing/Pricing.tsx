@@ -2,13 +2,12 @@
 
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 const PLANS = [
   {
     name: "Gratis",
     price: "Rp0",
+    oldPrice: "",
     note: "buat kamu yang mau coba dulu",
     highlight: false,
     features: [
@@ -23,8 +22,9 @@ const PLANS = [
   },
   {
     name: "Satu Kado",
-    price: "Rp19rb",
-    note: "sekali bayar, bukan langganan",
+    price: "Rp0",
+    oldPrice: "Rp19rb",
+    note: "gratis selama masa uji — nanti Rp19rb sekali bayar",
     highlight: false,
     features: [
       "Pilih 1 kado digital: buket, surat, photobox, kue, coupons, atau playlist",
@@ -32,13 +32,14 @@ const PLANS = [
       "Upload foto & musik asli",
       "Kartu QR siap cetak buat tempel di hadiah fisik",
     ],
-    cta: "Beli via QRIS — Segera",
-    toast: "Fitur bayar sedang disiapkan. Confess-nya aktif sekarang, gratis!",
+    cta: "Bikin Kado Gratis",
+    href: "#kado",
   },
   {
     name: "Paket Sayang",
-    price: "Rp39rb",
-    note: "semua kado sekaligus — tetap di bawah Rp50rb",
+    price: "Rp0",
+    oldPrice: "Rp39rb",
+    note: "semua kado sekaligus — gratis selama masa uji",
     highlight: true,
     features: [
       "Semua 6 kado digital",
@@ -47,14 +48,12 @@ const PLANS = [
       "Couple quiz: dia harus jawab bener buat buka hadiah",
       "Prioritas request fitur",
     ],
-    cta: "Beli via QRIS — Segera",
-    toast: "Fitur bayar sedang disiapkan. Confess-nya aktif sekarang, gratis!",
+    cta: "Bikin Semua Kado Gratis",
+    href: "#kado",
   },
 ];
 
 export default function Pricing() {
-  const { toast } = useToast();
-
   return (
     <section id="harga" className="relative border-t border-border py-20 sm:py-28">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
@@ -67,10 +66,12 @@ export default function Pricing() {
         >
           <p className="kicker">Harga</p>
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Di bawah <em className="text-primary">Rp50rb</em>, tanpa langganan.
+            Semua <em className="text-primary">gratis</em> selama masa uji coba.
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            Harga segelas boba untuk kado yang diingat bertahun-tahun.
+            Sayangin masih tahap uji — semua kado premium dibuka gratis.
+            Cukup pakai dan lihat yang paling disukai; nanti harganya tetap
+            di bawah Rp50rb.
           </p>
         </motion.div>
 
@@ -90,7 +91,7 @@ export default function Pricing() {
             >
               {p.highlight && (
                 <span className="absolute -top-3 left-7 whitespace-nowrap rounded-sm bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white">
-                  Paling dipilih
+                  Paling lengkap
                 </span>
               )}
               <h3
@@ -100,7 +101,7 @@ export default function Pricing() {
               >
                 {p.name}
               </h3>
-              <div className="mt-2 flex items-baseline gap-1">
+              <div className="mt-2 flex items-baseline gap-2">
                 <span
                   className={`font-display text-4xl font-bold tracking-tight ${
                     p.highlight ? "text-white" : "text-foreground"
@@ -108,6 +109,15 @@ export default function Pricing() {
                 >
                   {p.price}
                 </span>
+                {p.oldPrice && (
+                  <span
+                    className={`text-sm line-through ${
+                      p.highlight ? "text-white/40" : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {p.oldPrice}
+                  </span>
+                )}
               </div>
               <p
                 className={`mt-1 text-xs ${
@@ -130,39 +140,23 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-              {p.href ? (
-                <a
-                  href={p.href}
-                  className={`mt-7 rounded-md py-3.5 text-center text-sm font-bold transition-colors ${
-                    p.highlight
-                      ? "bg-white text-[#211d1a] hover:bg-white/90"
-                      : "bg-foreground text-background hover:bg-foreground/85"
-                  }`}
-                >
-                  {p.cta}
-                </a>
-              ) : (
-                <Button
-                  onClick={() =>
-                    toast({ title: "Segera hadir", description: p.toast })
-                  }
-                  className={`mt-7 rounded-md py-3.5 text-sm font-bold ${
-                    p.highlight
-                      ? "bg-white text-[#211d1a] hover:bg-white/90"
-                      : "bg-foreground text-background hover:bg-foreground/85"
-                  }`}
-                >
-                  {p.cta}
-                </Button>
-              )}
+              <a
+                href={p.href}
+                className={`mt-7 rounded-md py-3.5 text-center text-sm font-bold transition-colors ${
+                  p.highlight
+                    ? "bg-white text-[#211d1a] hover:bg-white/90"
+                    : "bg-foreground text-background hover:bg-foreground/85"
+                }`}
+              >
+                {p.cta}
+              </a>
             </motion.div>
           ))}
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Gratis tidak akan pernah berbayar untuk confess. Kado premium sekali
-          bayar — aktif selamanya. Pembayaran via QRIS &amp; e-wallet (sedang
-          disiapkan).
+          Selama masa uji coba, semua kado dibuka gratis. Nanti kado premium
+          sekali bayar di bawah Rp50rb — confess tetap gratis, selamanya.
         </p>
       </div>
     </section>
