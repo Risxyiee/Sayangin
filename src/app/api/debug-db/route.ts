@@ -83,6 +83,9 @@ export async function GET(req: NextRequest) {
   const envInfo: Record<string, unknown> = {};
   // hanya jalankan tes pooler (lewati langkah Hyperdrive yang suka hang)
   const only = req.nextUrl.searchParams.get("only");
+  // colo = lokasi data center Cloudflare yang melayani request ini —
+  // dipakai untuk memetakan apakah kegagalan koneksi mengelompok per lokasi
+  const colo = (req as unknown as { cf?: { colo?: string } }).cf?.colo ?? "?";
 
   // ── info koneksi (tanpa password) ──
   let rawDirectUrl: string | undefined;
@@ -179,7 +182,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { env: envInfo, steps, note: "endpoint debug sementara — hapus setelah diagnosis" },
+    { colo, env: envInfo, steps, note: "endpoint debug sementara — hapus setelah diagnosis" },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
