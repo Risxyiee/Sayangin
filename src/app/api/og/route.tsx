@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { db } from "@/lib/db";
+import { GIFT_META, type GiftType } from "@/lib/gift-data";
 
 export const runtime = "nodejs";
 
@@ -16,12 +17,13 @@ export async function GET(req: Request) {
 
   if (k) {
     try {
-      const [confession, letterSet] = await Promise.all([
+      const [confession, letterSet, gift] = await Promise.all([
         db.confession.findUnique({ where: { slug: k }, select: { toName: true } }),
         db.letterSet.findUnique({
           where: { slug: k },
           select: { toName: true, _count: { select: { letters: true } } },
         }),
+        db.gift.findUnique({ where: { slug: k }, select: { toName: true, type: true } }),
       ]);
       if (confession) {
         heading = `Ada surat rahasia buat ${confession.toName}`;
@@ -29,6 +31,9 @@ export async function GET(req: Request) {
       } else if (letterSet) {
         heading = `${letterSet._count.letters} surat kecil buat ${letterSet.toName}`;
         sub = "Satu surat bisa dibuka tiap minggu — pelan-pelan aja bacanya";
+      } else if (gift) {
+        heading = GIFT_META[gift.type as GiftType]?.ogTitle(gift.toName) ?? `Ada kado buat ${gift.toName}`;
+        sub = "Dari seseorang yang diam-diam perhatian — siapin hatinya";
       }
     } catch {
       // gagal query → pakai kartu generik

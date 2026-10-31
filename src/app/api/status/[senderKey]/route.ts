@@ -60,8 +60,44 @@ export async function GET(
           unlockDays: l.unlockDays,
           views: l.views,
           openedAt: l.openedAt,
+          reply: l.reply,
+          repliedAt: l.repliedAt,
         })),
       });
+    }
+
+    const gift = await db.gift.findUnique({ where: { senderKey } });
+
+    if (gift) {
+      const base = {
+        type: "gift" as const,
+        giftType: gift.type,
+        hidden: gift.reportCount >= 3,
+        slug: gift.slug,
+        fromName: gift.fromName,
+        toName: gift.toName,
+        theme: gift.theme,
+        views: gift.views,
+        createdAt: gift.createdAt,
+        openedAt: gift.openedAt,
+      };
+
+      // kupon: sertakan daftar + status pemakaian biar pengirim lihat progres
+      if (gift.type === "coupons") {
+        try {
+          const data = JSON.parse(gift.data) as { coupons?: { title: string; desc?: string }[] };
+          const progress = JSON.parse(gift.progress) as { redeemed?: Record<string, string> };
+          return NextResponse.json({
+            ...base,
+            coupons: data.coupons ?? [],
+            redeemed: progress.redeemed ?? {},
+          });
+        } catch {
+          return NextResponse.json({ ...base, coupons: [], redeemed: {} });
+        }
+      }
+
+      return NextResponse.json(base);
     }
 
     return NextResponse.json(

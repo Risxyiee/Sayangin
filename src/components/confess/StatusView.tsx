@@ -18,6 +18,7 @@ import {
   BookOpenCheck,
   ShieldAlert,
   Eye,
+  Ticket,
 } from "lucide-react";
 import { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 
@@ -27,10 +28,14 @@ type LetterStatus = {
   unlockDays: number;
   views: number;
   openedAt: string | null;
+  reply?: string | null;
+  repliedAt?: string | null;
 };
 
+type CouponRow = { title: string; desc?: string };
+
 type StatusData = {
-  type: "confess" | "letters";
+  type: "confess" | "letters" | "gift";
   slug: string;
   fromName: string;
   toName: string;
@@ -46,6 +51,10 @@ type StatusData = {
   startedAt?: string | null;
   total?: number;
   letters?: LetterStatus[];
+  // khusus gift
+  giftType?: string;
+  coupons?: CouponRow[];
+  redeemed?: Record<string, string>;
 };
 
 type SavedItem = {
@@ -53,9 +62,23 @@ type SavedItem = {
   senderKey: string;
   toName: string;
   theme: string;
-  type?: "confess" | "letters";
+  type?: string;
   createdAt: string;
 };
+
+const GIFT_ICONS: Record<string, string> = {
+  confess: "💌",
+  letters: "📚",
+  bouquet: "💐",
+  photobox: "📸",
+  cake: "🎂",
+  coupons: "🎫",
+};
+
+function savedIcon(type?: string): string {
+  if (!type) return "💌";
+  return GIFT_ICONS[type] ?? (type.startsWith("gift:") ? "🎁" : "💌");
+}
 
 const LS_KEY = "sayangin_confessions";
 
@@ -171,7 +194,7 @@ function SavedListBox({
                   }`}
                 >
                   <span className="font-semibold">
-                    {s.type === "letters" ? "📚 " : "💌 "}Buat {s.toName}
+                    {savedIcon(s.type)} Buat {s.toName}
                   </span>
                   <span className="text-white/40">{relTime(s.createdAt)}</span>
                 </a>
@@ -212,6 +235,7 @@ function LettersStatusCard({
     ? startedMs + nextLocked.unlockDays * DAY - now
     : 0;
   const nextInDays = Math.max(1, Math.ceil(nextIn / 86400000));
+  const replyCount = letters.filter((l) => l.reply).length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-3">
@@ -319,6 +343,9 @@ function LettersStatusCard({
               detail={
                 <>
                   Perjalanan dimulai {relTime(data.startedAt!)}.
+                  {replyCount > 0 && (
+                    <> Dia sudah bales {replyCount} surat — cek di bawah! 🥹</>
+                  )}
                   {nextLocked && unlockedCount - readCount <= 0
                     ? ` Surat berikutnya (“${nextLocked.title}”) terbuka dalam ${nextInDays} hari.`
                     : ""}
@@ -375,6 +402,16 @@ function LettersStatusCard({
                             ? `terbuka dalam ${daysLeft} hari lagi`
                             : "menunggu dia mulai"}
                     </p>
+                    {l.reply && (
+                      <div className="mt-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1.5 text-left">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                          ✉️ dibalas {l.repliedAt ? relTime(l.repliedAt) : ""}
+                        </p>
+                        <p className="mt-0.5 whitespace-pre-wrap text-[11px] leading-4 text-emerald-100/90">
+                          {l.reply}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -390,6 +427,173 @@ function LettersStatusCard({
         className="flex items-center justify-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 py-3.5 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20"
       >
         <Plus className="h-4 w-4" /> Bikin set surat lagi
+      </a>
+
+      <p className="pt-2 text-center text-[11px] leading-relaxed text-white/40">
+        Simpan link halaman ini ({typeof window !== "undefined" ? window.location.href.slice(0, 40) : ""}…)
+        — ini satu-satunya cara buat lihat status.
+      </p>
+    </motion.div>
+  );
+}
+
+/* kartu status khusus kado digital (buket/photobox/kue/kupon) */
+function GiftStatusCard({
+  data,
+  shareAgain,
+  saved,
+  senderKey,
+}: {
+  data: StatusData;
+  shareAgain: () => void;
+  saved: SavedItem[];
+  senderKey: string;
+}) {
+  const [listOpen, setListOpen] = useState(false);
+  const giftType = data.giftType ?? "bouquet";
+  const icon = savedIcon(giftType);
+  const coupons = data.coupons ?? [];
+  const redeemed = data.redeemed ?? {};
+  const usedCount = Object.keys(redeemed).length;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-3">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur">
+        <p className="font-hand text-2xl text-rose-200">
+          {icon} Buat {data.toName},
+        </p>
+        <p className="text-xs text-white/50">
+          {data.fromName?.trim() ? `dari ${data.fromName} • ` : "dari Seseorang 🤍 • "}
+          dikirim {relTime(data.createdAt)} • {data.views}x dibuka
+        </p>
+
+        <div className="mt-5 space-y-3">
+          {/* 0. kadonya ditinjau tim (dilaporkan >=3x) */}
+          {data.hidden && (
+            <Step
+              icon={<ShieldAlert className="h-5 w-5" />}
+              title="Kadonya lagi ditinjau tim"
+              state="waiting"
+              detail={
+                <>
+                  Konten ini dilaporkan beberapa kali dan sementara disembunyikan
+                  dari penerima.{" "}
+                  <a
+                    href={`/?k=${data.slug}&p=${senderKey}`}
+                    className="font-semibold text-amber-300 underline decoration-amber-400/50 underline-offset-2"
+                  >
+                    lihat kadonya →
+                  </a>
+                </>
+              }
+            />
+          )}
+
+          {/* 1. terkirim */}
+          <Step
+            icon={<Check className="h-5 w-5" />}
+            title="Kado terkirim"
+            state="done"
+            detail={
+              <>
+                Link aktif selamanya.{" "}
+                <a
+                  href={`/?k=${data.slug}&p=${senderKey}`}
+                  className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                >
+                  pratinjau <Eye className="h-3 w-3" />
+                </a>{" "}
+                ·{" "}
+                <button
+                  onClick={shareAgain}
+                  className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
+                >
+                  kirim ulang <Share2 className="h-3 w-3" />
+                </button>
+              </>
+            }
+          />
+
+          {/* 2. dibuka */}
+          {data.openedAt ? (
+            <Step
+              icon={<MailOpen className="h-5 w-5" />}
+              title={`Udah dibuka! (${data.views}x)`}
+              state="done"
+              detail={`Pertama kali ${relTime(data.openedAt)}.`}
+            />
+          ) : (
+            <Step
+              icon={<Mail className="h-5 w-5" />}
+              title="Belum dibuka"
+              state="waiting"
+              detail="Link-nya belum dibuka. Kirim lagi pas dia lagi santai 😌"
+            />
+          )}
+
+          {/* 3. khusus kupon: progres pemakaian */}
+          {giftType === "coupons" && coupons.length > 0 && (
+            <>
+              <Step
+                icon={<Ticket className="h-5 w-5" />}
+                title={
+                  usedCount === coupons.length
+                    ? "Semua kuponnya udah dipakai! 🎉"
+                    : usedCount > 0
+                      ? `${usedCount} dari ${coupons.length} kupon udah dipakai`
+                      : "Belum ada kupon yang dipakai"
+                }
+                state={usedCount > 0 ? "highlight" : "soft"}
+                pulse={usedCount > 0 && usedCount < coupons.length}
+                detail="Dia bakal nunjukin kupon yang udah dicaput — siap-siap tepati ya 😉"
+              />
+              <div className="space-y-1.5 pt-1">
+                {coupons.map((c, i) => {
+                  const usedAt = redeemed[String(i)];
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-left"
+                    >
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                          usedAt
+                            ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                            : "border-white/15 bg-white/5 text-white/40"
+                        }`}
+                      >
+                        {usedAt ? <Check className="h-4 w-4" /> : <Ticket className="h-4 w-4" />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-xs font-semibold ${usedAt ? "text-white/60 line-through" : "text-white/90"}`}>
+                          {i + 1}. {c.title}
+                        </p>
+                        <p className="text-[11px] text-white/45">
+                          {usedAt
+                            ? `dipakai ${new Date(usedAt).toLocaleDateString("id-ID", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}`
+                            : "belum dipakai"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <SavedListBox saved={saved} senderKey={senderKey} listOpen={listOpen} setListOpen={setListOpen} />
+
+      <a
+        href="/#kado"
+        className="flex items-center justify-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 py-3.5 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20"
+      >
+        <Plus className="h-4 w-4" /> Bikin kado lagi
       </a>
 
       <p className="pt-2 text-center text-[11px] leading-relaxed text-white/40">
@@ -428,11 +632,11 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
     fetchStatus();
   }, [fetchStatus]);
 
-  // auto-refresh: confess nunggu jawaban (12s), letters pantau progres baca (60s)
+  // auto-refresh: confess nunggu jawaban (12s), letters/gift pantau progres (60s)
   useEffect(() => {
     if (!data) return;
     if (data.type === "confess" && data.response) return;
-    const t = setInterval(fetchStatus, data.type === "letters" ? 60000 : 12000);
+    const t = setInterval(fetchStatus, data.type === "confess" ? 12000 : 60000);
     return () => clearInterval(t);
   }, [data, fetchStatus]);
 
@@ -453,9 +657,13 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
         ? encodeURIComponent(
             `Aku bikinin surat-surat kecil buat kamu 💌 Satu boleh dibuka tiap minggu — pelan-pelan aja ya: ${link}`
           )
-        : encodeURIComponent(
-            `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
-          );
+        : data?.type === "gift"
+          ? encodeURIComponent(
+              `Aku ada kado spesial buat kamu 🎁 Buka ya: ${link}`
+            )
+          : encodeURIComponent(
+              `Pssst... ada surat rahasia buat kamu 💌 Buka di sini ya: ${link}`
+            );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
@@ -487,7 +695,9 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
         <h1 className="mt-8 text-2xl font-extrabold leading-tight text-white">
           {data?.type === "letters"
             ? "Pantau surat mingguanmu 👀"
-            : "Pantau confess kamu 👀"}
+            : data?.type === "gift"
+              ? "Pantau kado digitalmu 👀"
+              : "Pantau confess kamu 👀"}
         </h1>
         <p className="mt-1 text-sm text-white/60">
           Halaman ini update otomatis — biarkan tab-nya terbuka.
@@ -517,6 +727,9 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
         {/* STATUS CARD */}
         {!loading && !error && data && data.type === "letters" && (
           <LettersStatusCard data={data} shareAgain={shareAgain} saved={saved} senderKey={senderKey} />
+        )}
+        {!loading && !error && data && data.type === "gift" && (
+          <GiftStatusCard data={data} shareAgain={shareAgain} saved={saved} senderKey={senderKey} />
         )}
         {!loading && !error && data && data.type === "confess" && (
           <motion.div

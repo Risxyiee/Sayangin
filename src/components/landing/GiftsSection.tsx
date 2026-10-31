@@ -303,6 +303,7 @@ const GIFTS = [
     title: "Buket Digital",
     desc: "Buket bunga yang nggak pernah layu — bunganya mekar satu-satu pas dia buka. Buat anniversary, mumpuni, atau sekadar bikin dia senyum.",
     tag: "pengganti buket Rp150rb",
+    cta: { href: "#buket", label: "Racik buketnya — gratis ↓" },
   },
   {
     id: "openwhen",
@@ -320,6 +321,7 @@ const GIFTS = [
     title: "Photobox Digital",
     desc: "Strip foto gaya photobox mall, versi digital. Upload foto kalian, kasih caption, dia bisa simpan langsung ke galeri.",
     tag: "photobox Rp50rb → gratis ongkir",
+    cta: { href: "#photobox", label: "Pilih fotonya — gratis ↓" },
   },
   {
     id: "kue",
@@ -328,6 +330,7 @@ const GIFTS = [
     title: "Kue Tiup Lilin",
     desc: "Kue ulang tahun interaktif: dia tiup lilinnya (tap layar), asap keluar, konfeti muncul. Tetap kirim kue beneran kalau bisa!",
     tag: "kue tiba-tiba hilang? nggak akan",
+    cta: { href: "#kue", label: "Siapin kuenya — gratis ↓" },
   },
   {
     id: "coupons",
@@ -336,6 +339,7 @@ const GIFTS = [
     title: "Love Coupons",
     desc: "Buku kupon manual yang dulu kalian buat dari kertas HVS — sekarang versi rapi yang nggak bisa hilang & nggak bisa dipalsu.",
     tag: "kupon kertas → anti lecek",
+    cta: { href: "#kupon", label: "Bikin kuponnya — gratis ↓" },
   },
   {
     id: "playlist",
@@ -344,6 +348,7 @@ const GIFTS = [
     title: "Playlist Kita",
     desc: "Halaman lagu-lagunya kalian berdua, lengkap dengan piringan hitam berputar dan catatan kenangan di tiap lagu.",
     tag: "playlist Spotify → halaman spesial",
+    soon: true,
   },
 ];
 
@@ -403,6 +408,11 @@ export default function GiftsSection() {
                   >
                     {g.cta.label}
                   </a>
+                )}
+                {g.soon && (
+                  <span className="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-xs font-bold text-neutral-400">
+                    🚧 Segera hadir
+                  </span>
                 )}
               </div>
             </motion.article>

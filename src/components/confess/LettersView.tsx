@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Heart,
   Loader2,
@@ -23,6 +24,8 @@ export type LetterCard = {
   unlockAt: string | null;
   openedAt: string | null;
   views: number;
+  reply: string | null;
+  repliedAt: string | null;
   body: string | null;
 };
 
@@ -184,8 +187,12 @@ export default function LettersView({
   const [reportState, setReportState] = useState<"idle" | "done">("idle");
   const [starting, setStarting] = useState(false);
   const [shakeId, setShakeId] = useState<string | null>(null);
-  const [reading, setReading] = useState<{ title: string; body: string; first: boolean } | null>(null);
+  const [reading, setReading] = useState<{ id: string; title: string; body: string; first: boolean } | null>(null);
   const [typed, setTyped] = useState("");
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
+  const [replyError, setReplyError] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -276,10 +283,13 @@ export default function LettersView({
       setTimeout(() => setShakeId(null), 500);
       return;
     }
+    setReplyOpen(false);
+    setReplyText("");
+    setReplyError("");
     if (letter.openedAt && letter.body) {
       // baca ulang: pakai data lokal, jangan naikkan views
       setTyped(letter.body);
-      setReading({ title: letter.title, body: letter.body, first: false });
+      setReading({ id: letter.id, title: letter.title, body: letter.body, first: false });
       setStage("reading");
       return;
     }
@@ -298,11 +308,46 @@ export default function LettersView({
         ),
       });
       setTyped(d.body);
-      setReading({ title: d.title, body: d.body, first: true });
+      setReading({ id: letter.id, title: d.title, body: d.body, first: true });
       setStage("reading");
     } catch {
       setShakeId(letter.id);
       setTimeout(() => setShakeId(null), 500);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!reading || replyText.trim().length < 2) {
+      setReplyError("Tulis balasannya dulu ya (min. 2 karakter).");
+      return;
+    }
+    setReplySending(true);
+    setReplyError("");
+    try {
+      const res = await fetch(`/api/letters/${slug}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ letterId: reading.id, body: replyText.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Gagal mengirim balasan");
+      setData(
+        (prev) =>
+          prev && {
+            ...prev,
+            letters: prev.letters.map((l) =>
+              l.id === reading.id
+                ? { ...l, reply: d.reply, repliedAt: d.repliedAt }
+                : l
+            ),
+          }
+      );
+      setReplyOpen(false);
+      setReplyText("");
+    } catch (e) {
+      setReplyError(e instanceof Error ? e.message : "Gagal mengirim balasan. Coba lagi.");
+    } finally {
+      setReplySending(false);
     }
   };
 
@@ -553,6 +598,85 @@ export default function LettersView({
                 <p className="mt-6 text-right font-hand text-xl text-rose-500">
                   — {senderName}
                 </p>
+
+                {/* balasan penerima (loop dua arah) */}
+                {(() => {
+                  const current = data?.letters.find((l) => l.id === reading.id);
+                  if (!current) return null;
+                  if (current.reply) {
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-left"
+                      >
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
+                          ✉️ Balasanmu terkirim
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-emerald-900">
+                          {current.reply}
+                        </p>
+                      </motion.div>
+                    );
+                  }
+                  if (isPreview) {
+                    return (
+                      <p className="mt-4 text-center text-[11px] text-rose-400">
+                        penerima bisa bales tiap surat dari sini ✍️
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="mt-4">
+                      {!replyOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setReplyOpen(true)}
+                          className="w-full rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-100"
+                        >
+                          ✍️ Balas surat ini
+                        </button>
+                      ) : (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            maxLength={400}
+                            rows={3}
+                            placeholder="Tulis balasanmu… bakal dibaca pengirimnya di halaman pantauannya 🤍"
+                            className="resize-none border-rose-200 text-sm focus-visible:ring-rose-400"
+                          />
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] text-rose-400">{replyText.length}/400</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReplyOpen(false);
+                                  setReplyError("");
+                                }}
+                                className="rounded-full px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-50"
+                              >
+                                batal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={sendReply}
+                                disabled={replySending}
+                                className="rounded-full bg-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow transition hover:bg-rose-600 disabled:opacity-60"
+                              >
+                                {replySending ? "mengirim…" : "kirim balasan →"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {replyError && (
+                        <p className="mt-1.5 text-xs text-rose-500">{replyError}</p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <button
                 onClick={() => {

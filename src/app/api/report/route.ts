@@ -51,6 +51,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    const gift = await db.gift.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (gift) {
+      await db.gift.update({
+        where: { id: gift.id },
+        data: { reportCount: { increment: 1 } },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json(
       { error: "Kontennya nggak ketemu." },
       { status: 404 }

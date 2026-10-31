@@ -50,6 +50,26 @@ model Letter {
   unlockDays Int       @default(0) // 0 = langsung, 7 = minggu ke-1, dst.
   views      Int       @default(0)
   openedAt   DateTime?
+  reply      String?   // balasan penerima untuk surat ini
+  repliedAt  DateTime?
 
   @@index([setId])
+}
+
+// Kado digital 4 tipe: buket bunga, photobox, kue tiup lilin, love coupons.
+// Isi spesifik per tipe disimpan sebagai JSON string (SQLite tidak punya Json).
+model Gift {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  senderKey   String    @unique
+  type        String // bouquet | photobox | cake | coupons
+  fromName    String    @default("")
+  toName      String
+  theme       String    @default("rose")
+  data        String    @default("{}") // konten kado (JSON per tipe)
+  progress    String    @default("{}") // status pemakaian, mis. kupon terpakai
+  views       Int       @default(0)
+  reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
+  createdAt   DateTime  @default(now())
+  openedAt    DateTime?
 }

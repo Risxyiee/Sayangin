@@ -67,6 +67,8 @@ export async function GET(
         unlockAt: unlocked ? null : unlockAt?.toISOString() ?? null,
         openedAt: l.openedAt?.toISOString() ?? null,
         views: l.views,
+        reply: l.reply,
+        repliedAt: l.repliedAt?.toISOString() ?? null,
         body: unlocked ? l.body : null,
       };
     });
