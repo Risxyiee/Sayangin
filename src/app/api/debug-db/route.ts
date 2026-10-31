@@ -72,6 +72,22 @@ export async function GET(req: NextRequest) {
     db.$queryRaw`SELECT current_user::text AS user, current_database()::text AS db`
   );
 
+  // Buktikan (atau bantah) kehabisan slot koneksi di origin:
+  // max_connections=60 di Supabase free — kalau total mendekati max, semua
+  // koneksi baru akan hang sampai timeout. Ini persis gejala yang terlihat.
+  await run("pg-activity", () =>
+    db.$queryRaw`
+      SELECT
+        (SELECT setting::text FROM pg_settings WHERE name = 'max_connections') AS max_conn,
+        (SELECT setting::text FROM pg_settings WHERE name = 'supabase_pooler_client_max_connections') AS pooler_client_max,
+        count(*)::text AS total,
+        count(*) FILTER (WHERE state = 'active')::text AS active,
+        count(*) FILTER (WHERE state = 'idle')::text AS idle,
+        count(*) FILTER (WHERE state = 'idle in transaction')::text AS idle_in_txn,
+        count(*) FILTER (WHERE wait_event IS NOT NULL)::text AS waiting
+      FROM pg_stat_activity`
+  );
+
   await run("count-confession", () => db.confession.count());
 
   const slug = makeSlug();
