@@ -47,6 +47,8 @@ type StatusData = {
   // khusus confess
   response?: string | null;
   respondedAt?: string | null;
+  reply?: string | null;
+  repliedAt?: string | null;
   // khusus letters
   startedAt?: string | null;
   total?: number;
@@ -632,10 +634,10 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
     fetchStatus();
   }, [fetchStatus]);
 
-  // auto-refresh: confess nunggu jawaban (12s), letters/gift pantau progres (60s)
+  // auto-refresh: confess nunggu jawaban / balasan tertulis (12s), letters/gift pantau progres (60s)
   useEffect(() => {
     if (!data) return;
-    if (data.type === "confess" && data.response) return;
+    if (data.type === "confess" && data.response && data.reply) return;
     const t = setInterval(fetchStatus, data.type === "confess" ? 12000 : 60000);
     return () => clearInterval(t);
   }, [data, fetchStatus]);
@@ -861,6 +863,37 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                         : "Kadang butuh beberapa jam — atau beberapa keberanian."
                     }
                   />
+                )}
+
+                {/* 4. balasan tertulis dari penerima */}
+                {data.reply ? (
+                  <Step
+                    icon={<MessageCircle className="h-5 w-5" />}
+                    title="Ada balasan dari dia! 💌"
+                    state="highlight"
+                    pulse
+                    detail={
+                      <span>
+                        <span className="mt-1 block whitespace-pre-wrap rounded-xl bg-white/5 p-3 text-sm leading-relaxed text-white/85">
+                          {data.reply}
+                        </span>
+                        <span className="mt-1.5 block">
+                          dikirim {relTime(data.repliedAt ?? data.createdAt)} — ini
+                          tulisan tangannya langsung 🥹
+                        </span>
+                      </span>
+                    }
+                  />
+                ) : (
+                  data.response && (
+                    <Step
+                      icon={<MessageCircle className="h-5 w-5" />}
+                      title="Nunggu balasan tertulis..."
+                      state="soft"
+                      pulse
+                      detail="Dia udah jawab, tapi belum nulis balasan. Balasan bisa muncul kapan aja — cek lagi nanti 😉"
+                    />
+                  )
                 )}
               </div>
             </div>

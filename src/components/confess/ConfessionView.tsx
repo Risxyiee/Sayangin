@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Heart, Loader2, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Heart, Loader2, X } from "lucide-react";
 
 export type ConfessionData = {
   fromName: string;
@@ -181,7 +182,12 @@ export default function ConfessionView({
   const [reportState, setReportState] = useState<"idle" | "done">("idle");
   const [typed, setTyped] = useState("");
   const [answered, setAnswered] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // balasan tertulis penerima (loop dua arah)
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
+  const [replyError, setReplyError] = useState("");
+  const [sentReply, setSentReply] = useState<string | null>(null);
   const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -204,7 +210,14 @@ export default function ConfessionView({
           message: d.message,
           theme: d.theme ?? "rose",
         });
-        setStage("closed");
+        setSentReply(d.reply ?? null);
+        if (d.response) {
+          // sudah pernah jawab → langsung ke layar jawaban, jangan tanya ulang
+          setAnswered(d.response);
+          setStage(d.response === "yes" ? "yes" : "later");
+        } else {
+          setStage("closed");
+        }
       })
       .catch(() => alive && setStage("error"));
     return () => {
@@ -234,7 +247,7 @@ export default function ConfessionView({
 
   const respond = async (answer: "yes" | "later") => {
     setAnswered(answer);
-    if (slug && !isPreview) {
+    if (slug && !isPreview && !preview) {
       try {
         await fetch(`/api/confess/${slug}/respond`, {
           method: "POST",
@@ -246,6 +259,41 @@ export default function ConfessionView({
       }
     }
     setStage(answer === "yes" ? "yes" : "later");
+  };
+
+  const changeAnswer = () => {
+    // kembali ke pilihan (mis. "later" → "yes") — surat tampil utuh
+    setTyped(data?.message ?? "");
+    setAnswered(null);
+    setReplyOpen(false);
+    setReplyError("");
+    setStage("question");
+  };
+
+  const sendReply = async () => {
+    if (!slug || isPreview || preview) return;
+    if (replyText.trim().length < 2) {
+      setReplyError("Tulis balasannya dulu ya (min. 2 karakter).");
+      return;
+    }
+    setReplySending(true);
+    setReplyError("");
+    try {
+      const res = await fetch(`/api/confess/${slug}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: replyText.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Gagal mengirim balasan. Coba lagi.");
+      setSentReply(d.reply ?? null);
+      setReplyOpen(false);
+      setReplyText("");
+    } catch (e) {
+      setReplyError(e instanceof Error ? e.message : "Gagal mengirim balasan. Coba lagi.");
+    } finally {
+      setReplySending(false);
+    }
   };
 
   const sendReport = async () => {
@@ -260,18 +308,6 @@ export default function ConfessionView({
       /* tetap tandai terkirim di UI — server yang hitung */
     }
     setReportState("done");
-  };
-
-  const copyReply = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        "Iya, aku juga suka kamu. Kenapa baru ngomong sekarang? 😳💗"
-      );
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard bisa diblokir di beberapa browser */
-    }
   };
 
   return (
@@ -449,20 +485,6 @@ export default function ConfessionView({
             <p className="mt-4 text-sm text-white/60">
               Jangan ditunda — chat dia sekarang! 📱
             </p>
-            <Button
-              onClick={copyReply}
-              className="mt-6 rounded-full bg-white px-6 font-semibold text-rose-700 hover:bg-rose-50"
-            >
-              {copied ? (
-                <>
-                  <Check className="mr-2 h-4 w-4" /> Pesan balasan disalin!
-                </>
-              ) : (
-                <>
-                  <Copy className="mr-2 h-4 w-4" /> Salin pesan balasan
-                </>
-              )}
-            </Button>
           </motion.div>
         )}
 
@@ -485,6 +507,111 @@ export default function ConfessionView({
             <p className="mt-2 text-sm text-white/50">
               Kalau suatu hari kamu penasaran... link ini tetap ada. 😉
             </p>
+            {answered === "later" && (
+              <button
+                onClick={changeAnswer}
+                className="mt-5 text-xs text-white/50 underline decoration-white/30 underline-offset-2 transition hover:text-white/80"
+              >
+                ubah jawabanku
+              </button>
+            )}
+          </motion.div>
+        )}
+
+        {/* ------ BALASAN TERTULIS PENERIMA (loop dua arah) ------ */}
+        {data && (stage === "yes" || stage === "later") && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-8 w-full max-w-sm"
+          >
+            {sentReply ? (
+              <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-left backdrop-blur">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                  ✉️ Balasanmu terkirim
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-emerald-50">
+                  {sentReply}
+                </p>
+              </div>
+            ) : isPreview || preview ? (
+              <p className="text-center text-xs text-white/50">
+                penerima bisa nulis balasan buatmu dari sini ✍️
+              </p>
+            ) : (
+              <div>
+                {!replyOpen ? (
+                  <button
+                    onClick={() => setReplyOpen(true)}
+                    className="w-full rounded-full border border-white/20 bg-white/5 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/10"
+                  >
+                    ✍️ Tulis balasan buat dia
+                  </button>
+                ) : (
+                  <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur">
+                    <p className="text-sm font-semibold text-white/90">
+                      Balas suratnya — bakal dibaca di halaman pantauan pengirimnya 🤍
+                    </p>
+                    <Textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      maxLength={400}
+                      rows={3}
+                      placeholder="Tulis balasanmu di sini…"
+                      className="resize-none border-white/20 bg-white/10 text-sm text-white placeholder:text-white/40 focus-visible:ring-rose-400"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {(stage === "yes"
+                        ? [
+                            "Iya, aku juga suka kamu. Kenapa baru ngomong sekarang? 😳💗",
+                            "Seneng banget baca suratnya. Aku kira cuma aku 🥹",
+                          ]
+                        : [
+                            "Aku butuh waktu buat mikirnya, tapi makasih udah berani bilang 🥲",
+                            "Baca suratnya bikin senyum-senyum sendiri. Pelan-pelan ya 🤍",
+                          ]
+                      ).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setReplyText(t)}
+                          className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-left text-[11px] text-white/70 transition hover:bg-white/10 hover:text-white"
+                        >
+                          {t.length > 34 ? `${t.slice(0, 34)}…` : t}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-white/40">{replyText.length}/400</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyOpen(false);
+                            setReplyError("");
+                          }}
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/50 transition hover:bg-white/10"
+                        >
+                          batal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={sendReply}
+                          disabled={replySending}
+                          className="rounded-full bg-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow transition hover:bg-rose-600 disabled:opacity-60"
+                        >
+                          {replySending ? "mengirim…" : "kirim balasan →"}
+                        </button>
+                      </div>
+                    </div>
+                    {replyError && (
+                      <p className="text-xs text-rose-300">{replyError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 

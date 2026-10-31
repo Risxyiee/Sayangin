@@ -16,6 +16,9 @@ model Confession {
   message     String
   theme       String    @default("rose")
   response    String?
+  // balasan tertulis penerima (loop dua arah) — muncul di pantauan pengirim
+  reply       String?
+  repliedAt   DateTime?
   views       Int       @default(0)
   reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
   createdAt   DateTime  @default(now())

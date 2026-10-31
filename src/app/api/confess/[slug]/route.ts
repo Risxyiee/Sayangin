@@ -17,6 +17,7 @@ export async function GET(
         message: true,
         theme: true,
         response: true,
+        reply: true,
         views: true,
         reportCount: true,
         createdAt: true,

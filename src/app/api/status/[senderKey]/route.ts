@@ -19,6 +19,8 @@ export async function GET(
         toName: true,
         theme: true,
         response: true,
+        reply: true,
+        repliedAt: true,
         views: true,
         reportCount: true,
         createdAt: true,
