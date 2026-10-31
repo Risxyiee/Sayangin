@@ -36,6 +36,17 @@ function aiBinding(): AiBinding | undefined {
   }
 }
 
+/* Model vision menerima gambar sebagai data URI base64 (bukan ArrayBuffer). */
+function toDataUri(bytes: ArrayBuffer, mime: string): string {
+  const u8 = new Uint8Array(bytes);
+  let bin = "";
+  const CHUNK = 8192; // hindari stack overflow String.fromCharCode(...)
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    bin += String.fromCharCode(...u8.subarray(i, i + CHUNK));
+  }
+  return `data:${mime};base64,${btoa(bin)}`;
+}
+
 export async function POST(req: NextRequest) {
   // anti-spam: 10 gambar per 10 menit per IP (hemat kuota Neurons harian)
   const rl = rateLimit(req, "image-to-text", 10, 10 * 60 * 1000);
@@ -92,17 +103,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const bytes = await file.arrayBuffer();
-    const result = (await ai.run(MODEL, {
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image: bytes },
-          ],
-        },
-      ],
-    })) as { description?: string; response?: string } | string;
+    const messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: toDataUri(bytes, file.type) } },
+        ],
+      },
+    ];
+
+    const runVision = () =>
+      ai.run(MODEL, { messages, max_tokens: 512 }) as Promise<
+        { description?: string; response?: string } | string
+      >;
+
+    let result;
+    try {
+      result = await runVision();
+    } catch (firstErr) {
+      // Penyebab paling umum: Meta License model ini belum disetujui.
+      // Model card mewajibkan satu request awal { prompt: "agree" } —
+      // kirim sekali, lalu ulangi panggilan vision-nya.
+      console.warn(
+        "[image-to-text] run pertama gagal — kirim 'agree' Meta License lalu ulangi:",
+        describeError(firstErr)
+      );
+      try {
+        await ai.run(MODEL, { prompt: "agree" });
+      } catch {
+        /* persetujuan gagal — ulangan tetap dicoba, error aslinya yang menang */
+      }
+      result = await runVision();
+    }
 
     const description =
       typeof result === "string"
