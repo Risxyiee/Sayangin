@@ -60,8 +60,10 @@ export async function POST(
     // yang sudah buka surat tetap kena 403 "buka dulu" (insiden 2026-11-01).
     const nc = dbNonce();
     const setRows = await withDbRetry(() =>
-      db.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "LetterSet" WHERE "slug" = ${slug} /* nc-${nc} */`
+      db.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT "id" FROM "LetterSet" WHERE "slug" = $1 /* nc-${nc} */`,
+        slug
+      )
     );
     const set = setRows[0];
     if (!set) {
@@ -72,9 +74,11 @@ export async function POST(
     }
 
     const letterRows = await withDbRetry(() =>
-      db.$queryRaw<Array<{ id: string; openedAt: Date | null; reply: string | null }>>`
-        SELECT "id", "openedAt", "reply" FROM "Letter"
-        WHERE "id" = ${letterId} AND "setId" = ${set.id} /* nc-${nc} */`
+      db.$queryRawUnsafe<Array<{ id: string; openedAt: Date | null; reply: string | null }>>(
+        `SELECT "id", "openedAt", "reply" FROM "Letter" WHERE "id" = $1 AND "setId" = $2 /* nc-${nc} */`,
+        letterId,
+        set.id
+      )
     );
     const letter = letterRows[0];
     if (!letter) {

@@ -45,8 +45,10 @@ export async function POST(
     // kupon yang sudah terpakai bisa ditukar dua kali. Nonce → ke origin.
     const nc = dbNonce();
     const giftRows = await withDbRetry(() =>
-      db.$queryRaw<Array<{ id: string; type: string; data: string; progress: string }>>`
-        SELECT "id", "type", "data", "progress" FROM "Gift" WHERE "slug" = ${slug} /* nc-${nc} */`
+      db.$queryRawUnsafe<Array<{ id: string; type: string; data: string; progress: string }>>(
+        `SELECT "id", "type", "data", "progress" FROM "Gift" WHERE "slug" = $1 /* nc-${nc} */`,
+        slug
+      )
     );
     const gift = giftRows[0];
     if (!gift) {

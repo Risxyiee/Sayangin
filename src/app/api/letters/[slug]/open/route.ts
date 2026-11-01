@@ -32,9 +32,16 @@ export async function POST(
     // 2026-11-01: open 400 "belum dimulai" walau start sukses — cache
     // memegang startedAt=null sampai TTL ±60 dtk). Nonce → selalu ke origin.
     const nc = dbNonce();
+    // PENTING: pakai $queryRawUnsafe, BUKAN $queryRaw tagged-template —
+    // interpolasi ${} di dalam komentar komentar-tagged-template tetap
+    // diparameter-kan Prisma ($2 di dalam komentar → bind 2 parameter utk
+    // statement 1 parameter → error kilat). Nonce dirangkai di JS; nilainya
+    // hanya [a-z0-9-] hasil server, slug tetap lewat parameter $1.
     const setRows = await withDbRetry(() =>
-      db.$queryRaw<Array<{ id: string; startedAt: Date | null }>>`
-        SELECT "id", "startedAt" FROM "LetterSet" WHERE "slug" = ${slug} /* nc-${nc} */`
+      db.$queryRawUnsafe<Array<{ id: string; startedAt: Date | null }>>(
+        `SELECT "id", "startedAt" FROM "LetterSet" WHERE "slug" = $1 /* nc-${nc} */`,
+        slug
+      )
     );
     const set = setRows[0];
     if (!set) {
@@ -48,9 +55,12 @@ export async function POST(
     }
 
     const letterRows = await withDbRetry(() =>
-      db.$queryRaw<
+      db.$queryRawUnsafe<
         Array<{ id: string; title: string; body: string; unlockDays: number; openedAt: Date | null }>
-      >`SELECT "id", "title", "body", "unlockDays", "openedAt" FROM "Letter" WHERE "setId" = ${set.id} /* nc-${nc} */`
+      >(
+        `SELECT "id", "title", "body", "unlockDays", "openedAt" FROM "Letter" WHERE "setId" = $1 /* nc-${nc} */`,
+        set.id
+      )
     );
     const letter = letterRows.find((l) => l.id === letterId);
     if (!letter) {
