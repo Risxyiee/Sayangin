@@ -5,7 +5,8 @@
  *
  *   Fase 1 — The Gateway    : tantangan kunci buka sesuai kadoType
  *                             (fingerprint / tap / scratch / quiz / misteri;
- *                              bouquet → PremiumBouquet, buket tarik pita)
+ *                              bouquet → PremiumBouquet, buket tarik pita;
+ *                              openwhen → PremiumOpenWhen, amplop segel lilin)
  *   Fase 2 — The Immersion  : surat meluncur naik, isi pesan efek typewriter,
  *                             identitas pengirim cuma inisial bertopeng
  *   Fase 3 — The Dilemma    : dua tombol jawaban → PATCH /api/kado/[id]/status
@@ -22,6 +23,7 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "framer-motion"
 import confetti from "canvas-confetti"
 import PremiumBouquet from "./PremiumBouquet"
+import PremiumOpenWhen from "./PremiumOpenWhen"
 import {
   BrainCircuit,
   EyeOff,
@@ -167,9 +169,12 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
-  // kadoType bouquet: alur gateway+immersion digantikan PremiumBouquet (buket
-  // tetap terpasang sampai reveal) — dilema tampil di kartu terpisah di bawahnya
+  // kadoType bouquet & openwhen: alur gateway+immersion digantikan komponen
+  // premium masing-masing (tetap terpasang sampai reveal) — dilema tampil di
+  // kartu terpisah di bawahnya
   const isBouquet = kado.kadoType === "bouquet"
+  const isOpenWhen = kado.kadoType === "openwhen"
+  const immersive = isBouquet || isOpenWhen
 
   return (
     <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.12),transparent_55%)] px-4 py-8 text-zinc-100">
@@ -187,8 +192,24 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           />
         )}
 
+        {/* Open When premium — amplop segel lilin, terpasang sejak fase 1
+            sampai reveal; begitu surat selesai keluar (onOpenComplete) →
+            langsung fase 3 (dilemma), karena pesan sudah terbaca di surat.
+            title/prompt bisa dioverride lewat kadoData.title / kadoData.prompt. */}
+        {isOpenWhen && (
+          <PremiumOpenWhen
+            targetName={kado.targetName}
+            message={kado.message}
+            fomoInitials={kado.fomoInitials}
+            revealName={accepted ? kado.senderName ?? "Seseorang" : null}
+            title={dataStr(kado.kadoData, "title") ?? undefined}
+            prompt={dataStr(kado.kadoData, "prompt") ?? undefined}
+            onOpenComplete={() => setPhase(3)}
+          />
+        )}
+
         <AnimatePresence mode="wait">
-          {!isBouquet && phase === 1 && (
+          {!immersive && phase === 1 && (
             <motion.div
               key="gateway"
               initial={reduceMotion ? false : { opacity: 0, y: 24 }}
@@ -205,11 +226,12 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           )}
         </AnimatePresence>
 
-        {/* Fase 3 untuk buket — dilemma tampil di kartu terpisah di bawah buket
-            (isi pesan sudah ada di kartu ucapan buket, surat tak perlu lagi) */}
-        {isBouquet && phase >= 3 && (
+        {/* Fase 3 untuk kado premium (buket/openwhen) — dilemma tampil di kartu
+            terpisah di bawahnya (isi pesan sudah tampil di komponennya, surat
+            standar tak perlu lagi) */}
+        {immersive && phase >= 3 && (
           <motion.div
-            key="bouquet-dilemma"
+            key="premium-dilemma"
             initial={reduceMotion ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
@@ -218,7 +240,9 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-md">
               {phase === 3 && (
                 <p className="mb-4 text-center text-sm leading-relaxed text-zinc-300">
-                  Bunganya udah mekar… sekarang giliran lo. 🌷
+                  {isBouquet
+                    ? "Bunganya udah mekar… sekarang giliran lo. 🌷"
+                    : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
                 </p>
               )}
               {accepted && (
@@ -231,7 +255,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           </motion.div>
         )}
 
-        {!isBouquet && phase >= 2 && (
+        {!immersive && phase >= 2 && (
           <motion.div
             key="letter"
             initial={reduceMotion ? false : { opacity: 0, y: 50 }}

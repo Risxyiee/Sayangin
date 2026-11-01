@@ -31,6 +31,7 @@ import {
   Mail,
   MousePointerClick,
   ScanLine,
+  Stamp,
   UserRound,
   Wand2,
   type LucideIcon,
@@ -42,7 +43,7 @@ import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet"
+type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -64,6 +65,7 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "scratch", label: "Kartu Gosok", desc: "Gosok buat mengintip", icon: ScanLine },
   { value: "quiz", label: "Kuis", desc: "Jawab dulu, baru buka", icon: BrainCircuit },
   { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
+  { value: "openwhen", label: "Open When", desc: "Segel lilin surat kangen", icon: Stamp },
 ]
 
 /** Konfigurasi default per kadoType — quiz diisi sendiri oleh pembuat kado. */
@@ -73,6 +75,7 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   scratch: { coverText: "Gosok pelan-pelan ✨" },
   quiz: null,
   bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
+  openwhen: null, // interaksinya bawaan PremiumOpenWhen (judul & prompt default)
 }
 
 /** Kelas input bersama biar semua field seragam & elegan. */

@@ -55,6 +55,7 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   scratch: "Kartu Gosok",
   quiz: "Kuis",
   bouquet: "Buket Bunga",
+  openwhen: "Open When",
 }
 
 /** Teks alibi persis seperti spesifikasi — [LINK] diganti URL kado asli. */
