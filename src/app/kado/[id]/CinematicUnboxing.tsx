@@ -4,7 +4,8 @@
  * CinematicUnboxing — pengalaman membuka kado dalam 4 fase (client component).
  *
  *   Fase 1 — The Gateway    : tantangan kunci buka sesuai kadoType
- *                             (fingerprint / tap / scratch / quiz / misteri)
+ *                             (fingerprint / tap / scratch / quiz / misteri;
+ *                              bouquet → PremiumBouquet, buket tarik pita)
  *   Fase 2 — The Immersion  : surat meluncur naik, isi pesan efek typewriter,
  *                             identitas pengirim cuma inisial bertopeng
  *   Fase 3 — The Dilemma    : dua tombol jawaban → (simulasi) PATCH status
@@ -19,6 +20,7 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "framer-motion"
 import confetti from "canvas-confetti"
+import PremiumBouquet from "./PremiumBouquet"
 import {
   BrainCircuit,
   EyeOff,
@@ -141,12 +143,28 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
+  // kadoType bouquet: alur gateway+immersion digantikan PremiumBouquet (buket
+  // tetap terpasang sampai reveal) — dilema tampil di kartu terpisah di bawahnya
+  const isBouquet = kado.kadoType === "bouquet"
 
   return (
     <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.12),transparent_55%)] px-4 py-8 text-zinc-100">
       <div className="mx-auto w-full max-w-md">
+        {/* Buket premium — terpasang sejak fase 1 sampai reveal; begitu kartu
+            ucapan selesai turun (onOpenComplete) → langsung fase 3 (dilemma),
+            karena isi pesan sudah tampil di kartu buket. */}
+        {isBouquet && (
+          <PremiumBouquet
+            targetName={kado.targetName}
+            message={kado.message}
+            fomoInitials={kado.fomoInitials}
+            revealName={accepted ? kado.senderName ?? "Seseorang" : null}
+            onOpenComplete={() => setPhase(3)}
+          />
+        )}
+
         <AnimatePresence mode="wait">
-          {phase === 1 && (
+          {!isBouquet && phase === 1 && (
             <motion.div
               key="gateway"
               initial={reduceMotion ? false : { opacity: 0, y: 24 }}
@@ -163,7 +181,33 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           )}
         </AnimatePresence>
 
-        {phase >= 2 && (
+        {/* Fase 3 untuk buket — dilemma tampil di kartu terpisah di bawah buket
+            (isi pesan sudah ada di kartu ucapan buket, surat tak perlu lagi) */}
+        {isBouquet && phase >= 3 && (
+          <motion.div
+            key="bouquet-dilemma"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mt-5 will-change-transform"
+          >
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40 backdrop-blur-md">
+              {phase === 3 && (
+                <p className="mb-4 text-center text-sm leading-relaxed text-zinc-300">
+                  Bunganya udah mekar… sekarang giliran lo. 🌷
+                </p>
+              )}
+              {accepted && (
+                <p className="mb-3 text-center text-xs text-rose-200/80">
+                  💜 Kado ini resmi jadi kenangan.
+                </p>
+              )}
+              <DilemmaButtons submitting={submitting} onChoice={handleChoice} />
+            </div>
+          </motion.div>
+        )}
+
+        {!isBouquet && phase >= 2 && (
           <motion.div
             key="letter"
             initial={reduceMotion ? false : { opacity: 0, y: 50 }}
@@ -243,36 +287,9 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? undefined : { opacity: 0, y: 12 }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="mt-6 flex flex-col gap-2.5 will-change-transform"
+                    className="mt-6 will-change-transform"
                   >
-                    <button
-                      onClick={() => handleChoice("accepted")}
-                      disabled={submitting !== null}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 px-6 py-3.5 text-sm font-bold text-white shadow-[0_0_28px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_36px_-4px_rgba(244,63,94,0.75)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {submitting === "accepted" ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Mengirim…
-                        </>
-                      ) : (
-                        "Aku juga suka ✨"
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleChoice("rejected")}
-                      disabled={submitting !== null}
-                      className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {submitting === "rejected" ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Mengirim…
-                        </>
-                      ) : (
-                        "Maaf, kita temenan aja"
-                      )}
-                    </button>
+                    <DilemmaButtons submitting={submitting} onChoice={handleChoice} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -312,6 +329,51 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
         )}
       </AnimatePresence>
     </main>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fase 3 — tombol dilemma (dipakai surat standar & kartu buket)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DilemmaButtons({
+  submitting,
+  onChoice,
+}: {
+  submitting: Outcome | null
+  onChoice: (choice: Outcome) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <button
+        onClick={() => onChoice("accepted")}
+        disabled={submitting !== null}
+        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 px-6 py-3.5 text-sm font-bold text-white shadow-[0_0_28px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_36px_-4px_rgba(244,63,94,0.75)] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting === "accepted" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Mengirim…
+          </>
+        ) : (
+          "Aku juga suka ✨"
+        )}
+      </button>
+      <button
+        onClick={() => onChoice("rejected")}
+        disabled={submitting !== null}
+        className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting === "rejected" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Mengirim…
+          </>
+        ) : (
+          "Maaf, kita temenan aja"
+        )}
+      </button>
+    </div>
   )
 }
 

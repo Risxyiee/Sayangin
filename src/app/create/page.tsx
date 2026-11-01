@@ -25,6 +25,7 @@ import {
   Check,
   EyeOff,
   Fingerprint,
+  Flower2,
   Loader2,
   LockKeyhole,
   Mail,
@@ -41,7 +42,7 @@ import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "fingerprint" | "tap" | "scratch" | "quiz"
+type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -62,6 +63,7 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "tap", label: "Tap Layar", desc: "Ketuk berkali-kali", icon: MousePointerClick },
   { value: "scratch", label: "Kartu Gosok", desc: "Gosok buat mengintip", icon: ScanLine },
   { value: "quiz", label: "Kuis", desc: "Jawab dulu, baru buka", icon: BrainCircuit },
+  { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
 ]
 
 /** Konfigurasi default per kadoType — quiz diisi sendiri oleh pembuat kado. */
@@ -70,6 +72,7 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   tap: { taps: 5 },
   scratch: { coverText: "Gosok pelan-pelan ✨" },
   quiz: null,
+  bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
 }
 
 /** Kelas input bersama biar semua field seragam & elegan. */

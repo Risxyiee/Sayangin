@@ -54,6 +54,7 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   tap: "Tap Layar",
   scratch: "Kartu Gosok",
   quiz: "Kuis",
+  bouquet: "Buket Bunga",
 }
 
 /** Teks alibi persis seperti spesifikasi — [LINK] diganti URL kado asli. */
