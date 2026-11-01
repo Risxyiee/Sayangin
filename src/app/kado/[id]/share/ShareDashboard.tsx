@@ -23,6 +23,7 @@ import {
   Copy,
   Download,
   Drama,
+  Eye,
   EyeOff,
   Gift,
   Loader2,
@@ -59,6 +60,8 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   photobox: "Photobox",
   coupon: "Love Coupon",
   candle: "Candle Blow",
+  confess: "Confess",
+  timeline: "Timeline Kisah",
   playlist: "Playlist",
 }
 
@@ -238,6 +241,34 @@ export default function ShareDashboard(props: ShareDashboardProps) {
             )}
           </div>
         </header>
+
+        {/* Pratinjau pengirim — intip sebelum dikirim tanpa mengunci kado */}
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
+          className="mb-4 rounded-3xl border border-amber-300/25 bg-amber-400/[0.07] p-4 shadow-2xl shadow-black/40 backdrop-blur-md"
+        >
+          <Link
+            href={`/kado/${props.kadoId}?pratinjau=1`}
+            className="group flex items-center gap-3"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-400/15 text-amber-300">
+              <Eye className="h-4.5 w-4.5" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white group-hover:text-amber-200">
+                Lihat Pratinjau Kadonya 👁
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+                Intip persis seperti yang dia alami nanti — kado <b className="text-amber-200/90">nggak akan terkunci</b>, jawabanmu cuma simulasi.
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-amber-300 transition-transform group-hover:translate-x-0.5">
+              Buka →
+            </span>
+          </Link>
+        </motion.div>
 
         {/* 3 kartu opsi pengiriman */}
         <div className="space-y-4">

@@ -111,12 +111,23 @@ function ErrorCard() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface OpenPageProps {
-  // Next 15+: params adalah Promise — selalu di-await
+  // Next 15+: params & searchParams adalah Promise — selalu di-await
   params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function OpenKadoPage({ params }: OpenPageProps) {
+export default async function OpenKadoPage({ params, searchParams }: OpenPageProps) {
   const { id } = await params
+  const sp = await searchParams
+
+  /**
+   * Mode pratinjau (?pratinjau=1) — khusus si PENGIRIM yang mau intip kadonya
+   * sebelum dikirim. Tidak pernah mengubah status: pengirim tidak lagi takut
+   * "membakar" kadonya sendiri hanya karena buka linknya. Experience-nya sama
+   * persis seperti yang diterima penerima (termasuk dilemma), cuma jawabannya
+   * disimulasikan lokal — PATCH status tidak pernah dipanggil.
+   */
+  const previewMode = sp?.pratinjau === "1"
 
   // UUID salah format → tidak perlu ganggu database (kolom id bertipe uuid).
   if (!UUID_RE.test(id)) {
@@ -182,7 +193,9 @@ export default async function OpenKadoPage({ params }: OpenPageProps) {
   }
 
   // Kado cuma bisa dibuka sekali — sudah terbuka/terjawab → kenangan.
-  if (kado.status !== "pending") {
+  // PENGECUALIAN: mode pratinjau tetap boleh (tanpa mengubah status) supaya
+  // pengirim bisa mengintip kadonya kapan pun, sebelum maupun sesudah dibuka.
+  if (kado.status !== "pending" && !previewMode) {
     return (
       <Shell>
         <AlreadyOpenedCard />
@@ -192,6 +205,7 @@ export default async function OpenKadoPage({ params }: OpenPageProps) {
 
   return (
     <CinematicUnboxing
+      preview={previewMode}
       kado={{
         id: kado.id,
         targetName: kado.targetName,

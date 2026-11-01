@@ -31,6 +31,8 @@ import {
   Gift,
   Heart,
   History,
+  Images,
+  ImagePlus,
   Loader2,
   Mail,
   Stamp,
@@ -42,13 +44,14 @@ import {
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout"
 import { saveKadoHistoryEntry } from "@/lib/kado-history"
+import { compressImageFile, PHOTO_ACCEPT } from "@/lib/image-compress"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & konstanta
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "confess"
+type KadoType = "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "confess" | "timeline"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -64,7 +67,7 @@ interface KadoCreatePayload {
 /** Bentuk respons POST /api/kado. */
 type KadoApiResponse = { success?: boolean; data?: { id?: string }; error?: string }
 
-/** Enam pengalaman premium — HANYA ini (tanpa opsi bawaan lama, tanpa duplikat). */
+/** Enam + satu pengalaman premium — HANYA ini (tanpa opsi bawaan lama). */
 const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: LucideIcon }[] = [
   { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
   { value: "openwhen", label: "Open When", desc: "Segel lilin surat kangen", icon: Stamp },
@@ -72,16 +75,18 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "coupon", label: "Love Coupon", desc: "Sobek tiket buat klaim", icon: Ticket },
   { value: "candle", label: "Candle Blow", desc: "Tiup lilin lewat mic", icon: Flame },
   { value: "confess", label: "Confess", desc: "Tahan hati, buka pengakuan", icon: Heart },
+  { value: "timeline", label: "Timeline Kisah", desc: "Gulir kenangan, musik latar", icon: Images },
 ]
 
 /** Konfigurasi default per kadoType — interaksi lain bawaan komponen premiumnya. */
 const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null> = {
   bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
   openwhen: null, // interaksinya bawaan PremiumOpenWhen (judul & prompt default)
-  photobox: null, // foto teks vintage bawaan PremiumPhotobox (kadoData.imageUrl opsional)
+  photobox: null, // kadoData dibangun saat generate: { caption, photos: JSON.stringify([...]) }
   coupon: null, // kadoData dibangun saat generate: { coupons: JSON.stringify([...]) }
   candle: null, // kadoData dibangun saat generate: { occasion }
   confess: null, // interaksi bawaan PremiumConfess (tahan lambang hati)
+  timeline: null, // kadoData dibangun saat generate: { moments, music, endingType, endingText }
 }
 
 /** Baris kupon awal di Creator Studio — 5 klasic, bisa diedit/ditambah (maks 6). */
@@ -95,6 +100,10 @@ const DEFAULT_COUPON_ROWS: { title: string; desc: string }[] = [
 
 const COUPON_MAX = 6
 const COUPON_MIN = 3
+
+/** Photobox: batas foto per strip — ditampilkan jelas di form (min/maks). */
+const PHOTOBOX_MIN = 3
+const PHOTOBOX_MAX = 4
 
 /** Kelas input bersama biar semua field seragam & elegan. */
 const inputCls =
@@ -128,6 +137,11 @@ export default function CreatePage() {
   const [couponRows, setCouponRows] = useState(DEFAULT_COUPON_ROWS)
   /** Momen lilin (kadoType "candle") — mengubah narasi ritual Wish Keeper. */
   const [occasion, setOccasion] = useState<"ultah" | "anniversary" | "graduasi">("ultah")
+  /** Editor Photobox: foto terkompresi (data URL) + caption tulisan tangan. */
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
+  const [photoboxCaption, setPhotoboxCaption] = useState("")
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
 
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -139,7 +153,9 @@ export default function CreatePage() {
   /** Kupon butuh minimal 3 judul terisi sebelum boleh lanjut. */
   const couponValid =
     kadoType !== "coupon" || couponRows.filter((r) => r.title.trim()).length >= COUPON_MIN
-  const canPreview = kadoType !== null && couponValid
+  /** Photobox butuh minimal 3 foto terunggah. */
+  const photoboxValid = kadoType !== "photobox" || photoUrls.length >= PHOTOBOX_MIN
+  const canPreview = kadoType !== null && couponValid && photoboxValid
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
@@ -153,6 +169,30 @@ export default function CreatePage() {
     if (type === "coupon" && !couponRows.some((r) => r.title.trim())) {
       setCouponRows(DEFAULT_COUPON_ROWS)
     }
+  }
+
+  /**
+   * Unggah + kompres foto Photobox di klien — tiap berkas dijadikan data URL
+   * JPEG ≤ 200 ribu karakter (di bawah plafon API). Gagal satu berkas tidak
+   * membatalkan yang lain; pesan errornya ditampilkan di bawah uploader.
+   */
+  async function handleAddPhotos(files: FileList | null) {
+    if (!files || files.length === 0 || photoBusy) return
+    setPhotoBusy(true)
+    setPhotoError(null)
+    const added: string[] = []
+    let lastError: string | null = null
+    for (const file of Array.from(files)) {
+      if (photoUrls.length + added.length >= PHOTOBOX_MAX) break
+      try {
+        added.push(await compressImageFile(file))
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : "Gagal memproses salah satu foto"
+      }
+    }
+    if (added.length) setPhotoUrls((prev) => [...prev, ...added].slice(0, PHOTOBOX_MAX))
+    setPhotoError(lastError)
+    setPhotoBusy(false)
   }
 
   /** Simpan kado via POST /api/kado, lalu redirect ke halaman share. */
@@ -175,6 +215,11 @@ export default function CreatePage() {
         }
       } else if (kadoType === "candle") {
         finalKadoData = { occasion }
+      } else if (kadoType === "photobox") {
+        finalKadoData = {
+          caption: photoboxCaption.trim().slice(0, 60),
+          photos: JSON.stringify(photoUrls),
+        }
       }
 
       const payload: KadoCreatePayload = {
@@ -291,6 +336,13 @@ export default function CreatePage() {
                   onCouponRows={setCouponRows}
                   occasion={occasion}
                   onOccasion={setOccasion}
+                  photoUrls={photoUrls}
+                  photoboxCaption={photoboxCaption}
+                  photoBusy={photoBusy}
+                  photoError={photoError}
+                  onPhotoboxCaption={setPhotoboxCaption}
+                  onAddPhotos={handleAddPhotos}
+                  onRemovePhoto={(i) => setPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
                   onSelectKado={selectKado}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
@@ -307,6 +359,7 @@ export default function CreatePage() {
                   kadoData={kadoData}
                   couponCount={couponRows.filter((r) => r.title.trim()).length}
                   occasion={occasion}
+                  photoCount={photoUrls.length}
                   generating={generating}
                   errorMsg={errorMsg}
                   onBack={() => goTo(2, -1)}
@@ -467,6 +520,14 @@ interface StepLockProps {
   /** Momen lilin — hanya aktif saat kadoType "candle". */
   occasion: "ultah" | "anniversary" | "graduasi"
   onOccasion: (v: "ultah" | "anniversary" | "graduasi") => void
+  /** Editor Photobox — hanya aktif saat kadoType "photobox". */
+  photoUrls: string[]
+  photoboxCaption: string
+  photoBusy: boolean
+  photoError: string | null
+  onPhotoboxCaption: (v: string) => void
+  onAddPhotos: (files: FileList | null) => void
+  onRemovePhoto: (index: number) => void
   onSelectKado: (type: KadoType) => void
   onBack: () => void
   onNext: () => void
@@ -620,6 +681,93 @@ function StepLock(props: StepLockProps) {
         </div>
       )}
 
+      {/* Editor strip foto — hanya untuk Photobox (3-4 foto, dikompres di klien) */}
+      {props.kadoType === "photobox" && (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-300">Foto fotoboxnya</p>
+            <span className="text-xs text-zinc-500">
+              {props.photoUrls.length} foto · min {PHOTOBOX_MIN}, maks {PHOTOBOX_MAX}
+            </span>
+          </div>
+
+          {/* Pratinjau foto terpilih */}
+          {props.photoUrls.length > 0 && (
+            <div className="mb-2.5 grid grid-cols-4 gap-2">
+              {props.photoUrls.map((url, i) => (
+                <div
+                  key={i}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-white/5"
+                >
+                  <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`Hapus foto ${i + 1}`}
+                    onClick={() => props.onRemovePhoto(i)}
+                    className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[10px] text-zinc-300 transition-colors hover:bg-rose-500/80 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tombol unggah — hilang saat kuota penuh */}
+          {props.photoUrls.length < PHOTOBOX_MAX && (
+            <label
+              className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 bg-white/[0.03] py-5 transition-colors hover:border-rose-400/40 ${
+                props.photoBusy ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              {props.photoBusy ? (
+                <Loader2 className="h-5 w-5 animate-spin text-rose-300" />
+              ) : (
+                <ImagePlus className="h-5 w-5 text-rose-300" strokeWidth={1.75} />
+              )}
+              <span className="text-xs font-semibold text-zinc-300">
+                {props.photoBusy
+                  ? "Mengompres foto…"
+                  : `+ Pilih foto (${PHOTOBOX_MAX - props.photoUrls.length} slot lagi)`}
+              </span>
+              <span className="text-[10px] text-zinc-600">
+                JPG/PNG/WebP — otomatis dikompres biar ringan
+              </span>
+              <input
+                type="file"
+                accept={PHOTO_ACCEPT}
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  props.onAddPhotos(e.target.files)
+                  e.target.value = "" // biarkan berkas sama bisa dipilih ulang
+                }}
+              />
+            </label>
+          )}
+          {props.photoError && (
+            <p role="alert" className="mt-2 text-xs text-rose-300">
+              {props.photoError}
+            </p>
+          )}
+
+          <label htmlFor="photoboxCaption" className="mt-3 mb-1.5 block text-xs font-medium text-zinc-400">
+            Tulisan di bawah foto (opsional)
+          </label>
+          <input
+            id="photoboxCaption"
+            value={props.photoboxCaption}
+            onChange={(e) => props.onPhotoboxCaption(e.target.value)}
+            placeholder="mis. kenangan kita yang paling demen 🤍"
+            maxLength={60}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+          />
+          <p className="mt-2 text-xs text-zinc-500">
+            Foto pertama "dicuci" dengan goyangan — sisanya dia ketuk satu-satu.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -656,6 +804,8 @@ interface StepGenerateProps {
   couponCount: number
   /** Momen lilin (kadoType "candle") — tampil di ringkasan. */
   occasion: "ultah" | "anniversary" | "graduasi"
+  /** Jumlah foto terunggah (kadoType "photobox") — tampil di ringkasan. */
+  photoCount: number
   generating: boolean
   errorMsg: string | null
   onBack: () => void
@@ -706,13 +856,15 @@ function StepGenerate(props: StepGenerateProps) {
             {selected?.label ?? "—"}
           </span>
         </div>
-        {(props.kadoType === "coupon" || props.kadoType === "candle") && (
+        {(props.kadoType === "coupon" || props.kadoType === "candle" || props.kadoType === "photobox") && (
           <div className="flex items-center justify-between gap-3">
             <span className="text-zinc-500">Detail</span>
             <span className="font-medium text-zinc-200">
               {props.kadoType === "coupon"
                 ? `${props.couponCount} kupon siap sobek`
-                : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
+                : props.kadoType === "photobox"
+                  ? `${props.photoCount} foto siap dicuci`
+                  : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
             </span>
           </div>
         )}

@@ -43,7 +43,7 @@ import PremiumLoveCoupon from "./PremiumLoveCoupon"
 import PremiumCandleBlow from "./PremiumCandleBlow"
 import PremiumConfess from "./PremiumConfess"
 import PremiumPlaylist from "./PremiumPlaylist"
-import { EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & util kecil
@@ -98,6 +98,27 @@ function dataCoupons(data: Record<string, string | number> | null): { title: str
   }
 }
 
+/**
+ * kadoData.photos — JSON string daftar data-URL foto dari Creator Studio
+ * (pola sama dengan coupons: array dikodekan string karena kadoData API
+ * hanya menerima string/number). Parse aman: salah bentuk → null.
+ */
+function dataPhotos(data: Record<string, string | number> | null): string[] | null {
+  const raw = data?.["photos"]
+  if (typeof raw !== "string") return null
+  try {
+    const arr: unknown = JSON.parse(raw)
+    if (!Array.isArray(arr)) return null
+    const out = arr.filter(
+      (x): x is string =>
+        typeof x === "string" && x.startsWith("data:image/") && x.length <= 300_000
+    ).slice(0, 4)
+    return out.length ? out : null
+  } catch {
+    return null
+  }
+}
+
 /** Preset confetti rose-gold senada momen kenangan; hormati reduced-motion. */
 function fireConfetti(reduceMotion: boolean) {
   const base = {
@@ -113,7 +134,18 @@ function fireConfetti(reduceMotion: boolean) {
 // Komponen utama
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
+export default function CinematicUnboxing({
+  kado,
+  preview = false,
+}: {
+  kado: KadoForUnboxing
+  /**
+   * Mode pratinjau pengirim (?pratinjau=1): experience tampil UTUH, tapi
+   * keputusan dilemma TIDAK dikirim ke server — kado tidak pernah terkunci
+   * dan statistik tidak tersentuh. Banner kecil mengingatkan posisi.
+   */
+  preview?: boolean
+}) {
   // Fase: 1 = pengalaman premium berjalan, 3 = dilemma, 4 = reveal.
   const [phase, setPhase] = useState<Phase>(1)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
@@ -133,11 +165,28 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
    * dan fase 4 (Reveal) hanya dimasuki kalau API sukses. Kalau gagal, catat
    * submitFailed → pesan error tampil di kartu dilemma & tombol tetap aktif
    * supaya user bisa mencoba lagi.
+   *
+   * Mode pratinjau melewati seluruh request — keputusan hanya disimulasikan
+   * di lokal supaya pengirim melihat reveal yang sama tanpa konsekuensi.
    */
   async function handleChoice(choice: Outcome) {
     if (phase !== 3 || submitting) return
     setSubmitting(choice)
     setSubmitFailed(false)
+
+    if (preview) {
+      // pratinjau: tidak ada PATCH — langsung reveal lokal
+      setOutcome(choice)
+      setPhase(4)
+      if (choice === "accepted") {
+        fireConfetti(reduceMotion ?? false)
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate([30, 60, 30])
+        }
+      }
+      setSubmitting(null)
+      return
+    }
 
     try {
       const res = await fetch(`/api/kado/${kado.id}/status`, {
@@ -173,12 +222,11 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
-
-  // ── PREMIUM ONLY — HANYA BLOK INI (render kado versi lama sudah dihapus) ──
   // If-chain tunggal pemilih pengalaman premium; dikembalikan sebagai isi
   // utama return komponen SEBELUM logika UI Dilemma di bawahnya. Setiap
   // komponen premium tetap terpasang sampai reveal supaya revealName
   // (nama asli saat jawaban diterima) bisa tampil di dalamnya.
+  // ── PREMIUM ONLY — HANYA BLOK INI (render kado versi lama sudah dihapus) ──
   function renderExperience() {
     const reveal = accepted ? kado.senderName ?? "Seseorang" : null
     if (kado.kadoType === "bouquet")
@@ -213,6 +261,8 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           fomoInitials={kado.fomoInitials}
           revealName={reveal}
           imageUrl={dataStr(kado.kadoData, "imageUrl")}
+          photos={dataPhotos(kado.kadoData)}
+          caption={dataStr(kado.kadoData, "caption")}
           onOpenComplete={() => setPhase(3)}
         />
       )
@@ -352,6 +402,18 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Banner mode pratinjau — selalu terlihat, menutupi keraguan pengirim */}
+      {preview && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4">
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/40 bg-[#3a2410]/95 px-4 py-2.5 text-xs text-amber-100 shadow-2xl backdrop-blur">
+            <Eye className="h-4 w-4 shrink-0 text-amber-300" />
+            <span>
+              Mode pratinjau — kado <b>TIDAK terkunci</b>, jawabanmu cuma simulasi.
+            </span>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -51,18 +51,68 @@ const createSchema = z.object({
     .min(1, "Tipe kado wajib dipilih")
     .max(40)
     .regex(/^[a-z0-9_-]+$/i, "kadoType cuma boleh huruf, angka, tanda hubung, dan garis bawah"),
-  // konfigurasi interaksi per kadoType (quiz: question/answer, fingerprint: holdMs, ...)
+  // konfigurasi interaksi per kadoType (quiz: question/answer, coupon: coupons,
+  // photobox: photos JSON base64, timeline: moments JSON, ...) — tipe baru
+  // tidak butuh ubah schema: cukup token alfanumerik biar rapi di URL & log.
+  // Nilai teks biasa dibatasi 1.000 karakter; HANYA kunci penyimpan foto
+  // (photos/moments/p0..p9) yang boleh panjang (base64 hasil kompresi klien),
+  // dengan plafon total biar payload tetap sehat di edge.
   kadoData: z
-    .record(z.string(), z.union([z.string().max(1000), z.number()]))
+    .record(z.string(), z.union([z.string().max(2_000_000), z.number()]))
     .nullable()
     .optional()
-    .default(null),
+    .default(null)
+    .refine((d) => {
+      if (!d) return true;
+      const PHOTO_KEY_RE = /^(p(hoto)?\d*|photos|moments)$/i;
+      let total = 0;
+      let longCount = 0;
+      for (const [k, v] of Object.entries(d)) {
+        if (typeof v !== "string") continue;
+        total += v.length;
+        if (v.length > 1000) {
+          longCount += 1;
+          if (!PHOTO_KEY_RE.test(k)) return false;
+        }
+      }
+      return longCount <= 12 && total <= 3_000_000;
+    }, "Isi kadonya kegedean — kurangi jumlah/ukuran fotonya ya."),
 });
 
-/** Kumpulkan semua string di kadoData untuk moderasi (quiz: pertanyaan & jawaban). */
+/**
+ * Kumpulkan semua string di kadoData untuk moderasi (quiz: pertanyaan & jawaban).
+ * Foto base64 (ratusan ribu karakter) TIDAK disapu moderasi: bukan teks, dan
+ * menyapunya rawan false positive (huruf acak base64 bisa "mengandung" kata
+ * terlarang) sekaligus boros CPU di edge. Untuk kunci JSON berisi foto
+ * (photos/moments), hanya field teks di dalamnya yang dimoderasi.
+ */
 function kadoDataTexts(kadoData: Record<string, string | number> | null): string[] {
   if (!kadoData) return [];
-  return Object.values(kadoData).filter((v): v is string => typeof v === "string");
+  const texts: string[] = [];
+  for (const v of Object.values(kadoData)) {
+    if (typeof v !== "string") continue;
+    if (v.length <= 20_000) {
+      texts.push(v);
+      continue;
+    }
+    // String panjang = JSON foto (photos/moments) — ambil field teksnya saja
+    try {
+      const arr: unknown = JSON.parse(v);
+      if (!Array.isArray(arr)) continue;
+      for (const item of arr) {
+        if (item && typeof item === "object") {
+          for (const val of Object.values(item as Record<string, unknown>)) {
+            if (typeof val === "string" && !val.startsWith("data:image/")) texts.push(val);
+          }
+        } else if (typeof item === "string" && !item.startsWith("data:image/")) {
+          texts.push(item);
+        }
+      }
+    } catch {
+      /* bukan JSON valid — abaikan (bukan teks yang layak dimoderasi) */
+    }
+  }
+  return texts;
 }
 
 export async function POST(req: NextRequest) {

@@ -19,10 +19,12 @@ import {
   ArrowLeft,
   Camera,
   Clock,
+  Eye,
   Flame,
   Flower2,
   Gift,
   Heart,
+  Images,
   LayoutDashboard,
   Sparkles,
   Stamp,
@@ -39,6 +41,7 @@ const TYPE_META: Record<string, { label: string; icon: LucideIcon }> = {
   coupon: { label: "Love Coupon", icon: Ticket },
   candle: { label: "Candle Blow", icon: Flame },
   confess: { label: "Confess", icon: Heart },
+  timeline: { label: "Timeline Kisah", icon: Images },
 }
 
 function typeMeta(type: string): { label: string; icon: LucideIcon } {
@@ -153,16 +156,26 @@ export default function HistoryPage() {
                         </p>
                       </div>
 
-                      {/* Aksi utama: dashboard share */}
-                      <Link
-                        href={`/kado/${e.id}/share`}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-500 px-3.5 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_28px_-4px_rgba(244,63,94,0.75)]"
-                        aria-label={`Buka Dashboard Share untuk ${e.title}`}
-                      >
-                        <LayoutDashboard className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Buka Dashboard Share</span>
-                        <span className="sm:hidden">Dashboard</span>
-                      </Link>
+                      {/* Aksi: pratinjau cepat + dashboard share */}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Link
+                          href={`/kado/${e.id}?pratinjau=1`}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-300"
+                          aria-label={`Pratinjau ${e.title} — kado tidak akan terkunci`}
+                          title="Lihat pratinjau kado ini"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                        <Link
+                          href={`/kado/${e.id}/share`}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-500 px-3.5 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_28px_-4px_rgba(244,63,94,0.75)]"
+                          aria-label={`Buka Dashboard Share untuk ${e.title}`}
+                        >
+                          <LayoutDashboard className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Buka Dashboard Share</span>
+                          <span className="sm:hidden">Dashboard</span>
+                        </Link>
+                      </div>
                     </article>
                   </li>
                 )

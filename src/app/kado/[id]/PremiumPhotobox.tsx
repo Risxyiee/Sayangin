@@ -51,7 +51,7 @@ import {
 export interface PremiumPhotoboxProps {
   /** Nama penerima — tampil di badge header & caption polaroid. */
   targetName: string
-  /** Pesan pengirim — tercetak di foto vintage setelah dicuci. */
+  /** Pesan pengirim — tercetak di kartu pesan terakhir setelah semua foto. */
   message: string
   /** Inisial bertopeng pengirim ("R***I") — null → "Seseorang". */
   fomoInitials: string | null
@@ -59,7 +59,15 @@ export interface PremiumPhotoboxProps {
   revealName?: string | null
   /** URL foto kustom (kadoData.imageUrl) — kalau ada, foto = gambar, bukan teks. */
   imageUrl?: string | null
-  /** Dipanggil SEKALI setelah foto selesai tercuci (transisi develop selesai). */
+  /**
+   * Strip foto dari Creator Studio (kadoData.photos — data URL base64).
+   * Foto pertama "dicuci" dengan goyangan; sisanya diketuk satu-satu, dan
+   * kartu pesan (pesan pengirim) selalu jadi slide penutup.
+   */
+  photos?: string[] | null
+  /** Tulisan tangan di bawah polaroid — kosong → "untuk {targetName} 🤍". */
+  caption?: string | null
+  /** Dipanggil SEKALI setelah strip foto selesai dilihat (kartu pesan terakhir). */
   onOpenComplete: () => void
 }
 
@@ -201,6 +209,66 @@ function VintageTextPhoto({
   )
 }
 
+/** Konten satu slide strip: foto asli, atau kartu pesan vintage sebagai penutup. */
+function SlideContent({
+  slide,
+  strip,
+  hasStrip,
+  broken,
+  onBroken,
+  targetName,
+  message,
+  fomoInitials,
+  revealName,
+  reduceMotion,
+  legacyImageUrl,
+}: {
+  slide: number
+  strip: string[]
+  hasStrip: boolean
+  broken: Record<number, boolean>
+  onBroken: (i: number) => void
+  targetName: string
+  message: string
+  fomoInitials: string | null
+  revealName: string | null
+  reduceMotion: boolean
+  legacyImageUrl: string | null
+}) {
+  const isPhoto = hasStrip && slide < strip.length
+  if (isPhoto && !broken[slide]) {
+    return (
+      <img
+        src={strip[slide]}
+        alt={`Kenangan ${slide + 1} untuk ${targetName}`}
+        className="h-full w-full object-cover"
+        draggable={false}
+        onError={() => onBroken(slide)}
+      />
+    )
+  }
+  if (!hasStrip && legacyImageUrl) {
+    return (
+      <img
+        src={legacyImageUrl}
+        alt={`Foto kado untuk ${targetName}`}
+        className="h-full w-full object-cover"
+        draggable={false}
+      />
+    )
+  }
+  // kartu pesan vintage — slide penutup saat strip ada, konten utama saat kosong
+  return (
+    <VintageTextPhoto
+      targetName={targetName}
+      message={message}
+      fomoInitials={fomoInitials}
+      revealName={revealName}
+      reduceMotion={reduceMotion}
+    />
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Komponen utama
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,6 +279,8 @@ export default function PremiumPhotobox({
   fomoInitials,
   revealName = null,
   imageUrl = null,
+  photos = null,
+  caption = null,
   onOpenComplete,
 }: PremiumPhotoboxProps) {
   const [phase, setPhase] = useState<PhotoPhase>("printing")
@@ -220,6 +290,14 @@ export default function PremiumPhotobox({
   const [sensorPending, setSensorPending] = useState(false)
   const [hintMode, setHintMode] = useState<HintMode>("shake")
   const [imgFailed, setImgFailed] = useState(false)
+
+  // Strip multi-foto: slide 0 = foto pertama (mekanik goyang), slide berikutnya
+  // diketuk lewat panah, dan slide TERAKHIR selalu kartu pesan vintage.
+  const strip = (photos ?? []).filter((p) => typeof p === "string" && p.startsWith("data:image/"))
+  const hasStrip = strip.length > 0
+  const lastSlide = hasStrip ? strip.length : 0 // index kartu pesan saat strip ada
+  const [slide, setSlide] = useState(0)
+  const [broken, setBroken] = useState<Record<number, boolean>>({})
 
   const reduceMotion = useReducedMotion()
 
@@ -250,12 +328,35 @@ export default function PremiumPhotobox({
     return () => clearTimeout(t)
   }, [phase, reduceMotion])
 
-  // ── Fase developed → onOpenComplete (fallback timer + onAnimationComplete)
+  // ── Fase developed → onOpenComplete.
+  //    Tanpa strip: segera setelah foto tunggal tercuci (perilaku lama).
+  //    Dengan strip: ditunda sampai kartu pesan (slide terakhir) terlihat.
   useEffect(() => {
-    if (phase !== "developed") return
+    if (phase !== "developed" || hasStrip) return
     const t = setTimeout(notifyOpenComplete, reduceMotion ? 300 : 1500)
     return () => clearTimeout(t)
-  }, [phase, reduceMotion, notifyOpenComplete])
+  }, [phase, hasStrip, reduceMotion, notifyOpenComplete])
+
+  // Strip: kartu pesan (slide terakhir) selesai develop → ritual selesai.
+  useEffect(() => {
+    if (!hasStrip || phase !== "developed" || slide !== lastSlide) return
+    const t = setTimeout(notifyOpenComplete, reduceMotion ? 300 : 1100)
+    return () => clearTimeout(t)
+  }, [hasStrip, phase, slide, lastSlide, reduceMotion, notifyOpenComplete])
+
+  /** Maju satu slide — foto berikutnya diketuk, kartu pesan jadi penutup. */
+  const advance = useCallback(() => {
+    setSlide((s) => {
+      if (!hasStrip || s >= lastSlide) return s
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(15)
+      return s + 1
+    })
+  }, [hasStrip, lastSlide])
+
+  /** Mundur satu slide (review foto yang sudah tercuci). */
+  const back = useCallback(() => {
+    setSlide((s) => (hasStrip && s > 0 ? s - 1 : s))
+  }, [hasStrip])
 
   const develop = useCallback(() => {
     setPhase((p) => {
@@ -447,50 +548,73 @@ export default function PremiumPhotobox({
                   }}
                 />
 
-                {/* konten tercuci — transisi opacity + grayscale + blur */}
-                <motion.div
-                  className="absolute inset-0 will-change-[opacity,filter]"
-                  initial={{ opacity: 0, filter: FILTER_BLANK }}
-                  animate={
-                    developed
-                      ? { opacity: 1, filter: FILTER_DEVELOPED }
-                      : { opacity: progress * 0.35, filter: FILTER_BLANK }
-                  }
-                  transition={developed ? { duration: reduceMotion ? 0 : 1.05, ease: "easeOut" } : { duration: 0.2 }}
-                  onAnimationComplete={() => {
-                    if (phase === "developed") notifyOpenComplete()
-                  }}
-                >
-                  {imageUrl && !imgFailed ? (
-                    <img
-                      src={imageUrl}
-                      alt={`Foto kado untuk ${targetName}`}
-                      className="h-full w-full object-cover"
-                      draggable={false}
-                      onError={() => setImgFailed(true)}
-                    />
-                  ) : (
-                    <VintageTextPhoto
+                {/* konten tercuci — transisi opacity + grayscale + blur.
+                    Slide 0: ghost preview mengikuti progres goyangan/usap.
+                    Slide >0: diketuk → develop cepat (key per slide). */}
+                {slide === 0 ? (
+                  <motion.div
+                    className="absolute inset-0 will-change-[opacity,filter]"
+                    initial={{ opacity: 0, filter: FILTER_BLANK }}
+                    animate={
+                      developed
+                        ? { opacity: 1, filter: FILTER_DEVELOPED }
+                        : { opacity: progress * 0.35, filter: FILTER_BLANK }
+                    }
+                    transition={developed ? { duration: reduceMotion ? 0 : 1.05, ease: "easeOut" } : { duration: 0.2 }}
+                  >
+                    <SlideContent
+                      slide={slide}
+                      strip={strip}
+                      hasStrip={hasStrip}
+                      broken={broken}
+                      onBroken={(i) => setBroken((b) => ({ ...b, [i]: true }))}
                       targetName={targetName}
                       message={message}
                       fomoInitials={fomoInitials}
                       revealName={revealName}
                       reduceMotion={!!reduceMotion}
+                      legacyImageUrl={imageUrl && !imgFailed ? imageUrl : null}
                     />
-                  )}
-                  {/* vignette vintage di atas konten */}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0"
-                    style={{ boxShadow: "inset 0 0 46px rgba(50,32,14,0.32)" }}
-                  />
-                </motion.div>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0"
+                      style={{ boxShadow: "inset 0 0 46px rgba(50,32,14,0.32)" }}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`slide-${slide}`}
+                    className="absolute inset-0 will-change-[opacity,filter]"
+                    initial={{ opacity: 0, filter: FILTER_BLANK }}
+                    animate={{ opacity: 1, filter: FILTER_DEVELOPED }}
+                    transition={{ duration: reduceMotion ? 0 : 0.65, ease: "easeOut" }}
+                  >
+                    <SlideContent
+                      slide={slide}
+                      strip={strip}
+                      hasStrip={hasStrip}
+                      broken={broken}
+                      onBroken={(i) => setBroken((b) => ({ ...b, [i]: true }))}
+                      targetName={targetName}
+                      message={message}
+                      fomoInitials={fomoInitials}
+                      revealName={revealName}
+                      reduceMotion={!!reduceMotion}
+                      legacyImageUrl={null}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0"
+                      style={{ boxShadow: "inset 0 0 46px rgba(50,32,14,0.32)" }}
+                    />
+                  </motion.div>
+                )}
               </div>
 
               {/* border bawah tebal — area caption khas polaroid */}
               <div className="mt-2 flex items-end justify-between px-1" style={{ height: 34 }}>
                 <p className="font-hand text-lg leading-none text-zinc-600">
-                  untuk {targetName} 🤍
+                  {caption?.trim() || `untuk ${targetName} 🤍`}
                 </p>
                 <p className="text-[9px] font-bold tracking-[0.18em] text-zinc-400">
                   KANGENIN·400
@@ -571,6 +695,65 @@ export default function PremiumPhotobox({
             <p className="mt-1.5 text-[10px] tabular-nums tracking-widest text-zinc-600">
               {percent}% TERCIUCI
             </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Navigasi strip — muncul setelah foto pertama tercuci: foto berikutnya
+          diketuk lewat panah, kartu pesan selalu jadi slide penutup */}
+      <AnimatePresence>
+        {hasStrip && developed && (
+          <motion.div
+            key="strip-nav"
+            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="mt-5 flex w-full flex-col items-center gap-3"
+          >
+            <div className="flex items-center gap-5">
+              <button
+                type="button"
+                onClick={back}
+                disabled={slide === 0}
+                aria-label="Foto sebelumnya"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg text-zinc-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ←
+              </button>
+              <div className="min-w-[110px] text-center">
+                <p className="text-xs font-semibold text-zinc-200">
+                  {slide < strip.length ? `Foto ${slide + 1}/${strip.length}` : "Pesan terakhir 💌"}
+                </p>
+                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-600">
+                  {slide + 1} dari {strip.length + 1}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={advance}
+                disabled={slide >= lastSlide}
+                aria-label="Foto berikutnya"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/15 text-lg text-rose-200 shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-colors hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-600 disabled:shadow-none"
+              >
+                →
+              </button>
+            </div>
+            <div className="flex gap-1.5" aria-hidden>
+              {Array.from({ length: strip.length + 1 }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === slide ? "w-4 bg-rose-400" : i < slide ? "w-1.5 bg-rose-400/40" : "w-1.5 bg-white/15"
+                  }`}
+                />
+              ))}
+            </div>
+            {slide < lastSlide ? (
+              <p className="text-xs text-zinc-500">Ketuk → buat lihat foto & pesan berikutnya</p>
+            ) : (
+              <p className="text-xs text-zinc-500">Semua kenangannya udah kecuci 🤍</p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
