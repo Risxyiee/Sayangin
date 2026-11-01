@@ -6,16 +6,17 @@
  * Wizard 3 langkah untuk merangkai kado kejutan:
  *   1. Pesan & identitas FOMO (anonim total default, inisial bertopeng "R***I")
  *   2. Pilih kunci buka (fingerprint / tap / scratch / quiz)
- *   3. Ringkasan + Generate Link Kado (mock — payload di-console.log)
+ *   3. Ringkasan + Generate Link Kado → POST /api/kado → redirect /kado/[id]/share
  *
  * Catatan integrasi:
  * - Identitas FOMO diproses lewat buildFomoIdentity() dari @/utils/fomoLogic,
  *   helper yang sama yang dipakai API → payload selalu konsisten dengan model Kado.
- * - Tombol generate masih simulasi; tinggal ditukar fetch("POST /api/kado").
+ * - fomoInitials dihitung ulang di SERVER — klien cuma kirim senderName + isAnonymous.
  */
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   ArrowLeft,
@@ -28,7 +29,6 @@ import {
   LockKeyhole,
   Mail,
   MousePointerClick,
-  PartyPopper,
   ScanLine,
   UserRound,
   Wand2,
@@ -43,15 +43,19 @@ import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 type Step = 1 | 2 | 3
 type KadoType = "fingerprint" | "tap" | "scratch" | "quiz"
 
-interface KadoPayload {
+/** Payload yang dikirim Creator Studio ke POST /api/kado. */
+interface KadoCreatePayload {
   targetName: string
   message: string
+  /** null = anonim total — fomoInitials dihitung ulang di server. */
   senderName: string | null
-  fomoInitials: string | null
+  isAnonymous: boolean
   kadoType: KadoType
   kadoData: Record<string, string | number> | null
-  status: "pending"
 }
+
+/** Bentuk respons POST /api/kado. */
+type KadoApiResponse = { success?: boolean; data?: { id?: string }; error?: string }
 
 const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: LucideIcon }[] = [
   { value: "fingerprint", label: "Sidik Jari", desc: "Tahan layar 3 detik", icon: Fingerprint },
@@ -102,9 +106,10 @@ export default function CreatePage() {
   const [quizAnswer, setQuizAnswer] = useState("")
 
   const [generating, setGenerating] = useState(false)
-  const [result, setResult] = useState<KadoPayload | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const reduceMotion = useReducedMotion()
+  const router = useRouter()
 
   const canNextStep1 = targetName.trim().length > 0 && message.trim().length > 0
   const canPreview =
@@ -130,40 +135,39 @@ export default function CreatePage() {
     setKadoData((prev) => ({ ...(prev ?? {}), [field]: value }))
   }
 
-  /** Simulasi API call — nanti diganti fetch("POST /api/kado", { method, body }). */
-  function handleGenerate() {
+  /** Simpan kado via POST /api/kado, lalu redirect ke halaman share. */
+  async function handleGenerate() {
     if (!kadoType || generating) return
     setGenerating(true)
+    setErrorMsg(null)
 
-    window.setTimeout(() => {
-      const identity = buildFomoIdentity(senderName, isAnonymous)
-      const payload: KadoPayload = {
+    try {
+      const payload: KadoCreatePayload = {
         targetName: targetName.trim(),
         message: message.trim(),
-        senderName: identity.senderName,
-        fomoInitials: identity.fomoInitials,
+        senderName: isAnonymous ? null : senderName.trim() || null,
+        isAnonymous,
         kadoType,
         kadoData,
-        status: "pending",
       }
 
-      console.log("[CreatorStudio] Payload kado siap dikirim:", payload)
-      setResult(payload)
-      setGenerating(false)
-    }, 1400)
-  }
+      const res = await fetch("/api/kado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = (await res.json().catch(() => null)) as KadoApiResponse | null
 
-  function resetWizard() {
-    setTargetName("")
-    setMessage("")
-    setIsAnonymous(true)
-    setSenderName("")
-    setKadoType(null)
-    setKadoData(null)
-    setQuizQuestion("")
-    setQuizAnswer("")
-    setResult(null)
-    goTo(1, -1)
+      if (res.ok && json?.success && json.data?.id) {
+        router.push(`/kado/${json.data.id}/share`)
+        return
+      }
+      setErrorMsg(json?.error ?? "Gagal membuat kado. Coba lagi ya.")
+    } catch {
+      setErrorMsg("Koneksi bermasalah — cek internetmu lalu coba lagi ya.")
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -241,10 +245,9 @@ export default function CreatePage() {
                   kadoType={kadoType}
                   kadoData={kadoData}
                   generating={generating}
-                  result={result}
+                  errorMsg={errorMsg}
                   onBack={() => goTo(2, -1)}
                   onGenerate={handleGenerate}
-                  onReset={resetWizard}
                 />
               )}
             </motion.div>
@@ -528,10 +531,9 @@ interface StepGenerateProps {
   kadoType: KadoType | null
   kadoData: Record<string, string | number> | null
   generating: boolean
-  result: KadoPayload | null
+  errorMsg: string | null
   onBack: () => void
   onGenerate: () => void
-  onReset: () => void
 }
 
 function StepGenerate(props: StepGenerateProps) {
@@ -591,26 +593,15 @@ function StepGenerate(props: StepGenerateProps) {
       </div>
 
       {/* Aksi */}
-      {props.result ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4 text-center">
-            <PartyPopper className="mx-auto h-8 w-8 text-emerald-300" strokeWidth={1.75} />
-            <p className="mt-2 text-sm font-semibold text-emerald-200">
-              Kado siap! (simulasi — cek DevTools console)
-            </p>
-          </div>
-          <pre className="max-h-56 overflow-auto rounded-2xl border border-white/10 bg-black/40 p-4 text-[11px] leading-relaxed text-zinc-300">
-            {JSON.stringify(props.result, null, 2)}
-          </pre>
-          <button
-            onClick={props.onReset}
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
+      <div className="space-y-3">
+        {props.errorMsg && (
+          <div
+            role="alert"
+            className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-center text-sm text-rose-200"
           >
-            Buat Kado Lagi
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
+            {props.errorMsg}
+          </div>
+        )}
           <motion.button
             onClick={props.onGenerate}
             disabled={props.generating || !props.kadoType}
@@ -637,8 +628,7 @@ function StepGenerate(props: StepGenerateProps) {
             <ArrowLeft className="h-4 w-4" />
             Kembali
           </button>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
