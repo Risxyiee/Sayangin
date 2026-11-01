@@ -15,11 +15,11 @@ const FAQS = [
   },
   {
     q: "Gratis sampai kapan? Ada biaya tersembunyi?",
-    a: "Confess selalu gratis, selamanya — kamu juga dipersilakan membagikan reaksinya ke TikTok. Saat ini semua kado premium juga gratis selama masa uji coba; nanti harganya di bawah Rp50rb, sekali bayar, tanpa langganan.",
+    a: "Confess gratis, tanpa biaya tersembunyi — kamu juga dipersilakan membagikan reaksinya ke TikTok. Saat ini semua kado premium juga gratis selama masa uji coba. Kalau nanti sudah berbayar, modelnya sekali bayar (bukan langganan) dan harganya diumumkan dulu di halaman harga.",
   },
   {
     q: "Dia harus install aplikasi atau daftar akun?",
-    a: "Tidak sama sekali. Dia cukup buka link di browser apa pun — Android, iPhone, laptop. Halaman confess-nya ringan, hanya puluhan KB.",
+    a: "Tidak sama sekali. Dia cukup buka link di browser apa pun — Android, iPhone, laptop. Halaman confess-nya ringan dan dibuka cepat, bahkan pas sinyal lagi jelek.",
   },
   {
     q: "Kami LDR (jarak jauh), cocok nggak?",
@@ -31,7 +31,7 @@ const FAQS = [
   },
   {
     q: "Datanya aman? Bisa dihapus?",
-    a: "Pesan hanya disimpan untuk menampilkan halaman confess dan bisa dihapus kapan pun kamu minta. Kami tidak menjual data, tidak ada iklan, tidak ada tracking.",
+    a: "Pesan hanya disimpan untuk menampilkan halaman confess-nya — tidak dijual, tidak ada iklan, tidak ada tracking. Fitur hapus mandiri sedang disiapkan; detail lengkapnya ada di halaman Privasi.",
   },
 ];
 

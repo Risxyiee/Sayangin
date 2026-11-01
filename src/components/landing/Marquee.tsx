@@ -6,7 +6,7 @@ const ITEMS = [
   "Photobox",
   "Kue Tiup Lilin",
   "Love Coupons",
-  "Playlist Kita",
+  "Dinding Confess",
   "Confess Anonim",
   "Timeline Kisah",
 ];

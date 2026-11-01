@@ -296,7 +296,7 @@ function LettersStatusCard({
             state="done"
             detail={
               <>
-                Link aktif selamanya.{" "}
+                Link aktif & siap dibuka.{" "}
                 <a
                   href={`/?k=${data.slug}&p=${senderKey}`}
                   className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
@@ -502,7 +502,7 @@ function GiftStatusCard({
             state="done"
             detail={
               <>
-                Link aktif selamanya.{" "}
+                Link aktif & siap dibuka.{" "}
                 <a
                   href={`/?k=${data.slug}&p=${senderKey}`}
                   className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"
@@ -614,7 +614,7 @@ function GiftStatusCard({
       <SavedListBox saved={saved} senderKey={senderKey} listOpen={listOpen} setListOpen={setListOpen} />
 
       <a
-        href="/#kado"
+        href="/#kejutan"
         className="flex items-center justify-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 py-3.5 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20"
       >
         <Plus className="h-4 w-4" /> Bikin kado lagi
@@ -820,7 +820,7 @@ export default function StatusView({ senderKey }: { senderKey: string }) {
                   state="done"
                   detail={
                     <>
-                      Link-nya sudah jadi &amp; aktif selamanya.{" "}
+                      Link-nya sudah jadi &amp; aktif.{" "}
                       <a
                         href={`/?k=${data.slug}&p=${senderKey}`}
                         className="inline-flex items-center gap-1 font-semibold text-rose-300 underline decoration-rose-400/50 underline-offset-2 hover:text-rose-200"

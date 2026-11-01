@@ -43,7 +43,7 @@ export default function FooterCta() {
             <a href="#confess" className="transition-colors hover:text-foreground">
               Confess
             </a>
-            <a href="#kado" className="transition-colors hover:text-foreground">
+            <a href="#kejutan" className="transition-colors hover:text-foreground">
               Kado
             </a>
             <a href="/create" className="transition-colors hover:text-foreground">

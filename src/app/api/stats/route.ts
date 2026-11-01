@@ -15,6 +15,7 @@ type StatsPayload = {
   confessions: number;
   letters: number;
   gifts: number;
+  kados: number;
   total: number;
   // penanda waktu supaya UI bisa memformat ulang tanpa hydration mismatch
   generatedAt: string;
@@ -28,14 +29,20 @@ export async function GET() {
   }
 
   try {
-    const [confessions, letters, gifts] = await withDbRetry(() =>
-      Promise.all([db.confession.count(), db.letterSet.count(), db.gift.count()])
+    const [confessions, letters, gifts, kados] = await withDbRetry(() =>
+      Promise.all([
+        db.confession.count(),
+        db.letterSet.count(),
+        db.gift.count(),
+        db.kado.count(),
+      ])
     );
     const data: StatsPayload = {
       confessions,
       letters,
       gifts,
-      total: confessions + letters + gifts,
+      kados,
+      total: confessions + letters + gifts + kados,
       generatedAt: new Date().toISOString(),
     };
     cache = { data, at: Date.now() };

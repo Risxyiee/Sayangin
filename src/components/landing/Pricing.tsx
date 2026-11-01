@@ -13,8 +13,8 @@ const PLANS = [
     features: [
       "Confess anonim + animasi amplop",
       "Kartu ucapan sederhana",
-      "3 tema warna",
-      "Link aktif selamanya",
+      "5 tema warna (termasuk edisi terbatas)",
+      "Link aktif langsung setelah dibuat",
       "Watermark kecil Kangenin",
     ],
     cta: "Confess Gratis",
@@ -23,13 +23,13 @@ const PLANS = [
   {
     name: "Satu Kado",
     price: "Rp0",
-    oldPrice: "Rp19rb",
-    note: "gratis selama masa uji — nanti Rp19rb sekali bayar",
+    oldPrice: "",
+    note: "gratis selama masa uji — harga final menyusul di halaman ini",
     highlight: false,
     features: [
-      "Pilih 1 kado kejutan premium: buket, open when, photobox, coupon, candle, atau confess",
+      "Pilih 1 kado kejutan: buket, open when, photobox, coupon, candle, confess, atau timeline",
       "Tanpa watermark",
-      "Upload foto & musik asli",
+      "Upload foto sendiri (photobox & timeline)",
       "Kartu QR siap cetak buat tempel di hadiah fisik",
     ],
     cta: "Bikin Kado Gratis",
@@ -38,15 +38,15 @@ const PLANS = [
   {
     name: "Paket Sayang",
     price: "Rp0",
-    oldPrice: "Rp39rb",
+    oldPrice: "",
     note: "semua kado sekaligus — gratis selama masa uji",
     highlight: true,
     features: [
-      "Semua 6 pengalaman kado kejutan premium",
-      "Scrollytelling timeline kisah kalian",
+      "Semua 7 pengalaman kado kejutan",
+      "Timeline kisah kalian: scrollytelling + musik latar",
       "Open When bersegel lilin — surat untuk momen tertentu",
       "Confess tersegel: dia harus tahan hati dulu buat buka",
-      "Prioritas request fitur",
+      "Dukung Kangenin tetap hidup & berkembang 💜",
     ],
     cta: "Bikin Semua Kado Gratis",
     href: "/create",
@@ -70,8 +70,8 @@ export default function Pricing() {
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
             Kangenin masih tahap uji — semua kado premium dibuka gratis.
-            Cukup pakai dan lihat yang paling disukai; nanti harganya tetap
-            di bawah Rp50rb.
+            Cukup pakai dan lihat yang paling disukai. Kalau nanti sudah
+            berbayar, harganya diumumkan dulu di halaman ini.
           </p>
         </motion.div>
 
@@ -155,8 +155,8 @@ export default function Pricing() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Selama masa uji coba, semua kado dibuka gratis. Nanti kado premium
-          sekali bayar di bawah Rp50rb — confess tetap gratis, selamanya.
+          Selama masa uji coba, semua kado dibuka gratis — termasuk confess.
+          Kalau nanti ada perubahan harga, pasti diumumkan dulu di halaman ini.
         </p>
       </div>
     </section>

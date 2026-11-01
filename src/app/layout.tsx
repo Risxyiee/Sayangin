@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   ),
   title: "Kangenin — tulis surat rahasia, bikin dia kangen",
   description:
-    "Confess lewat surat anonim yang bisa dijawab — cukup share link. Sudah jadian? Kirim kado digital: buket bunga, surat Open When, photobox, kue tiup lilin. Semua gratis selama masa uji coba.",
+    "Confess lewat surat anonim yang bisa dijawab — cukup share link. Sudah jadian? Kirim kado kejutan: buket bunga, surat Open When, photobox, kue tiup lilin, love coupons, timeline kisah. Semua gratis selama masa uji coba.",
   keywords: [
     "confess anonim",
     "surat rahasia",

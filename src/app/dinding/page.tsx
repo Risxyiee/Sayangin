@@ -114,7 +114,7 @@ export default async function DindingPage() {
                 Tulis versimu sendiri — gratis
               </Link>
               <Link
-                href="/#kado"
+                href="/#kejutan"
                 className="w-full rounded-md border border-white/25 px-7 py-3.5 text-center text-sm font-semibold text-white/90 transition-colors hover:border-white/50 hover:text-white sm:w-auto"
               >
                 Lihat kado digital

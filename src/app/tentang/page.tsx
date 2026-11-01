@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Tentang — Kangenin",
   description:
-    "Kangenin dibuat untuk yang malu bilang langsung: confess anonim yang bisa dijawab, surat mingguan, dan kado digital — cukup lewat link.",
+    "Kangenin dibuat untuk yang malu bilang langsung: confess anonim yang bisa dijawab, kado kejutan interaktif, dan timeline kisah — cukup lewat link.",
 };
 
 export default function TentangPage() {
@@ -34,11 +34,10 @@ export default function TentangPage() {
           anonim tetap terjaga.
         </p>
         <p>
-          Selain confess, ada <b className="text-foreground">Open When Letters</b> (surat
-          yang terbuka mingguan untuk momen-momen tertentu) dan{" "}
-          <b className="text-foreground">kado digital</b> — buket bunga, photobox, kue
-          tiup lilin, love coupons, playlist, dan timeline kisah. Semua
-          dikirim sebagai satu link yang dibuka di browser mana pun, tanpa
+          Selain confess, ada <b className="text-foreground">kado kejutan interaktif</b>{" "}
+          — buket bunga, Open When bersegel lilin, photobox, kue
+          tiup lilin, love coupons, dan timeline kisah. Semua dikirim
+          sebagai satu link yang dibuka di browser mana pun, tanpa
           install, tanpa akun.
         </p>
         <p>

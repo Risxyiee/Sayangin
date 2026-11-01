@@ -79,7 +79,7 @@ export default function TimelineSection() {
           <ul className="mt-6 space-y-3 text-sm text-white/70">
             {[
               "Foto, tanggal, dan caption diatur lewat form — tanpa coding",
-              "Musik latar pilihan kalian, mulai otomatis",
+              "Musik latar pilihan kalian, nyala begitu dia mulai buka",
               "Diakhiri halaman kejutan: pesan rahasia atau kode voucher",
             ].map((t) => (
               <li key={t} className="flex items-start gap-3">

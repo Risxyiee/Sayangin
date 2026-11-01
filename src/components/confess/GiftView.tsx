@@ -739,10 +739,10 @@ export default function GiftView({
               <div className="mt-10 text-xs text-white/40">
                 <p>
                   Kadonya dibuat <span className="text-rose-300">GRATIS</span> di{" "}
-                  <a href="/#kado" className="font-bold text-white">
+                  <a href="/#kejutan" className="font-bold text-white">
                     Kangenin
                   </a>{" "}
-                  — <a href="/#kado" className="underline decoration-rose-400/60 underline-offset-2 hover:text-rose-200">mau kasih yang spesial juga →</a>
+                  — <a href="/#kejutan" className="underline decoration-rose-400/60 underline-offset-2 hover:text-rose-200">mau kasih yang spesial juga →</a>
                 </p>
                 {!isPreview && (
                   <div className="mt-3">

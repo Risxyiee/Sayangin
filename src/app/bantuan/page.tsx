@@ -29,16 +29,16 @@ const QA = [
     a: "Tidak. Draft (nama, pesan, tema) tersimpan otomatis di perangkatmu saat menulis — tutup tab pun tetap ada. Draft baru terhapus setelah link confess berhasil dibuat atau kamu menghapusnya sendiri.",
   },
   {
-    q: "Open When Letters itu apa?",
-    a: "Kumpulan surat kecil dalam satu link. Kamu tentukan surat apa yang boleh dibuka minggu ke-berapa sejak dia mulai. Cocok buat hadiah ulang tahun, perpisahan, atau buat pasangan LDR.",
+    q: "Open When itu apa?",
+    a: "Suratmu dibungkus amplop vintage bersegel lilin. Kamu tulis judulnya (mis. 'Buka saat kamu kangen aku') — dia harus mengetik jawaban prompt dulu, lalu segelnya meleleh dan surat keluar. Cocok buat momen tertentu atau pasangan LDR.",
   },
   {
     q: "Kado digitalnya apa saja?",
-    a: "Buket bunga yang mekar saat ditahan, photobox polaroid, kue tiup lilin, love coupons yang bisa dicoret saat dipakai, playlist bersama, dan timeline kisah kalian. Semua dikirim sebagai satu link.",
+    a: "Buket bunga yang mekar saat pitanya ditarik, Open When bersegel lilin, photobox polaroid, kue tiup lilin, love coupons yang bisa dicoret saat dipakai, timeline kisah kalian, dan Kado Confess. Semua dikirim sebagai satu link.",
   },
   {
     q: "Bayarnya gimana?",
-    a: "Confess selalu gratis. Saat masa uji coba, semua kado juga gratis — nanti kalau sudah keluar dari masa uji, harganya di bawah Rp50rb sekali bayar, tanpa langganan.",
+    a: "Confess gratis, tanpa biaya tersembunyi. Saat masa uji coba, semua kado juga gratis — kalau nanti sudah berbayar, modelnya sekali bayar (bukan langganan) dan harganya diumumkan dulu di halaman harga.",
   },
   {
     q: "Ada konten yang tidak pantas di link yang kuterima?",

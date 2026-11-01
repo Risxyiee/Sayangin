@@ -90,7 +90,7 @@ export default function KadoSurpriseSection() {
             <em className="text-primary">dialami dulu.</em>
           </h2>
           <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-            Lima pengalaman premium di Creator Studio: penerima tidak hanya
+            Kado kejutan di Creator Studio: penerima tidak hanya
             mengeklik link — dia menarik, menggoyang, menyobek, meniup,
             lalu pesanmu muncul. Semuanya gratis selama masa uji.
           </p>

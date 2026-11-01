@@ -549,7 +549,8 @@ export default function ConfessSection() {
                     )}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
-                    Tanpa daftar akun, tanpa install. Link aktif selamanya.
+                    Tanpa daftar akun, tanpa install — link-nya langsung
+                    aktif dan siap dikirim.
                   </p>
                 </div>
               ) : (

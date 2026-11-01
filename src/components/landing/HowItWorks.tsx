@@ -12,7 +12,7 @@ const STEPS = [
   {
     icon: Palette,
     title: "2. Pilih",
-    desc: "Pilih kadonya — buket yang mekar, surat bersegel lilin, polaroid yang dicuci, tiket yang disobek, lilin yang ditiup, sampai pengakuan yang harus ditahan.",
+    desc: "Pilih kadonya — buket yang mekar, surat bersegel lilin, polaroid yang dicuci, tiket yang disobek, lilin yang ditiup, kisah yang digulir, sampai pengakuan yang harus ditahan.",
   },
   {
     icon: Send,

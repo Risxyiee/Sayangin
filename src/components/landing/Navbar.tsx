@@ -6,7 +6,7 @@ import { History } from "lucide-react";
 
 const LINKS = [
   { href: "#confess", label: "Confess" },
-  { href: "#kado", label: "Kado Digital" },
+  { href: "#kejutan", label: "Kado Digital" },
   { href: "/create", label: "Kado Kejutan 💝" },
   { href: "/history", label: "Kado Saya 🕒" },
   { href: "/dinding", label: "Dinding 👀" },
