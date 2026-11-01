@@ -207,6 +207,13 @@ export default function ConfessionView({
   const [holdProgress, setHoldProgress] = useState(0);
   const [releasedEarly, setReleasedEarly] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // umpan balik tap cepat — penerima yang cuma ngeklik tidak boleh diem:
+  // amplop digoyang + pesan jelas; 3x tap cepat = buka langsung
+  const [nudge, setNudge] = useState(false);
+  const tapCount = useRef(0);
+  const holdStartAt = useRef(0);
+  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tapReset = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopHold = () => {
     if (holdTimer.current) {
@@ -226,6 +233,7 @@ export default function ConfessionView({
     if (stage !== "closed") return;
     setReleasedEarly(false);
     stopHold();
+    holdStartAt.current = Date.now();
     holdTimer.current = setInterval(() => {
       setHoldProgress((p) => Math.min(100, p + 2)); // ~2,5 detik sampai terbuka
     }, 50);
@@ -234,11 +242,30 @@ export default function ConfessionView({
   const cancelHold = () => {
     if (stage !== "closed") return;
     stopHold();
+    const heldMs = Date.now() - holdStartAt.current;
     setHoldProgress((p) => {
       if (p >= 100) return p; // efek samping ditangani effect di bawah
-      if (p > 12) setReleasedEarly(true);
+      if (p > 2) setReleasedEarly(true);
       return 0;
     });
+    // Tap cepat (< 350ms) bukan "tahan": dulu ini diem total sehingga
+    // penerima mengira suratnya rusak. Sekarang amplop digoyang + pesan
+    // jelas, dan 3x tap cepat langsung membuka — tidak ada jalur buntu.
+    if (heldMs < 350) {
+      tapCount.current += 1;
+      setNudge(true);
+      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+      nudgeTimer.current = setTimeout(() => setNudge(false), 450);
+      if (tapReset.current) clearTimeout(tapReset.current);
+      tapReset.current = setTimeout(() => {
+        tapCount.current = 0;
+      }, 2500);
+      if (tapCount.current >= 3) {
+        tapCount.current = 0;
+        setNudge(false);
+        openNow();
+      }
+    }
   };
 
   // terbuka otomatis saat tahan penuh
@@ -248,11 +275,20 @@ export default function ConfessionView({
 
   // bersihkan timer ritual saat pindah stage / unmount
   useEffect(() => stopHold, [stopHold]);
+  useEffect(
+    () => () => {
+      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+      if (tapReset.current) clearTimeout(tapReset.current);
+    },
+    []
+  );
 
   const ritualCopy = releasedEarly
-    ? "eh, lepas? tahan terus sampai terbuka ya 🙈"
+    ? "eh, lepas? tahan TERUS sampai terbuka ya 🙈"
     : holdProgress === 0
-      ? "ketuk & tahan amplopnya, jangan takut"
+      ? nudge
+        ? "itu tap doang 😅 tekan & TAHAN terus sampai kebuka"
+        : "tekan & TAHAN amplopnya sampai terbuka (±2 detik)"
       : holdProgress < 35
         ? "amplopnya bergetar heboh…"
         : holdProgress < 70
@@ -582,7 +618,11 @@ export default function ConfessionView({
                 transition: "transform 0.15s ease-out",
               }}
             >
-              <div className={holdProgress > 0 ? "anim-wobble" : "anim-float"}>
+              <div
+                className={
+                  holdProgress > 0 ? "anim-wobble" : nudge ? "anim-nudge" : "anim-float"
+                }
+              >
                 <Envelope open={false} accent={theme.accent} />
               </div>
             </div>
@@ -595,12 +635,12 @@ export default function ConfessionView({
                 style={{ width: `${holdProgress}%` }}
               />
             </div>
-            <p className="mt-3 h-5 text-xs text-white/50" aria-live="polite">
+            <p className="mt-3 h-5 text-[13px] font-medium text-white/75" aria-live="polite">
               {ritualCopy}
             </p>
             <button
               onClick={openNow}
-              className="mt-1 text-[11px] text-white/25 underline underline-offset-2 transition-colors hover:text-white/60"
+              className="mt-1 text-xs text-white/45 underline underline-offset-2 transition-colors hover:text-white/80"
             >
               buka langsung tanpa ritual
             </button>

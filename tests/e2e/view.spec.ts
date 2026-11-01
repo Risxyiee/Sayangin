@@ -63,11 +63,11 @@ test.describe("View penerima", () => {
     const baseURL = test.info().project.use.baseURL ?? ""
     const { id } = await createKado(baseURL, "confess")
     await page.goto(`/kado/${id}`)
-    // header premium confess + instruksi tahan lambang hati
-    await expect(page.getByText(/tersegel oleh detak jantung/i)).toBeVisible({
+    // header premium confess + petunjuk eksplisit: ketuk segel, TAHAN hatinya
+    await expect(page.getByText(/tersegel dengan detak jantung/i)).toBeVisible({
       timeout: 30_000,
     })
-    await expect(page.getByText(/Tahan hatinya/i)).toBeVisible()
+    await expect(page.getByText(/ketuk segelnya/i)).toBeVisible()
   })
 
   test("kado tipe lama (tap) tetap terbuka lewat pengalaman premium", async ({ page }) => {
@@ -75,7 +75,7 @@ test.describe("View penerima", () => {
     const { id } = await createKado(baseURL, "tap")
     await page.goto(`/kado/${id}`)
     // hard refactor: tipe lama jatuh ke PremiumConfess — tidak ada UI lama
-    await expect(page.getByText(/tersegel oleh detak jantung/i)).toBeVisible({
+    await expect(page.getByText(/tersegel dengan detak jantung/i)).toBeVisible({
       timeout: 30_000,
     })
   })

@@ -189,6 +189,14 @@ export default function PremiumConfess({
   const [beatIndex, setBeatIndex] = useState(0) // 0..3 — detak ke-berapa yang selesai
   const [holding, setHolding] = useState(false)
   const [stalled, setStalled] = useState(false)
+  // Umpan balik tap cepat (bukan tahan) — penerima yang "coba klik" tidak
+  // boleh dibiarkan diem: tap = hati digoyang + pesan jelas; 3x tap cepat
+  // = buka langsung (fallback, sama seperti ritual amplop confess biasa).
+  const [tapNudge, setTapNudge] = useState(false)
+  const tapCountRef = useRef(0)
+  const holdStartRef = useRef(0)
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tapResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const reduceMotion = useReducedMotion()
   const audio = useKadoAudio()
@@ -245,6 +253,13 @@ export default function PremiumConfess({
 
   // bersih-bersih timer saat unmount
   useEffect(() => clearBeatTimers, [clearBeatTimers])
+  useEffect(
+    () => () => {
+      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current)
+      if (tapResetRef.current) clearTimeout(tapResetRef.current)
+    },
+    []
+  )
 
   // ── interaksi tahan (pointer + keyboard) ─────────────────────────────────
 
@@ -252,6 +267,9 @@ export default function PremiumConfess({
     if (phase !== "heartbeat" || holding || beatIndexRef.current >= BEAT_DURATIONS.length) return
     audioRef.current.unlock()
     setStalled(false)
+    setTapNudge(false)
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current)
+    holdStartRef.current = beatIndexRef.current
     setHolding(true)
     scheduleBeats(beatIndexRef.current)
   }
@@ -259,7 +277,27 @@ export default function PremiumConfess({
   function endHold() {
     if (phase !== "heartbeat" || !holding) return
     setHolding(false)
+    const fired = beatIndexRef.current > holdStartRef.current
     clearBeatTimers()
+    if (fired) return // sudah ada detak yang terlepas — progres aman
+    // Lepas sebelum detak pertama (= tap/klik cepat). Dulu: diam total
+    // (penerima mengira rusak). Sekarang: goyang + pesan jelas, dan 3x tap
+    // cepat langsung membuka — tidak ada jalur buntu.
+    tapCountRef.current += 1
+    setTapNudge(true)
+    buzz(14)
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0
+      setTapNudge(false)
+      forceContinue()
+      return
+    }
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current)
+    nudgeTimerRef.current = setTimeout(() => setTapNudge(false), 1800)
+    if (tapResetRef.current) clearTimeout(tapResetRef.current)
+    tapResetRef.current = setTimeout(() => {
+      tapCountRef.current = 0
+    }, 2600)
   }
 
   // ── transisi antar-babak ─────────────────────────────────────────────────
@@ -463,6 +501,24 @@ export default function PremiumConfess({
                 <Lock className="h-3 w-3" />
                 Bisa dibuka SEKALI — setelah itu jadi kenangan
               </span>
+
+              {/* petunjuk eksplisit — penerima harus tahu: SEGELNYA DIKETUK */}
+              <motion.p
+                initial={{ opacity: 0.6 }}
+                animate={
+                  reduceMotion
+                    ? { opacity: 1 }
+                    : { opacity: [0.6, 1, 0.6] }
+                }
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
+                }
+                className="mt-3 text-sm font-semibold text-rose-200"
+              >
+                👆 ketuk segelnya buat mulai
+              </motion.p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -526,17 +582,21 @@ export default function PremiumConfess({
                   initial={{ scale: 1 }}
                   animate={
                     reduceMotion
-                      ? { scale: 1 }
-                      : holdingPulse
-                        ? { scale: [1, 1.16, 1] }
-                        : { scale: [1, 1.035, 1] }
+                      ? { scale: 1, x: 0 }
+                      : tapNudge && !holdingPulse
+                        ? { scale: [1, 1.06, 1], x: [0, -8, 8, -5, 0] }
+                        : holdingPulse
+                          ? { scale: [1, 1.16, 1], x: 0 }
+                          : { scale: [1, 1.035, 1], x: 0 }
                   }
                   transition={
                     reduceMotion
                       ? { duration: 0 }
-                      : holdingPulse
-                        ? { duration: 0.42, ease: "easeOut" }
-                        : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
+                      : tapNudge && !holdingPulse
+                        ? { duration: 0.45, ease: "easeOut" }
+                        : holdingPulse
+                          ? { duration: 0.42, ease: "easeOut" }
+                          : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
                   }
                   className="flex h-[88px] w-[88px] items-center justify-center rounded-full border border-rose-400/25 will-change-transform"
                   style={{
@@ -557,12 +617,17 @@ export default function PremiumConfess({
                 </motion.span>
               </button>
 
-              <p className="mt-4 max-w-[240px] text-center text-xs leading-relaxed text-zinc-500">
+              <p
+                aria-live="polite"
+                className="mt-4 max-w-[260px] text-center text-sm font-medium leading-relaxed text-zinc-300"
+              >
                 {holdingPulse
                   ? "Tahan terus… jangan dilepas 💓"
-                  : beatIndex >= BEAT_DURATIONS.length
-                    ? "hatinya retak untukmu…"
-                    : "Tempelkan jarimu di hatinya — rasakan detaknya 🤍"}
+                  : tapNudge && tapCountRef.current >= 2
+                    ? "capek? tap cepat 3x juga langsung buka 😉"
+                    : tapNudge
+                      ? "Itu baru tap 😅 TA-HAN terus sampai retak!"
+                      : "Tekan & TAHAN hatinya sampai retak — ±2 detik aja 🤍"}
               </p>
             </motion.div>
           )}

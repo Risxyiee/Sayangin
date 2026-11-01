@@ -278,3 +278,13 @@
   50% { transform: rotate(1.4deg); }
 }
 .anim-wobble { animation: wobble-x 0.45s ease-in-out infinite; }
+
+/* nudge amplop saat penerima cuma TAP (bukan tahan) — umpan balik sekali jalan
+   supaya jelas "ini bisa digerakkan", bukan surat yang rusak */
+@keyframes nudge-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px) rotate(-1deg); }
+  55% { transform: translateX(7px) rotate(1deg); }
+  80% { transform: translateX(-3px); }
+}
+.anim-nudge { animation: nudge-shake 0.45s ease-in-out; }

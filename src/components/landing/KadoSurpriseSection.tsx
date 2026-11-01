@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * KadoSurpriseSection — showcase enam pengalaman premium di Creator Studio
- * (/create). Satu-satunya showcase kado di landing setelah hard refactor:
- * GiftsSection, GiftStudio, dan OpenWhenSection (alur lama) sudah DIHAPUS —
- * UI tidak ganda lagi. Navbar, hero, status teaser, pricing, dan footer
- * semuanya menunjuk ke /create.
+ * KadoSurpriseSection — showcase lima pengalaman premium di Creator Studio
+ * (/create). SATU fitur confess di landing (ConfessSection di atas) — versi
+ * sinematiknya (Heartstring) tetap ada di Creator Studio sebagai "Kado
+ * Confess" dan di-upsell dari panel sukses ConfessSection, bukan ditampilkan
+ * sebagai fitur kedua di sini. Kartu lama "06 Confess" DIHAPUS supaya
+ * landing tidak terasa punya dua fitur confess.
  *
  * Gaya visual: kicker + heading center, kartu rounded-lg border bg-card
  * dengan nomor, ikon lucide, deskripsi interaksi, dan chip tag — grid
@@ -17,7 +18,6 @@ import {
   Camera,
   Flame,
   Flower2,
-  Heart,
   Stamp,
   Ticket,
   type LucideIcon,
@@ -65,13 +65,6 @@ const SURPRISES: {
     desc: "Lilin menyala di ruangan gelap. Tiup lewat mic HP sampai padam — lalu muncul make a wish-nya.",
     tag: "tiup mic → padam",
   },
-  {
-    num: "06",
-    icon: Heart,
-    title: "Confess",
-    desc: "Pengakuan yang tersegel detak jantung: tahan lambangnya 1,5 detik — kunang-kunang naik, surat pengakuannya terbuka.",
-    tag: "tahan hati → pengakuan",
-  },
 ];
 
 export default function KadoSurpriseSection() {
@@ -91,9 +84,9 @@ export default function KadoSurpriseSection() {
             <em className="text-primary">dialami dulu.</em>
           </h2>
           <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-            Enam pengalaman premium di Creator Studio: penerima tidak hanya
+            Lima pengalaman premium di Creator Studio: penerima tidak hanya
             mengeklik link — dia menarik, menggoyang, menyobek, meniup,
-            menahan, lalu pesanmu muncul. Semuanya gratis selama masa uji.
+            lalu pesanmu muncul. Semuanya gratis selama masa uji.
           </p>
         </motion.div>
 

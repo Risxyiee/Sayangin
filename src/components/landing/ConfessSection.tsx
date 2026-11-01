@@ -647,6 +647,13 @@ export default function ConfessSection() {
                     Tip: kirim pas dia lagi santai — malam hari paling aman.
                     Yang dia lihat persis seperti pratinjau di atas.
                   </p>
+                  <a
+                    href="/create"
+                    className="text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    mau versi sinematiknya? bikin Kado Confess — segel detak
+                    jantung — di Creator Studio →
+                  </a>
                   <button
                     onClick={() => {
                       setLink("");

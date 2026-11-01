@@ -14,7 +14,7 @@ test.describe("Landing", () => {
     await expect(navCta).toHaveAttribute("href", "/create")
   })
 
-  test("section 'Kado Kejutan' memuat 6 pengalaman premium + CTA /create", async ({
+  test("section 'Kado Kejutan' memuat 5 pengalaman premium + CTA /create", async ({
     page,
   }) => {
     await page.goto("/")
@@ -27,10 +27,14 @@ test.describe("Landing", () => {
       "Photobox",
       "Love Coupon",
       "Candle Blow",
-      "Confess",
     ]) {
       await expect(section.getByRole("heading", { name: judul, exact: true })).toBeVisible()
     }
+    // confess cuma SATU fitur di landing — versi sinematik tidak di-duplicate
+    // di showcase kado (upsell-nya ada di panel sukses ConfessSection)
+    await expect(
+      section.getByRole("heading", { name: "Confess", exact: true })
+    ).toHaveCount(0)
     await expect(
       section.getByRole("link", { name: /Racik kado kejutannya/i })
     ).toHaveAttribute("href", "/create")
