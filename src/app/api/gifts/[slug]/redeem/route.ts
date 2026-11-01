@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, withDbRetry } from "@/lib/db";
+import { db, withDbRetry, dbNonce } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import type { CouponsData, GiftProgress } from "@/lib/gift-data";
 import { describeError } from "@/lib/log-error";
@@ -40,7 +40,15 @@ export async function POST(
       return NextResponse.json({ error: "Data tidak valid" }, { status: 400 });
     }
 
-    const gift = await withDbRetry(() => db.gift.findUnique({ where: { slug } }));
+    // Baca anti-cache (read-after-write): progress kupon baru saja bisa
+    // ditulis penerima; cache Hyperdrive bisa menyajikan progress lama →
+    // kupon yang sudah terpakai bisa ditukar dua kali. Nonce → ke origin.
+    const nc = dbNonce();
+    const giftRows = await withDbRetry(() =>
+      db.$queryRaw<Array<{ id: string; type: string; data: string; progress: string }>>`
+        SELECT "id", "type", "data", "progress" FROM "Gift" WHERE "slug" = ${slug} /* nc-${nc} */`
+    );
+    const gift = giftRows[0];
     if (!gift) {
       return NextResponse.json(
         { error: "Kadonya nggak ketemu." },

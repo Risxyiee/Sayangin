@@ -194,6 +194,20 @@ export function isUniqueViolation(err: unknown): boolean {
   return /P2002|unique constraint|duplicate key/i.test(msg)
 }
 
+/**
+ * Nonce anti-cache Hyperdrive untuk $queryRaw. Automatic query caching
+ * Hyperdrive berkunci teks query + parameter; komentar nonce membuat teks
+ * query unik per panggilan → selalu cache-miss → selalu ke origin.
+ * WAJIB dipakai pada bacaan yang HARUS melihat tulisan terbaru
+ * (read-after-write): open sesudah start, reply sesudah open, redeem
+ * sesudah redeem lain (insiden staleness produksi 2026-11-01: open 400
+ * "belum dimulai" padahal start sukses — cache memegang startedAt=null
+ * sampai TTL ±60 dtk; konfirmasi: endpoint yang sama 200 setelah ±90 dtk).
+ */
+export function dbNonce(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
 /** Sisa waktu minimum agar satu retry masih masuk akal (query timeout 3 dtk + jeda). */
 const MIN_RETRY_HEADROOM_MS = 1_000
 

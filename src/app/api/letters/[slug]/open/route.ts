@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, withDbRetry } from "@/lib/db";
+import { db, withDbRetry, dbNonce } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
 
@@ -27,12 +27,16 @@ export async function POST(
     }
     const { letterId } = parsed.data;
 
-    const set = await withDbRetry(() =>
-      db.letterSet.findUnique({
-        where: { slug },
-        include: { letters: true },
-      })
+    // Baca anti-cache (read-after-write): start bisa saja BARU SAJA menulis
+    // startedAt; cache Hyperdrive bisa menyajikan baris pra-update (insiden
+    // 2026-11-01: open 400 "belum dimulai" walau start sukses — cache
+    // memegang startedAt=null sampai TTL ±60 dtk). Nonce → selalu ke origin.
+    const nc = dbNonce();
+    const setRows = await withDbRetry(() =>
+      db.$queryRaw<Array<{ id: string; startedAt: Date | null }>>`
+        SELECT "id", "startedAt" FROM "LetterSet" WHERE "slug" = ${slug} /* nc-${nc} */`
     );
+    const set = setRows[0];
     if (!set) {
       return NextResponse.json({ error: "Suratnya nggak ketemu." }, { status: 404 });
     }
@@ -43,7 +47,12 @@ export async function POST(
       );
     }
 
-    const letter = set.letters.find((l) => l.id === letterId);
+    const letterRows = await withDbRetry(() =>
+      db.$queryRaw<
+        Array<{ id: string; title: string; body: string; unlockDays: number; openedAt: Date | null }>
+      >`SELECT "id", "title", "body", "unlockDays", "openedAt" FROM "Letter" WHERE "setId" = ${set.id} /* nc-${nc} */`
+    );
+    const letter = letterRows.find((l) => l.id === letterId);
     if (!letter) {
       return NextResponse.json({ error: "Suratnya nggak ada." }, { status: 404 });
     }

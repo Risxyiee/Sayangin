@@ -98,7 +98,11 @@ expect 201 "gifts create"
 GSLUG=$(jget slug); GKEY=$(jget senderKey)
 api "GET  /api/gifts/$GSLUG" GET "/api/gifts/$GSLUG"
 expect 200 "gifts read"
-api "POST redeem kupon#0" POST "/api/gifts/$GSLUG/redeem" '{"index":0}'
+api "POST /api/gifts (coupons)" POST /api/gifts \
+  '{"type":"coupons","fromName":"Audit","toName":"Tes Alur","theme":"rose","data":{"coupons":[{"title":"Satu peluk hangat","desc":"Bisa ditukar kapan saja"},{"title":"Nonton bareng","desc":"Film pilihanmu"},{"title":"Kopi satu gelas","desc":"Dibawain sendiri"}]}}'
+expect 201 "gifts coupons create"
+GSLUG2=$(jget slug)
+api "POST redeem kupon#0" POST "/api/gifts/$GSLUG2/redeem" '{"index":0}'
 expect 200 "gifts redeem"
 api "GET  status/[senderKey] gifts" GET "/api/status/$GKEY"
 expect 200 "gifts status (sender view)"

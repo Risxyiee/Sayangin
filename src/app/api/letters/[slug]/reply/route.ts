@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, withDbRetry } from "@/lib/db";
+import { db, withDbRetry, dbNonce } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
@@ -55,12 +55,15 @@ export async function POST(
       return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
     }
 
-    const set = await withDbRetry(() =>
-      db.letterSet.findUnique({
-        where: { slug },
-        select: { id: true },
-      })
+    // Baca anti-cache (read-after-write): open bisa saja BARU SAJA menulis
+    // openedAt; cache Hyperdrive bisa menyajikan baris pra-update → user
+    // yang sudah buka surat tetap kena 403 "buka dulu" (insiden 2026-11-01).
+    const nc = dbNonce();
+    const setRows = await withDbRetry(() =>
+      db.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "LetterSet" WHERE "slug" = ${slug} /* nc-${nc} */`
     );
+    const set = setRows[0];
     if (!set) {
       return NextResponse.json(
         { error: "Suratnya nggak ketemu." },
@@ -68,12 +71,12 @@ export async function POST(
       );
     }
 
-    const letter = await withDbRetry(() =>
-      db.letter.findFirst({
-        where: { id: letterId, setId: set.id },
-        select: { id: true, openedAt: true, reply: true },
-      })
+    const letterRows = await withDbRetry(() =>
+      db.$queryRaw<Array<{ id: string; openedAt: Date | null; reply: string | null }>>`
+        SELECT "id", "openedAt", "reply" FROM "Letter"
+        WHERE "id" = ${letterId} AND "setId" = ${set.id} /* nc-${nc} */`
     );
+    const letter = letterRows[0];
     if (!letter) {
       return NextResponse.json(
         { error: "Suratnya nggak ketemu." },
