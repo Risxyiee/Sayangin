@@ -68,11 +68,11 @@ function dataStr(data: Record<string, string | number> | null, key: string): str
   return typeof v === "string" && v.trim() ? v : null
 }
 
-/** Preset confetti senada palet Kangenin; hormati reduced-motion. */
+/** Preset confetti rose-gold senada momen kenangan; hormati reduced-motion. */
 function fireConfetti(reduceMotion: boolean) {
   const base = {
     disableForReducedMotion: reduceMotion,
-    colors: ["#f43f5e", "#a855f7", "#fbbf24", "#34d399", "#ffffff"],
+    colors: ["#f43f5e", "#fb7185", "#fbbf24", "#fde68a", "#ffffff"],
   }
   confetti({ ...base, particleCount: 90, spread: 75, origin: { y: 0.6 } })
   confetti({ ...base, particleCount: 45, angle: 60, spread: 60, origin: { x: 0, y: 0.7 } })
@@ -279,11 +279,15 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                 </p>
               )}
               {accepted && (
-                <p className="mb-3 text-center text-xs text-rose-200/80">
-                  💜 Kado ini resmi jadi kenangan.
+                <p className="text-center text-xs text-rose-200/80">
+                  💜 Kado ini resmi jadi kenangan — strip kenangannya ada di surat di atas.
                 </p>
               )}
-              <DilemmaButtons submitting={submitting} onChoice={handleChoice} failed={submitFailed} />
+              {/* tombol keputusan hanya hidup di fase 3 — setelah keputusan
+                  tersimpan (fase 4) tombol mati tidak boleh masih tampil */}
+              {phase === 3 && (
+                <DilemmaButtons submitting={submitting} onChoice={handleChoice} failed={submitFailed} />
+              )}
             </div>
           </motion.div>
         )}
