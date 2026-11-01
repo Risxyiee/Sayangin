@@ -10,7 +10,9 @@
  *                              photobox → PremiumPhotobox, polaroid dicuci
  *                              dengan goyangan sensor/usap;
  *                              coupon → PremiumLoveCoupon, tiket emas
- *                              disobek untuk klaim)
+ *                              disobek untuk klaim;
+ *                              candle → PremiumCandleBlow, lilin ditiup
+ *                              lewat mic (Web Audio API))
  *   Fase 2 — The Immersion  : surat meluncur naik, isi pesan efek typewriter,
  *                             identitas pengirim cuma inisial bertopeng
  *   Fase 3 — The Dilemma    : dua tombol jawaban → PATCH /api/kado/[id]/status
@@ -30,6 +32,7 @@ import PremiumBouquet from "./PremiumBouquet"
 import PremiumOpenWhen from "./PremiumOpenWhen"
 import PremiumPhotobox from "./PremiumPhotobox"
 import PremiumLoveCoupon from "./PremiumLoveCoupon"
+import PremiumCandleBlow from "./PremiumCandleBlow"
 import {
   BrainCircuit,
   EyeOff,
@@ -175,14 +178,15 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
-  // kadoType bouquet, openwhen, photobox & coupon: alur gateway+immersion
-  // digantikan komponen premium masing-masing (tetap terpasang sampai
-  // reveal) — dilema tampil di kartu terpisah di bawahnya
+  // kadoType bouquet, openwhen, photobox, coupon & candle: alur
+  // gateway+immersion digantikan komponen premium masing-masing (tetap
+  // terpasang sampai reveal) — dilema tampil di kartu terpisah di bawahnya
   const isBouquet = kado.kadoType === "bouquet"
   const isOpenWhen = kado.kadoType === "openwhen"
   const isPhotobox = kado.kadoType === "photobox"
   const isCoupon = kado.kadoType === "coupon"
-  const immersive = isBouquet || isOpenWhen || isPhotobox || isCoupon
+  const isCandle = kado.kadoType === "candle"
+  const immersive = isBouquet || isOpenWhen || isPhotobox || isCoupon || isCandle
 
   return (
     <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.12),transparent_55%)] px-4 py-8 text-zinc-100">
@@ -247,6 +251,21 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           />
         )}
 
+        {/* Candle Blow premium — lilin elegan di ruangan gelap gulita yang
+            harus DITIUP lewat mic (Web Audio API; tiupan stabil 400ms) atau
+            tap 3x kalau mic gagal; begitu padam (onOpenComplete +2 dtk) →
+            langsung fase 3 (dilemma), karena pesan tampil setelah
+            "Make a wish...". */}
+        {isCandle && (
+          <PremiumCandleBlow
+            targetName={kado.targetName}
+            message={kado.message}
+            fomoInitials={kado.fomoInitials}
+            revealName={accepted ? kado.senderName ?? "Seseorang" : null}
+            onOpenComplete={() => setPhase(3)}
+          />
+        )}
+
         <AnimatePresence mode="wait">
           {!immersive && phase === 1 && (
             <motion.div
@@ -265,7 +284,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           )}
         </AnimatePresence>
 
-        {/* Fase 3 untuk kado premium (buket/openwhen/photobox/coupon) — dilemma tampil di kartu
+        {/* Fase 3 untuk kado premium (buket/openwhen/photobox/coupon/candle) — dilemma tampil di kartu
             terpisah di bawahnya (isi pesan sudah tampil di komponennya, surat
             standar tak perlu lagi) */}
         {immersive && phase >= 3 && (
@@ -285,7 +304,9 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                       ? "Fotonya udah kecuci… sekarang giliran lo. 📸"
                       : isCoupon
                         ? "Kuponnya udah diklaim… sekarang giliran lo. 🎟"
-                        : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
+                        : isCandle
+                          ? "Lilinnya udah padam… sekarang giliran lo. 🕯️"
+                          : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
                 </p>
               )}
               {accepted && (

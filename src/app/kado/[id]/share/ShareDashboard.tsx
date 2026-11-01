@@ -58,6 +58,7 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   openwhen: "Open When",
   photobox: "Photobox",
   coupon: "Love Coupon",
+  candle: "Candle Blow",
 }
 
 /** Teks alibi persis seperti spesifikasi — [LINK] diganti URL kado asli. */
