@@ -8,7 +8,8 @@
  *                              bouquet → PremiumBouquet, buket tarik pita)
  *   Fase 2 — The Immersion  : surat meluncur naik, isi pesan efek typewriter,
  *                             identitas pengirim cuma inisial bertopeng
- *   Fase 3 — The Dilemma    : dua tombol jawaban → (simulasi) PATCH status
+ *   Fase 3 — The Dilemma    : dua tombol jawaban → PATCH /api/kado/[id]/status
+ *                             (transisi sekali jalan — gagal = tak lanjut fase 4)
  *   Fase 4 — The Reveal     : diterima → confetti + reveal nama asli;
  *                             ditolak → surat kabur, "Rahasia tetap terjaga."
  *
@@ -80,6 +81,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
   const [phase, setPhase] = useState<Phase>(1)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [submitting, setSubmitting] = useState<Outcome | null>(null)
+  const [submitFailed, setSubmitFailed] = useState(false)
 
   // Typewriter — huruf satu per satu via timeout iteratif (tanpa lib, tanpa lag)
   const [typedCount, setTypedCount] = useState(0)
@@ -115,29 +117,51 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
   }
 
   /**
-   * Fase 3 — kirim keputusan.
+   * Fase 3 — kirim keputusan ke PATCH /api/kado/[id]/status.
    *
-   * SIMULASI untuk sekarang (API PATCH /api/kado/[id]/status dibuat di fase
-   * berikutnya): jeda 700 ms biar terasa "mengirim", lalu langsung fase 4.
-   * Titik integrasi tinggal mengganti setTimeout dengan fetch PATCH yang
-   * membawa { status: choice }.
+   * Server mengunci transisi (UPDATE ... WHERE status = 'pending'): sekali
+   * diterima, kado tak bisa diubah request susulan — rejected menghanguskan
+   * kado selamanya dan pengirim tetap anonim.
+   *
+   * `submitting` menjaga UI dari klik ganda (tombol disabled + guard di awal),
+   * dan fase 4 (Reveal) hanya dimasuki kalau API sukses. Kalau gagal, catat
+   * submitFailed → pesan error tampil di kartu dilemma & tombol tetap aktif
+   * supaya user bisa mencoba lagi.
    */
   async function handleChoice(choice: Outcome) {
     if (phase !== 3 || submitting) return
     setSubmitting(choice)
+    setSubmitFailed(false)
 
-    await new Promise((r) => setTimeout(r, 700)) // ← ganti dengan PATCH nanti
+    try {
+      const res = await fetch(`/api/kado/${kado.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: choice }),
+      })
+      if (!res.ok) throw new Error(`PATCH status gagal: HTTP ${res.status}`)
 
-    setOutcome(choice)
-    setPhase(4)
-    setSubmitting(null)
-
-    if (choice === "accepted") {
-      fireConfetti(reduceMotion ?? false)
-      // getar halus — diabaikan browser yang tak mendukung
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate([30, 60, 30])
+      const json = (await res.json()) as { success?: boolean; status?: string }
+      if (!json.success || json.status !== choice) {
+        throw new Error("Respons API tidak sesuai")
       }
+
+      setOutcome(choice)
+      setPhase(4)
+
+      if (choice === "accepted") {
+        fireConfetti(reduceMotion ?? false)
+        // getar halus — diabaikan browser yang tak mendukung
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate([30, 60, 30])
+        }
+      }
+    } catch {
+      // gagal → TIDAK lanjut fase 4; keputusan tidak tersimpan, biarkan tombol
+      // aktif agar user bisa mencoba lagi
+      setSubmitFailed(true)
+    } finally {
+      setSubmitting(null)
     }
   }
 
@@ -202,7 +226,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                   💜 Kado ini resmi jadi kenangan.
                 </p>
               )}
-              <DilemmaButtons submitting={submitting} onChoice={handleChoice} />
+              <DilemmaButtons submitting={submitting} onChoice={handleChoice} failed={submitFailed} />
             </div>
           </motion.div>
         )}
@@ -289,7 +313,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                     transition={{ duration: 0.4, ease: "easeOut" }}
                     className="mt-6 will-change-transform"
                   >
-                    <DilemmaButtons submitting={submitting} onChoice={handleChoice} />
+                    <DilemmaButtons submitting={submitting} onChoice={handleChoice} failed={submitFailed} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -339,12 +363,19 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 function DilemmaButtons({
   submitting,
   onChoice,
+  failed = false,
 }: {
   submitting: Outcome | null
   onChoice: (choice: Outcome) => void
+  failed?: boolean
 }) {
   return (
     <div className="flex flex-col gap-2.5">
+      {failed && (
+        <p role="alert" className="text-center text-xs leading-relaxed text-rose-300/90">
+          Gagal mengirim jawaban — cek koneksi lalu coba lagi ya 🙏
+        </p>
+      )}
       <button
         onClick={() => onChoice("accepted")}
         disabled={submitting !== null}
