@@ -14,7 +14,7 @@
  * - fomoInitials dihitung ulang di SERVER — klien cuma kirim senderName + isAnonymous.
  */
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
@@ -24,6 +24,7 @@ import {
   BrainCircuit,
   Camera,
   Check,
+  Disc3,
   EyeOff,
   Fingerprint,
   Flame,
@@ -40,13 +41,14 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
+import { extractSpotifyTrackId } from "@/utils/spotify"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & konstanta
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen" | "photobox" | "coupon" | "candle"
+type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "playlist"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -72,6 +74,7 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "photobox", label: "Photobox", desc: "Goyang HP buat cuci foto", icon: Camera },
   { value: "coupon", label: "Love Coupon", desc: "Sobek tiket buat klaim", icon: Ticket },
   { value: "candle", label: "Candle Blow", desc: "Tiup lilin lewat mic", icon: Flame },
+  { value: "playlist", label: "Playlist", desc: "Putar lagu di piringan hitam", icon: Disc3 },
 ]
 
 /** Konfigurasi default per kadoType — quiz diisi sendiri oleh pembuat kado. */
@@ -85,6 +88,7 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   photobox: null, // foto teks vintage bawaan PremiumPhotobox (kadoData.imageUrl opsional)
   coupon: { title: "1x Bebas Ngambek" }, // judul kupon — bisa diganti via kadoData.title
   candle: null, // interaksi bawaan PremiumCandleBlow (mic + tiupan, fallback tap 3x)
+  playlist: null, // lagu dipilih via input link Spotify (kadoData.spotifyId)
 }
 
 /** Kelas input bersama biar semua field seragam & elegan. */
@@ -120,6 +124,10 @@ export default function CreatePage() {
   const [quizQuestion, setQuizQuestion] = useState("")
   const [quizAnswer, setQuizAnswer] = useState("")
 
+  // Draft link Spotify (playlist) — trackId diekstrak real-time via regex
+  const [spotifyUrl, setSpotifyUrl] = useState("")
+  const spotifyId = useMemo(() => extractSpotifyTrackId(spotifyUrl), [spotifyUrl])
+
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -129,7 +137,8 @@ export default function CreatePage() {
   const canNextStep1 = targetName.trim().length > 0 && message.trim().length > 0
   const canPreview =
     kadoType !== null &&
-    (kadoType !== "quiz" || (quizQuestion.trim().length > 0 && quizAnswer.trim().length > 0))
+    (kadoType !== "quiz" || (quizQuestion.trim().length > 0 && quizAnswer.trim().length > 0)) &&
+    (kadoType !== "playlist" || spotifyId !== null)
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
@@ -163,7 +172,12 @@ export default function CreatePage() {
         senderName: isAnonymous ? null : senderName.trim() || null,
         isAnonymous,
         kadoType,
-        kadoData,
+        kadoData:
+          kadoType === "playlist"
+            ? spotifyId
+              ? { spotifyId } // playlist: kadoData dirakit dari hasil ekstraksi link
+              : kadoData
+            : kadoData,
       }
 
       const res = await fetch("/api/kado", {
@@ -243,9 +257,12 @@ export default function CreatePage() {
                   kadoData={kadoData}
                   quizQuestion={quizQuestion}
                   quizAnswer={quizAnswer}
+                  spotifyUrl={spotifyUrl}
+                  spotifyId={spotifyId}
                   canPreview={canPreview}
                   onSelectKado={selectKado}
                   onQuizChange={updateQuiz}
+                  onSpotifyUrlChange={setSpotifyUrl}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
                 />
@@ -415,9 +432,12 @@ interface StepLockProps {
   kadoData: Record<string, string | number> | null
   quizQuestion: string
   quizAnswer: string
+  spotifyUrl: string
+  spotifyId: string | null
   canPreview: boolean
   onSelectKado: (type: KadoType) => void
   onQuizChange: (field: "question" | "answer", value: string) => void
+  onSpotifyUrlChange: (value: string) => void
   onBack: () => void
   onNext: () => void
 }
@@ -513,6 +533,50 @@ function StepLock(props: StepLockProps) {
         )}
       </AnimatePresence>
 
+      {/* Form Spotify — hanya muncul kalau playlist dipilih */}
+      <AnimatePresence initial={false}>
+        {props.kadoType === "playlist" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+          >
+            <div>
+              <label htmlFor="spotifyUrl" className="mb-1.5 block text-xs font-medium text-zinc-400">
+                Paste Link Lagu Spotify
+              </label>
+              <input
+                id="spotifyUrl"
+                value={props.spotifyUrl}
+                onChange={(e) => props.onSpotifyUrlChange(e.target.value)}
+                placeholder="https://open.spotify.com/track/..."
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                className={inputCls}
+              />
+              <p className="mt-2 text-xs text-zinc-500">
+                Contoh: open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT — ID lagunya otomatis
+                diekstrak dari link.
+              </p>
+              {props.spotifyUrl.trim().length > 0 &&
+                (props.spotifyId ? (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-300">
+                    <Check className="h-3.5 w-3.5" />
+                    Lagu terdeteksi (ID: {props.spotifyId}) — siap diputar di turntable.
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-xs font-medium text-amber-300/90">
+                    Link belum dikenali — pakai link open.spotify.com/track/... ya.
+                  </p>
+                ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -602,6 +666,13 @@ function StepGenerate(props: StepGenerateProps) {
             </p>
             <p className="mt-1">
               <span className="text-zinc-500">Jawab:</span> {props.kadoData.answer || "—"}
+            </p>
+          </div>
+        )}
+        {props.kadoType === "playlist" && props.kadoData?.spotifyId && (
+          <div className="border-t border-white/5 pt-2.5 text-xs text-zinc-400">
+            <p>
+              <span className="text-zinc-500">Track Spotify:</span> {String(props.kadoData.spotifyId)}
             </p>
           </div>
         )}

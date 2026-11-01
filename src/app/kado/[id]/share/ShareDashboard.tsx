@@ -59,6 +59,7 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   photobox: "Photobox",
   coupon: "Love Coupon",
   candle: "Candle Blow",
+  playlist: "Playlist",
 }
 
 /** Teks alibi persis seperti spesifikasi — [LINK] diganti URL kado asli. */

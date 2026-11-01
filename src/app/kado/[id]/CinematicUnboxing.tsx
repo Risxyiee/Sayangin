@@ -12,7 +12,9 @@
  *                              coupon → PremiumLoveCoupon, tiket emas
  *                              disobek untuk klaim;
  *                              candle → PremiumCandleBlow, lilin ditiup
- *                              lewat mic (Web Audio API))
+ *                              lewat mic (Web Audio API);
+ *                              playlist → PremiumPlaylist, turntable retro
+ *                              dengan Spotify Embed)
  *   Fase 2 — The Immersion  : surat meluncur naik, isi pesan efek typewriter,
  *                             identitas pengirim cuma inisial bertopeng
  *   Fase 3 — The Dilemma    : dua tombol jawaban → PATCH /api/kado/[id]/status
@@ -33,6 +35,7 @@ import PremiumOpenWhen from "./PremiumOpenWhen"
 import PremiumPhotobox from "./PremiumPhotobox"
 import PremiumLoveCoupon from "./PremiumLoveCoupon"
 import PremiumCandleBlow from "./PremiumCandleBlow"
+import PremiumPlaylist from "./PremiumPlaylist"
 import {
   BrainCircuit,
   EyeOff,
@@ -178,7 +181,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
-  // kadoType bouquet, openwhen, photobox, coupon & candle: alur
+  // kadoType bouquet, openwhen, photobox, coupon, candle & playlist: alur
   // gateway+immersion digantikan komponen premium masing-masing (tetap
   // terpasang sampai reveal) — dilema tampil di kartu terpisah di bawahnya
   const isBouquet = kado.kadoType === "bouquet"
@@ -186,7 +189,9 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
   const isPhotobox = kado.kadoType === "photobox"
   const isCoupon = kado.kadoType === "coupon"
   const isCandle = kado.kadoType === "candle"
-  const immersive = isBouquet || isOpenWhen || isPhotobox || isCoupon || isCandle
+  const isPlaylist = kado.kadoType === "playlist"
+  const immersive =
+    isBouquet || isOpenWhen || isPhotobox || isCoupon || isCandle || isPlaylist
 
   return (
     <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.12),transparent_55%)] px-4 py-8 text-zinc-100">
@@ -266,6 +271,22 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           />
         )}
 
+        {/* Playlist premium — turntable retro; jarum digeser ke piringan
+            (drag x → rotasi lengan) → vinyl berputar & Spotify Embed resmi
+            muncul; onOpenComplete +3 dtk (waktu klik play) → fase 3
+            (dilemma) — pemutar tetap terlihat & bisa diputar.
+            spotifyId bisa diisi lewat kadoData.spotifyId. */}
+        {isPlaylist && (
+          <PremiumPlaylist
+            targetName={kado.targetName}
+            message={kado.message}
+            fomoInitials={kado.fomoInitials}
+            revealName={accepted ? kado.senderName ?? "Seseorang" : null}
+            spotifyId={dataStr(kado.kadoData, "spotifyId")}
+            onOpenComplete={() => setPhase(3)}
+          />
+        )}
+
         <AnimatePresence mode="wait">
           {!immersive && phase === 1 && (
             <motion.div
@@ -284,7 +305,7 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           )}
         </AnimatePresence>
 
-        {/* Fase 3 untuk kado premium (buket/openwhen/photobox/coupon/candle) — dilemma tampil di kartu
+        {/* Fase 3 untuk kado premium (buket/openwhen/photobox/coupon/candle/playlist) — dilemma tampil di kartu
             terpisah di bawahnya (isi pesan sudah tampil di komponennya, surat
             standar tak perlu lagi) */}
         {immersive && phase >= 3 && (
@@ -306,7 +327,9 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
                         ? "Kuponnya udah diklaim… sekarang giliran lo. 🎟"
                         : isCandle
                           ? "Lilinnya udah padam… sekarang giliran lo. 🕯️"
-                          : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
+                          : isPlaylist
+                            ? "Lagunya udah diputar… sekarang giliran lo. 🎵"
+                            : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
                 </p>
               )}
               {accepted && (
