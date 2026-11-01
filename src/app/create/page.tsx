@@ -645,6 +645,21 @@ function StepLock(props: StepLockProps) {
           Penerima harus mengalaminya dulu — menarik, menggoyang, menyobek,
           meniup, menahan — sebelum pesanmu terbuka.
         </p>
+        {/* Demo per fitur — intip rasanya tanpa bikin kado */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-600">
+          <span>Intip demo:</span>
+          {KADO_OPTIONS.map((o) => (
+            <a
+              key={o.value}
+              href={`/kado/demo-${o.value}?pratinjau=1`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-zinc-400 underline underline-offset-2 transition-colors hover:text-rose-300"
+            >
+              {o.label}
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Grid radio cards */}

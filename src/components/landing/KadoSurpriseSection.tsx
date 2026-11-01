@@ -29,6 +29,7 @@ const SURPRISES: {
   title: string;
   desc: string;
   tag: string;
+  demo: string;
 }[] = [
   {
     num: "01",
@@ -36,6 +37,7 @@ const SURPRISES: {
     title: "Buket Bunga",
     desc: "Tarik pita emasnya pelan-pelan — buketnya mekar satu per satu, pesanmu terbaca di kartu buket.",
     tag: "tarik pita → mekar",
+    demo: "demo-bouquet",
   },
   {
     num: "02",
@@ -43,6 +45,7 @@ const SURPRISES: {
     title: "Open When",
     desc: "Amplop vintage bersegel lilin. Tekan segelnya, lilin meleleh, surat perkamen meluncur keluar.",
     tag: "segel lilin meleleh",
+    demo: "demo-openwhen",
   },
   {
     num: "03",
@@ -50,6 +53,7 @@ const SURPRISES: {
     title: "Photobox",
     desc: "Polaroidnya masih gelap. Goyang HP — atau usap layar — buat 'mencuci' fotonya sampai muncul.",
     tag: "goyang HP → foto jadi",
+    demo: "demo-photobox",
   },
   {
     num: "04",
@@ -57,6 +61,7 @@ const SURPRISES: {
     title: "Love Coupon",
     desc: "Tiket emas holografik yang harus disobek buat diklaim — \"1x bebas ngambek\" dan temannya.",
     tag: "sobek tiket → klaim",
+    demo: "demo-coupon",
   },
   {
     num: "05",
@@ -64,6 +69,7 @@ const SURPRISES: {
     title: "Candle Blow",
     desc: "Lilin menyala di ruangan gelap. Tiup lewat mic HP sampai padam — lalu muncul make a wish-nya.",
     tag: "tiup mic → padam",
+    demo: "demo-candle",
   },
 ];
 
@@ -117,6 +123,13 @@ export default function KadoSurpriseSection() {
               <span className="mt-3 inline-block rounded-sm border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                 {s.tag}
               </span>
+              {/* Demo: rasakan pengalamannya tanpa bikin kado dulu */}
+              <a
+                href={`/kado/${s.demo}?pratinjau=1`}
+                className="mt-3 block text-xs font-semibold text-primary underline-offset-2 transition-colors hover:underline hover:text-primary/80"
+              >
+                Coba demo 👁 — rasakan dulu, gratis
+              </a>
             </motion.article>
           ))}
         </div>

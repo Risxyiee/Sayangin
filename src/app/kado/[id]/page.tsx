@@ -110,6 +110,114 @@ function ErrorCard() {
 // Halaman
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Kado demo — panggung "coba rasa" tiap fitur, TANPA database.
+//
+// Landing & Creator Studio menautkan /kado/demo-<tipe>?pratinjau=1 supaya
+// calon pengirim bisa merasakan tiap pengalaman premium sebelum bikin.
+// Id-nya sengaja bukan UUID (pasti tabrakan dengan id sungguhan) dan selalu
+// dirender dalam mode pratinjau — tidak ada PATCH status, tidak ada statistik.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEMO_DATE = "2026-11-01T08:30:00.000Z"
+
+const DEMO_KADOS: Record<string, KadoForUnboxing> = {
+  "demo-bouquet": {
+    id: "demo-bouquet",
+    targetName: "Kamu",
+    message:
+      "Bunga-bunga ini kupilih satu-satu, tapi tetap nggak ada yang seindah senyum kamu.\n\nTarik pitanya pelan-pelan ya — ada pesan yang nunggu di kartu buketnya.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "bouquet",
+    kadoData: null,
+    createdAt: DEMO_DATE,
+  },
+  "demo-openwhen": {
+    id: "demo-openwhen",
+    targetName: "Kamu",
+    message:
+      "Kalau kamu buka surat ini, berarti kamu lagi kangen aku.\n\nKebetulan banget — aku juga. Setiap kali hujan turun, aku selalu inget chat pertama kita.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "openwhen",
+    kadoData: { title: "Buka saat kamu kangen aku", prompt: "Baca pelan-pelan ya" },
+    createdAt: DEMO_DATE,
+  },
+  "demo-photobox": {
+    id: "demo-photobox",
+    targetName: "Kamu",
+    message:
+      "Ini strip kenangan versi demo — kalau aslinya, fotofotomu sendiri yang kecuci di sini, satu per satu, ditutup pesan dariku.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "photobox",
+    kadoData: { caption: "kenangan yang paling kuingat 🤍" },
+    createdAt: DEMO_DATE,
+  },
+  "demo-coupon": {
+    id: "demo-coupon",
+    targetName: "Kamu",
+    message:
+      "Buklet demo ini isinya kupon yang bisa disobek satu-satu. Kalau aslinya, isinya janji-janjimu sendiri — klaim kapan pun kamu mau.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "coupon",
+    kadoData: {
+      coupons: JSON.stringify([
+        { title: "1x Bebas Ngambek", desc: "Berlaku kapan pun, tanpa syarat." },
+        { title: "1x Pelukan Gratis", desc: "Tukarkan saat sedang butuh." },
+        { title: "1x Jajan Dibayarin", desc: "Sekali jajan, aku yang traktir." },
+        { title: "1x Nemenin Nonton", desc: "Film pilihanmu, aku siap." },
+      ]),
+    },
+    createdAt: DEMO_DATE,
+  },
+  "demo-candle": {
+    id: "demo-candle",
+    targetName: "Kamu",
+    message:
+      "Lilin demo ini boleh ditiup sepuasnya — bikin permintaan yang paling jujur, lalu tiup pelan. Kalau aslinya, pesan spesial menunggu di balik asapnya.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "candle",
+    kadoData: { occasion: "ultah" },
+    createdAt: DEMO_DATE,
+  },
+  "demo-confess": {
+    id: "demo-confess",
+    targetName: "Kamu",
+    message:
+      "Aku udah nahan perasaan ini dari lama. Hari ini aku memutuskan untuk berhenti nahan — bukan biar kamu harus jawab, tapi biar kamu tahu.\n\nSeremoni buka suratnya: tahan hatinya, dengarkan detaknya.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "confess",
+    kadoData: null,
+    createdAt: DEMO_DATE,
+  },
+  "demo-timeline": {
+    id: "demo-timeline",
+    targetName: "Kamu",
+    message:
+      "Kalau dipikir-pikir, kita udah jalan jauh banget ya. Halaman ini yang ingetin kalau kamu lupa sejauh mana kita sudah berjalan.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "timeline",
+    kadoData: {
+      moments: JSON.stringify([
+        { date: "12 FEB 2025", caption: "Chat pertama: 'hujan, boleh minta pullutan?'" },
+        { date: "1 MAR 2025", caption: "Nonton pertama — kamu ketiduran 20 menit" },
+        { date: "17 APR 2025", caption: "Jadian! (di tengah hujan lagi, kebetulan)" },
+        { date: "HARI INI", caption: "Masih kangen, masih kalian 💜" },
+      ]),
+      music: "musicbox",
+      endingType: "voucher",
+      endingText: "FREE-PELUK-SEUMUR-HIDUP",
+    },
+    createdAt: DEMO_DATE,
+  },
+}
+
 interface OpenPageProps {
   // Next 15+: params & searchParams adalah Promise — selalu di-await
   params: Promise<{ id: string }>
@@ -128,6 +236,12 @@ export default async function OpenKadoPage({ params, searchParams }: OpenPagePro
    * disimulasikan lokal — PATCH status tidak pernah dipanggil.
    */
   const previewMode = sp?.pratinjau === "1"
+
+  // Kado demo (id demo-*) — dirender tanpa DB, selalu mode pratinjau.
+  const demo = DEMO_KADOS[id]
+  if (demo) {
+    return <CinematicUnboxing preview kado={demo} />
+  }
 
   // UUID salah format → tidak perlu ganggu database (kolom id bertipe uuid).
   if (!UUID_RE.test(id)) {

@@ -654,6 +654,14 @@ export default function ConfessSection() {
                     mau versi sinematiknya? bikin Kado Confess — segel detak
                     jantung — di Creator Studio →
                   </a>
+                  <a
+                    href="/kado/demo-confess?pratinjau=1"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    atau cobain dulu seremoninya: Coba Demo Kado Confess 👁
+                  </a>
                   <button
                     onClick={() => {
                       setLink("");
