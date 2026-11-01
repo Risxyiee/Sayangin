@@ -30,6 +30,7 @@ import {
   Flower2,
   Gift,
   Heart,
+  History,
   Loader2,
   Mail,
   Stamp,
@@ -40,6 +41,7 @@ import {
 } from "lucide-react"
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout"
+import { saveKadoHistoryEntry } from "@/lib/kado-history"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & konstanta
@@ -159,6 +161,14 @@ export default function CreatePage() {
       const json = (await res.json().catch(() => null)) as KadoApiResponse | null
 
       if (res.ok && json?.success && json.data?.id) {
+        // Ghost Dashboard: catat kado ini ke riwayat perangkat (localStorage)
+        // SEBELUM redirect — kalau tab tertutup, /history tetap menemukannya.
+        // Gagal simpan riwayat tidak boleh menggagalkan kado (no-throw).
+        saveKadoHistoryEntry({
+          id: json.data.id,
+          title: `Untuk ${targetName.trim()}`,
+          type: kadoType,
+        })
         router.push(`/kado/${json.data.id}/share`)
         return
       }
@@ -179,13 +189,23 @@ export default function CreatePage() {
       <div className="mx-auto w-full max-w-md">
         {/* Header */}
         <header className="mb-5 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Beranda
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Beranda
+            </Link>
+            {/* Ghost Dashboard: pintasan ke riwayat kado perangkat ini */}
+            <Link
+              href="/history"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <History className="h-3.5 w-3.5 text-rose-300" />
+              Kado Saya
+            </Link>
+          </div>
           <span className="text-xs font-medium tracking-widest text-zinc-500 uppercase">
             Langkah {step}/3
           </span>
