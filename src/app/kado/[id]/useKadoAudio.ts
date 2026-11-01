@@ -27,6 +27,13 @@
  *   pop(i)        — kuncup mekar: blip segitiga lembut, pitch naik per i.
  *   rustle()      — derit kertas: dua burst noise pendek beruntun.
  *   swell()       — akor hangat mengembang: penyambutan / kuncup pamungkas.
+ *   strike()      — korek api: gesekan tinggi singkat + nyala "fwoosh" hangat
+ *                   (dipakai Wish Keeper Edition saat menyalakan lilin).
+ *   whoosh(i)     — tiupan angin: band noise lembut naik; i 0..1 mengatur
+ *                   panjang & kekuatan hembusan (tease tiupan lemah).
+ *   poof()        — api padam: hentakan bass pendek + desis asap tipis.
+ *   stamp()       — cap menghantam kertas: thud pendek (Golden Booklet,
+ *                   stempel "DIKLAIM"; reusable untuk stempel lain).
  *   toggleMuted() — mute/unmute master gain (tombol kecil di layar).
  *   muted         — state mute untuk ikon tombol.
  *
@@ -231,5 +238,35 @@ export function useKadoAudio() {
     tone(783.99, 0.22, 1.1, 0.05)
   }, [muted])
 
-  return { unlock, beat, crack, chime, shimmer, slide, slip, pop, rustle, swell, muted, toggleMuted }
+  /** Korek menyala — gesekan tinggi singkat, lalu nyala "fwoosh" hangat. */
+  const strike = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    noise(0, 0.14, 3200, 900, 0.4, 1.1) // gesekan head korek
+    noise(0.1, 0.34, 1500, 380, 0.2, 0.7) // api menangkap sumbu
+    tone(96, 0.12, 0.4, 0.07) // hangat low-end
+  }, [muted])
+
+  /** Tiupan angin — hembusan lembut; i 0..1 memanjang & menguatkan. */
+  const whoosh = useCallback((i = 0.4) => {
+    if (!ctxRef.current || muted) return
+    const k = Math.max(0, Math.min(1, i))
+    noise(0, 0.4 + k * 0.3, 240 + k * 340, 900, 0.09 + k * 0.13, 0.6)
+  }, [muted])
+
+  /** Api padam — hentakan bass pendek + desis asap tipis menyusul. */
+  const poof = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    noise(0, 0.22, 620, 130, 0.38, 0.8)
+    tone(72, 0.02, 0.32, 0.3)
+    noise(0.07, 0.55, 1300, 320, 0.07, 0.9) // asap
+  }, [muted])
+
+  /** Cap menghantam kertas — thud pendek berbobot. */
+  const stamp = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    tone(120, 0, 0.13, 0.3, "triangle")
+    noise(0, 0.06, 900, 280, 0.4, 1)
+  }, [muted])
+
+  return { unlock, beat, crack, chime, shimmer, slide, slip, pop, rustle, swell, strike, whoosh, poof, stamp, muted, toggleMuted }
 }

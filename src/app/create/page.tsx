@@ -79,10 +79,22 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
   openwhen: null, // interaksinya bawaan PremiumOpenWhen (judul & prompt default)
   photobox: null, // foto teks vintage bawaan PremiumPhotobox (kadoData.imageUrl opsional)
-  coupon: { title: "1x Bebas Ngambek" }, // judul kupon — bisa diganti via kadoData.title
-  candle: null, // interaksi bawaan PremiumCandleBlow (mic + tiupan, fallback tap 3x)
+  coupon: null, // kadoData dibangun saat generate: { coupons: JSON.stringify([...]) }
+  candle: null, // kadoData dibangun saat generate: { occasion }
   confess: null, // interaksi bawaan PremiumConfess (tahan lambang hati)
 }
+
+/** Baris kupon awal di Creator Studio — 5 klasic, bisa diedit/ditambah (maks 6). */
+const DEFAULT_COUPON_ROWS: { title: string; desc: string }[] = [
+  { title: "1x Bebas Ngambek", desc: "Berlaku kapan pun, tanpa syarat." },
+  { title: "1x Pelukan Gratis", desc: "Tukarkan saat sedang butuh." },
+  { title: "1x Jajan Dibayarin", desc: "Sekali jajan, aku yang traktir." },
+  { title: "1x Nemenin Nonton", desc: "Film pilihanmu, aku siap." },
+  { title: "1x Minta Apa Aja", desc: "Selama nggak melawan hukum 😉" },
+]
+
+const COUPON_MAX = 6
+const COUPON_MIN = 3
 
 /** Kelas input bersama biar semua field seragam & elegan. */
 const inputCls =
@@ -112,6 +124,10 @@ export default function CreatePage() {
   const [senderName, setSenderName] = useState("")
   const [kadoType, setKadoType] = useState<KadoType | null>(null)
   const [kadoData, setKadoData] = useState<Record<string, string | number> | null>(null)
+  /** Editor kupon (kadoType "coupon") — dikodekan ke kadoData.coupons saat generate. */
+  const [couponRows, setCouponRows] = useState(DEFAULT_COUPON_ROWS)
+  /** Momen lilin (kadoType "candle") — mengubah narasi ritual Wish Keeper. */
+  const [occasion, setOccasion] = useState<"ultah" | "anniversary" | "graduasi">("ultah")
 
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -120,7 +136,10 @@ export default function CreatePage() {
   const router = useRouter()
 
   const canNextStep1 = targetName.trim().length > 0 && message.trim().length > 0
-  const canPreview = kadoType !== null
+  /** Kupon butuh minimal 3 judul terisi sebelum boleh lanjut. */
+  const couponValid =
+    kadoType !== "coupon" || couponRows.filter((r) => r.title.trim()).length >= COUPON_MIN
+  const canPreview = kadoType !== null && couponValid
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
@@ -131,6 +150,9 @@ export default function CreatePage() {
   function selectKado(type: KadoType) {
     setKadoType(type)
     setKadoData(DEFAULT_KADO_DATA[type])
+    if (type === "coupon" && !couponRows.some((r) => r.title.trim())) {
+      setCouponRows(DEFAULT_COUPON_ROWS)
+    }
   }
 
   /** Simpan kado via POST /api/kado, lalu redirect ke halaman share. */
@@ -140,13 +162,28 @@ export default function CreatePage() {
     setErrorMsg(null)
 
     try {
+      // kadoData final dibangun di sini — API hanya menerima string/number,
+      // jadi daftar kupon dikodekan JSON string (komponen mem-parse ulang).
+      let finalKadoData = kadoData
+      if (kadoType === "coupon") {
+        finalKadoData = {
+          coupons: JSON.stringify(
+            couponRows
+              .filter((r) => r.title.trim())
+              .map((r) => ({ title: r.title.trim().slice(0, 40), desc: r.desc.trim().slice(0, 80) }))
+          ),
+        }
+      } else if (kadoType === "candle") {
+        finalKadoData = { occasion }
+      }
+
       const payload: KadoCreatePayload = {
         targetName: targetName.trim(),
         message: message.trim(),
         senderName: isAnonymous ? null : senderName.trim() || null,
         isAnonymous,
         kadoType,
-        kadoData,
+        kadoData: finalKadoData,
       }
 
       const res = await fetchWithTimeout(
@@ -250,6 +287,10 @@ export default function CreatePage() {
                 <StepLock
                   kadoType={kadoType}
                   canPreview={canPreview}
+                  couponRows={couponRows}
+                  onCouponRows={setCouponRows}
+                  occasion={occasion}
+                  onOccasion={setOccasion}
                   onSelectKado={selectKado}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
@@ -264,6 +305,8 @@ export default function CreatePage() {
                   senderName={senderName}
                   kadoType={kadoType}
                   kadoData={kadoData}
+                  couponCount={couponRows.filter((r) => r.title.trim()).length}
+                  occasion={occasion}
                   generating={generating}
                   errorMsg={errorMsg}
                   onBack={() => goTo(2, -1)}
@@ -418,10 +461,22 @@ function StepIdentity(props: StepIdentityProps) {
 interface StepLockProps {
   kadoType: KadoType | null
   canPreview: boolean
+  /** Editor kupon — hanya aktif saat kadoType "coupon". */
+  couponRows: { title: string; desc: string }[]
+  onCouponRows: (rows: { title: string; desc: string }[]) => void
+  /** Momen lilin — hanya aktif saat kadoType "candle". */
+  occasion: "ultah" | "anniversary" | "graduasi"
+  onOccasion: (v: "ultah" | "anniversary" | "graduasi") => void
   onSelectKado: (type: KadoType) => void
   onBack: () => void
   onNext: () => void
 }
+
+const OCCASION_PILLS: { value: "ultah" | "anniversary" | "graduasi"; label: string }[] = [
+  { value: "ultah", label: "🎂 Ulang Tahun" },
+  { value: "anniversary", label: "💍 Anniversary" },
+  { value: "graduasi", label: "🎓 Wisuda" },
+]
 
 function StepLock(props: StepLockProps) {
   return (
@@ -472,6 +527,99 @@ function StepLock(props: StepLockProps) {
         })}
       </div>
 
+      {/* Momen lilin — hanya untuk Candle Blow (narasi ritual Wish Keeper) */}
+      {props.kadoType === "candle" && (
+        <div>
+          <p className="mb-2 text-sm font-medium text-zinc-300">Momen apa yang dirayakan?</p>
+          <div className="flex gap-2">
+            {OCCASION_PILLS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => props.onOccasion(o.value)}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                  props.occasion === o.value
+                    ? "border-amber-300/60 bg-amber-400/15 text-amber-200"
+                    : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            Menentukan kata sambutan ritual menyalakan lilinnya nanti.
+          </p>
+        </div>
+      )}
+
+      {/* Editor buklet kupon — hanya untuk Love Coupon (3-6 kupon) */}
+      {props.kadoType === "coupon" && (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-300">Isi buklet kuponnya</p>
+            <span className="text-xs text-zinc-500">
+              {props.couponRows.filter((r) => r.title.trim()).length} kupon · min {COUPON_MIN}, maks {COUPON_MAX}
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {props.couponRows.map((row, i) => (
+              <div key={i} className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-2.5">
+                <span className="mt-2.5 text-[10px] font-bold tabular-nums text-zinc-500">{i + 1}.</span>
+                <div className="flex-1 space-y-1.5">
+                  <input
+                    value={row.title}
+                    onChange={(e) =>
+                      props.onCouponRows(
+                        props.couponRows.map((r, j) => (j === i ? { ...r, title: e.target.value } : r))
+                      )
+                    }
+                    placeholder={`Judul kupon ${i + 1} — mis. "1x Masak Buatmu"`}
+                    maxLength={40}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+                  />
+                  <input
+                    value={row.desc}
+                    onChange={(e) =>
+                      props.onCouponRows(
+                        props.couponRows.map((r, j) => (j === i ? { ...r, desc: e.target.value } : r))
+                      )
+                    }
+                    placeholder="Syarat/catatan kecil (opsional)"
+                    maxLength={80}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+                  />
+                </div>
+                {props.couponRows.length > COUPON_MIN && (
+                  <button
+                    type="button"
+                    aria-label={`Hapus kupon ${i + 1}`}
+                    onClick={() => props.onCouponRows(props.couponRows.filter((_, j) => j !== i))}
+                    className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xs text-zinc-500 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {props.couponRows.length < COUPON_MAX && (
+            <button
+              type="button"
+              onClick={() =>
+                props.onCouponRows([...props.couponRows, { title: "", desc: "" }])
+              }
+              className="mt-2.5 w-full rounded-xl border border-dashed border-white/15 bg-white/[0.03] py-2 text-xs font-semibold text-zinc-400 transition-colors hover:border-rose-400/40 hover:text-rose-300"
+            >
+              + Tambah kupon lagi
+            </button>
+          )}
+          <p className="mt-2 text-xs text-zinc-500">
+            Penerima menyobeknya satu-satu — bikin tiap tiket terasa spesial.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -504,6 +652,10 @@ interface StepGenerateProps {
   senderName: string
   kadoType: KadoType | null
   kadoData: Record<string, string | number> | null
+  /** Jumlah kupon valid (kadoType "coupon") — tampil di ringkasan. */
+  couponCount: number
+  /** Momen lilin (kadoType "candle") — tampil di ringkasan. */
+  occasion: "ultah" | "anniversary" | "graduasi"
   generating: boolean
   errorMsg: string | null
   onBack: () => void
@@ -554,6 +706,16 @@ function StepGenerate(props: StepGenerateProps) {
             {selected?.label ?? "—"}
           </span>
         </div>
+        {(props.kadoType === "coupon" || props.kadoType === "candle") && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-zinc-500">Detail</span>
+            <span className="font-medium text-zinc-200">
+              {props.kadoType === "coupon"
+                ? `${props.couponCount} kupon siap sobek`
+                : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Aksi */}

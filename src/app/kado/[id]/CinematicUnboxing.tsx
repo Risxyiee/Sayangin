@@ -11,8 +11,10 @@
  *        bouquet  → PremiumBouquet      (buket tarik pita yang mekar)
  *        openwhen → PremiumOpenWhen     (amplop segel lilin)
  *        photobox → PremiumPhotobox     (polaroid dicuci goyangan/usap)
- *        coupon   → PremiumLoveCoupon   (tiket emas disobek)
- *        candle   → PremiumCandleBlow   (lilin ditiup lewat mic)
+ *        coupon   → PremiumLoveCoupon   (Golden Booklet — buklet kupon
+ *                                        disobek satu-satu + stempel)
+ *        candle   → PremiumCandleBlow   (Wish Keeper — nyalakan, ritual
+ *                                        permintaan, tiup 2-tahap via mic)
  *        confess  → PremiumConfess      (Heartstring Edition — segel, 3 detak,
  *                                        retak, surat baris-per-baris + audio)
  *        playlist → PremiumPlaylist     (turntable retro — kado lama)
@@ -66,6 +68,34 @@ type Outcome = "accepted" | "rejected"
 function dataStr(data: Record<string, string | number> | null, key: string): string | null {
   const v = data?.[key]
   return typeof v === "string" && v.trim() ? v : null
+}
+
+/**
+ * kadoData.coupons — JSON string daftar kupon dari Creator Studio
+ * (API kadoData hanya menerima string/number, jadi array dikodekan string).
+ * Parse aman: bukan JSON / salah bentuk → null (komponen jatuh ke deck bawaan).
+ */
+function dataCoupons(data: Record<string, string | number> | null): { title: string; desc: string }[] | null {
+  const raw = data?.["coupons"]
+  if (typeof raw !== "string") return null
+  try {
+    const arr: unknown = JSON.parse(raw)
+    if (!Array.isArray(arr)) return null
+    const out = arr
+      .filter(
+        (x): x is { title: string; desc?: string } =>
+          !!x && typeof x === "object" && typeof (x as { title?: unknown }).title === "string"
+      )
+      .map((x) => ({
+        title: x.title.trim().slice(0, 40),
+        desc: typeof x.desc === "string" ? x.desc.trim().slice(0, 80) : "",
+      }))
+      .filter((x) => x.title)
+      .slice(0, 6)
+    return out.length ? out : null
+  } catch {
+    return null
+  }
 }
 
 /** Preset confetti rose-gold senada momen kenangan; hormati reduced-motion. */
@@ -192,7 +222,11 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           targetName={kado.targetName}
           message={kado.message}
           fomoInitials={kado.fomoInitials}
+          senderName={kado.senderName}
+          createdAt={kado.createdAt}
           revealName={reveal}
+          kadoId={kado.id}
+          coupons={dataCoupons(kado.kadoData) ?? undefined}
           title={dataStr(kado.kadoData, "title") ?? undefined}
           onOpenComplete={() => setPhase(3)}
         />
@@ -203,7 +237,10 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           targetName={kado.targetName}
           message={kado.message}
           fomoInitials={kado.fomoInitials}
+          senderName={kado.senderName}
+          createdAt={kado.createdAt}
           revealName={reveal}
+          occasion={dataStr(kado.kadoData, "occasion")}
           onOpenComplete={() => setPhase(3)}
         />
       )
