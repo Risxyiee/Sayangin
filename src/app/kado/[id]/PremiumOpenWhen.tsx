@@ -99,7 +99,8 @@ function WaxSeal({ initial }: { initial: string }) {
       // membekukan props saat unmount) — jadi cukup hardcode di sini.
       exit={{ scale: 0, opacity: 0, rotate: 14, transition: { duration: 0.75, ease: "easeIn" } }}
       className="absolute z-40 will-change-transform"
-      style={{ left: STAGE_W / 2, top: HEADROOM + FLAP_H, marginLeft: -30, marginTop: -30 }}
+      // dekorasi murni — TIDAK boleh menutupi tombol ketuk amplop di bawahnya
+      style={{ left: STAGE_W / 2, top: HEADROOM + FLAP_H, marginLeft: -30, marginTop: -30, pointerEvents: "none" }}
     >
       {/* halo bara — pulse pelan selama segel utuh */}
       <span
@@ -214,6 +215,10 @@ function PromptModal({
           </p>
           <p className="font-hand mt-3 text-center text-lg leading-relaxed text-zinc-100">
             {prompt}
+          </p>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-zinc-500">
+            Jawabannya cuma buat kamu sendiri — nggak dikirim ke siapa pun.
+            Sudah cukup jujur? Segelnya langsung dilelehkan.
           </p>
 
           <form
@@ -376,71 +381,19 @@ export default function PremiumOpenWhen({
             />
           </motion.button>
 
-          {/* SURAT — perkamenen hangat, tersembunyi di dalam amplop (z antara
-              belakang & saku depan), meluncur ke atas saat tutup terlipat */}
-          <motion.div
-            className="absolute inset-x-4 z-10 will-change-transform"
-            style={{ top: 0 }}
-            initial={false}
-            animate={{ y: phase === "opened" ? 0 : HEADROOM + 26 }}
-            transition={
-              reduceMotion
-                ? { duration: 0 }
-                : phase === "opened"
-                  ? { delay: LETTER_RISE_DELAY, duration: 0.9, ease: [0.22, 1, 0.36, 1] }
-                  : { duration: 0 }
-            }
-            onAnimationComplete={() => {
-              if (phase === "opened") notifyOpenComplete()
-            }}
-          >
-            <div
-              className="max-h-[300px] overflow-y-auto overscroll-contain rounded-md border border-amber-900/15 p-5 shadow-2xl shadow-black/50"
-              style={{
-                background: "linear-gradient(175deg, #f3e9d2, #e9dbba 70%, #e2d2ac)",
-              }}
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#8a7a5e]">
-                Untuk {targetName}
-              </p>
-              <p className="font-hand mt-3 whitespace-pre-wrap text-lg leading-relaxed text-[#3f3428]">
-                {message}
-              </p>
+          {/* SURAT — tidak lagi dirender di dalam amplop. Dulu disimpen di
+              balik saku depan dengan translateY(216px) — tapi tanpa clipping,
+              jadi justru MENYEMBUL DI BAWAH amplop sebelum dibuka (pesan
+              rahasia kebaca & menutupi instruksi). Sekarang surat baru muncul
+              SETELAH segel pecah, sebagai kartu di bawah panggung — lihat
+              blok "SURAT TERBUKA" di luar container amplop ini. */}
 
-              <div className="mt-4 h-px bg-[#3f3428]/15" />
-
-              <div className="mt-3 flex items-center justify-end gap-2 text-sm">
-                <span className="text-[#8a7a5e]">Dari:</span>
-                <AnimatePresence mode="wait" initial={false}>
-                  {revealName ? (
-                    <motion.span
-                      key="real"
-                      initial={reduceMotion ? false : { opacity: 0, y: 8, filter: "blur(6px)" }}
-                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className="font-semibold text-rose-700 drop-shadow-[0_0_10px_rgba(190,24,93,0.35)]"
-                    >
-                      {revealName}
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="masked"
-                      exit={reduceMotion ? undefined : { opacity: 0, y: -8, filter: "blur(6px)" }}
-                      transition={{ duration: 0.5 }}
-                      className="font-semibold text-[#a3452f]/90"
-                    >
-                      {fomoInitials ?? "Seseorang"}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* SAKU DEPAN — lipatan V klasik; menutupi surat yang ada di baliknya */}
+          {/* SAKU DEPAN — lipatan V klasik.
+              pointer-events-none WAJIB: tanpa itu lapisan ini menutupi tombol
+              ketuk amplop → amplop mustahil dibuka (bug "gatau gimana bukanya"). */}
           <span
             aria-hidden
-            className="absolute inset-0 z-20"
+            className="pointer-events-none absolute inset-0 z-20"
             style={{
               clipPath: "polygon(0% 0%, 50% 42%, 100% 0%, 100% 100%, 0% 100%)",
               background:
@@ -462,10 +415,11 @@ export default function PremiumOpenWhen({
             <span className="absolute bottom-0 left-1/2 h-14 w-4/5 -translate-x-1/2 rounded-full bg-black/40 blur-2xl" />
           </span>
 
-          {/* TUTUP AMPLOP — terlipat ke atas (rotateX) saat fase opened */}
+          {/* TUTUP AMPLOP — terlipat ke atas (rotateX) saat fase opened.
+              pointer-events-none: lapisan dekoratif, klik tetap ke tombol. */}
           <motion.span
             aria-hidden
-            className="absolute inset-x-0 top-0 z-30 will-change-transform"
+            className="pointer-events-none absolute inset-x-0 top-0 z-30 will-change-transform"
             style={{
               height: FLAP_H,
               transformOrigin: "top center",
@@ -506,17 +460,85 @@ export default function PremiumOpenWhen({
         </motion.div>
       </div>
 
-      {/* petunjuk kecil — menghilang saat segel diputus */}
+      {/* SURAT TERBUKA — lembaran perkamen meluncur naik dari amplop setelah
+          segel pecah. Dirender dalam alur dokumen (bukan lapisan amplop):
+          selalu terbaca penuh, bisa digulir, tidak tertutup lapisan mana pun. */}
+      <AnimatePresence>
+        {phase === "opened" && (
+          <motion.div
+            key="letter"
+            initial={reduceMotion ? false : { opacity: 0, y: 44 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { delay: LETTER_RISE_DELAY, duration: 0.7, ease: [0.22, 1, 0.36, 1] }
+            }
+            onAnimationComplete={() => notifyOpenComplete()}
+            className="mt-4 w-full will-change-transform"
+          >
+            <div
+              className="max-h-[340px] overflow-y-auto overscroll-contain rounded-md border border-amber-900/15 p-5 shadow-2xl shadow-black/50"
+              style={{
+                background: "linear-gradient(175deg, #f3e9d2, #e9dbba 70%, #e2d2ac)",
+              }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#8a7a5e]">
+                Untuk {targetName}
+              </p>
+              <p className="font-hand mt-3 whitespace-pre-wrap text-lg leading-relaxed text-[#3f3428]">
+                {message}
+              </p>
+
+              <div className="mt-4 h-px bg-[#3f3428]/15" />
+
+              <div className="mt-3 flex items-center justify-end gap-2 text-sm">
+                <span className="text-[#8a7a5e]">Dari:</span>
+                <AnimatePresence mode="wait" initial={false}>
+                  {revealName ? (
+                    <motion.span
+                      key="real"
+                      initial={reduceMotion ? false : { opacity: 0, y: 8, filter: "blur(6px)" }}
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="font-semibold text-rose-700 drop-shadow-[0_0_10px_rgba(190,24,93,0.35)]"
+                    >
+                      {revealName}
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="masked"
+                      exit={reduceMotion ? undefined : { opacity: 0, y: -8, filter: "blur(6px)" }}
+                      transition={{ duration: 0.5 }}
+                      className="font-semibold text-[#a3452f]/90"
+                    >
+                      {fomoInitials ?? "Seseorang"}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* petunjuk cara buka — jelas & bertahap, menghilang saat segel diputus */}
       <AnimatePresence>
         {phase === "locked" && (
-          <motion.p
+          <motion.div
             key="hint"
             exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
             transition={{ duration: 0.3 }}
-            className="mt-2 text-xs text-zinc-500"
+            className="mt-3 flex flex-col items-center gap-1.5 text-center"
           >
-            ketuk amplopnya… segel lilinnya menunggu 🕯
-          </motion.p>
+            <p className="motion-safe:animate-pulse rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-1.5 text-sm font-semibold text-amber-100">
+              👆 Ketuk amplopnya buat mulai
+            </p>
+            <p className="text-[11px] leading-relaxed text-zinc-500">
+              Cara bukanya: ketuk amplop → jawab pertanyaannya → segel lilinnya
+              meleleh, suratnya keluar ✉️
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
 
