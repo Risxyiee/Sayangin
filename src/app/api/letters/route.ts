@@ -5,6 +5,7 @@ import { makeSlug, makeToken } from "@/lib/token";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const letterSchema = z.object({
   title: z.string().trim().min(2, "Judul surat minimal 2 karakter").max(80),
@@ -27,7 +28,7 @@ const THEMES = new Set(["rose", "sunset", "midnight"]);
 export async function POST(req: NextRequest) {
   try {
     // anti-spam: maks 5 set surat per 15 menit per IP
-    const rl = rateLimit(req, "letters-create", 5, 15 * 60 * 1000);
+    const rl = await rateLimit(req, "letters-create", 5, 15 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Sabar ya — kamu udah bikin banyak set surat. Coba lagi nanti 😅" },
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("POST /api/letters error:", describeError(err), err);
+    reportError(err, { route: "POST /api/letters" });
     return NextResponse.json(
       { error: "Gagal membuat surat. Coba lagi ya." },
       { status: 500 }

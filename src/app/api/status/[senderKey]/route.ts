@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 // Halaman status pengirim: GET /api/status/<senderKey>
 // Mendukung dua jenis kado: confess & open-when letters.
@@ -128,6 +129,7 @@ export async function GET(
     );
   } catch (err) {
     console.error("GET /api/status/[senderKey] error:", describeError(err), err);
+    reportError(err, { route: "GET /api/status/[senderKey]" });
     return NextResponse.json(
       { error: "Gagal memuat status." },
       { status: 500 }

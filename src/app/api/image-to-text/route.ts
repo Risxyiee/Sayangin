@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { rateLimit } from "@/lib/rate-limit";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 /**
  * POST /api/image-to-text — deskripsi gambar via Workers AI (gratis).
@@ -49,7 +50,7 @@ function toDataUri(bytes: ArrayBuffer, mime: string): string {
 
 export async function POST(req: NextRequest) {
   // anti-spam: 10 gambar per 10 menit per IP (hemat kuota Neurons harian)
-  const rl = rateLimit(req, "image-to-text", 10, 10 * 60 * 1000);
+  const rl = await rateLimit(req, "image-to-text", 10, 10 * 60 * 1000);
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Terlalu sering — coba lagi beberapa menit lagi ya 😅" },
@@ -151,6 +152,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ description });
   } catch (err) {
     console.error("POST /api/image-to-text error:", describeError(err), err);
+    reportError(err, { route: "POST /api/image-to-text" });
     return NextResponse.json(
       { error: "Gagal memproses gambar. Coba lagi ya." },
       { status: 500 }

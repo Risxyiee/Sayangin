@@ -74,16 +74,16 @@ ISSUES = [
     ["S-04", "P0", "0 — Fondasi", "Infrastruktur",
      "Rate limiter reset tiap restart",
      "src/lib/rate-limit.ts pakai Map per-proses — limit gugur saat restart/deploy, bisa di-bypass spam",
-     "Di Cloudflare: Upstash Redis (paling gampang, API tinggal diganti) atau Durable Objects. Hindari KV — eventual consistency kurang cocok untuk counter",
+     "SELESAI 1 Nov: counter durable di Postgres — tabel rate_limit + atomic upsert (1 query) via pool pg bersama; tanpa akun/dep baru; fallback in-memory + backoff. Upstash cukup ditukar di file ini kalau traffic membesar",
      0.5,
      "Restart/redeploy → counter limit tidak reset; ujung-ke-ujung: spam 6x confess kena 429"],
 
     ["S-05", "P0", "0 — Fondasi", "Infrastruktur",
      "Nol backup, nol error monitoring",
      "DB berisi surat yang emosional tapi tidak ada backup; error produksi tidak terpantau (tidak ada Sentry)",
-     "Supabase free tier tidak ada auto-backup → cron GitHub Actions pg_dump mingguan ke storage; Sentry free tier (source maps on)",
+     "SELESAI 1 Nov: GitHub Actions pg_dump mingguan (retensi 90 hari) + restore drill otomatis di tiap backup; monitoring = log Cloudflare (observability) + tabel error_log di Supabase via reportError() di semua API. Sentry ditunda — SDK Next.js belum stabil untuk OpenNext",
      0.5,
-     "Restore drill 1x sukses dari backup; error test muncul di Sentry < 1 menit"],
+     "Workflow backup hijau + drill restore sukses; error test tercatat di error_log & log Cloudflare"],
 
     ["S-06", "P1", "1 — Trust & Safety", "Moderasi",
      "Tidak ada halaman admin / antrean moderasi",
@@ -159,10 +159,10 @@ ISSUES = [
 setup_sheet(ws, title="Issue Tracker — Sayangin (15 isu, siap dieksekusi)", last_col=LAST1)
 
 # status pengerjaan (update tiap ada isu yang selesai)
-STATUS = {"S-01": "Selesai", "S-02": "Selesai"}
+STATUS = {"S-01": "Selesai", "S-02": "Selesai", "S-03": "Selesai", "S-04": "Selesai", "S-05": "Berjalan"}
 
 # subtitle
-ws.cell(row=3, column=2, value="Hasil audit kode 31 Okt 2026 · urutan eksekusi ada di sheet 'Urutan Kerja'").font = font_caption()
+ws.cell(row=3, column=2, value="Hasil audit kode 31 Okt 2026 · update 1 Nov 2026: S-01–S-05 rampung (Milestone 1 'Aman dipromosikan') · urutan eksekusi di sheet 'Urutan Kerja'").font = font_caption()
 
 for c, h in enumerate(HEAD1, 2):
     ws.cell(row=4, column=c, value=h)
@@ -316,9 +316,9 @@ CHOSEN = [
     ["Hosting", "Cloudflare Pages/Workers", "Adapter @opennextjs/cloudflare + nodejs_compat di wrangler.toml; domain mengarah ke Cloudflare"],
     ["Database", "Supabase Postgres", "schema.prisma: provider \"postgresql\"; DATABASE_URL = pooler Supabase (port 6543, transaction mode) — cocok untuk serverless"],
     ["Migrasi DB", "prisma migrate dari nol", "Data SQLite lama (db/custom.db) hanya data uji — tidak dibawa; jalankan db:generate + migrate deploy"],
-    ["Rate limit", "Upstash Redis (atau Durable Objects)", "API rate-limit.ts tinggal diganti di dalamnya; hindari Cloudflare KV — eventual consistency tidak cocok untuk counter"],
-    ["Backup", "GitHub Actions cron → pg_dump mingguan", "Supabase free tier tidak ada auto-backup; dump → Cloudflare R2 / storage lain"],
-    ["Monitoring", "Sentry free tier", "Pasang setelah deploy (S-05); error produksi langsung terpantau"],
+    ["Rate limit", "Postgres — tabel rate_limit (atomic upsert)", "S-04: counter durable via pool pg bersama, tanpa akun & dep baru; fallback in-memory. Upstash cuma kalau traffic membesar"],
+    ["Backup", "GitHub Actions cron → pg_dump mingguan", "S-05: dump setiap Minggu 10:00 WIB, artifact retensi 90 hari, restore drill otomatis ke Postgres bersih tiap jalan"],
+    ["Monitoring", "Log Cloudflare + tabel error_log (Supabase)", "S-05: observability Workers + reportError() di semua API; Sentry ditunda — SDK Next.js belum stabil di OpenNext"],
     ["Biaya", "$0 — keduanya free tier", "Naik hanya kalau traffic ramai; tier gratis Supabase cukup untuk fase percobaan"],
 ]
 
@@ -344,7 +344,7 @@ CHOSEN_END = 4 + len(CHOSEN)
 SUM3 = CHOSEN_END + 1
 ws3.cell(row=SUM3, column=2, value="Status")
 ws3.cell(row=SUM3, column=3, value="✔ FINAL — payment QRIS ditunda sampai fase percobaan validasi (S-12)")
-ws3.cell(row=SUM3, column=4, value="Lanjut ke S-04 (rate limit) & S-05 (backup) dengan stack ini")
+ws3.cell(row=SUM3, column=4, value="S-04 & S-05 rampung — MILESTONE 1 'Aman dipromosikan' tercapai; lanjut S-06 (admin)")
 style_total_row(ws3, SUM3, 2, LAST3)
 for col in (2, 3, 4):
     ws3.cell(row=SUM3, column=col).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)

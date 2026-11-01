@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("GET /api/wall error:", describeError(err), err);
+    reportError(err, { route: "GET /api/wall" });
     return NextResponse.json(
       { error: "Gagal memuat dinding. Coba lagi ya." },
       { status: 500 }
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
 // Reaksi emoji pengunjung dinding — dibatasi rate biar nggak di-spam.
 export async function POST(req: NextRequest) {
   try {
-    const rl = rateLimit(req, "wall-react", 40, 5 * 60 * 1000);
+    const rl = await rateLimit(req, "wall-react", 40, 5 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Kebanyakan reaksi — tarik napas dulu 😌" },
@@ -114,6 +116,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reactions: updated });
   } catch (err) {
     console.error("POST /api/wall error:", describeError(err), err);
+    reportError(err, { route: "POST /api/wall" });
     return NextResponse.json(
       { error: "Gagal kirim reaksi. Coba lagi." },
       { status: 500 }

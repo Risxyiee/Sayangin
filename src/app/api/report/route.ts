@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const reportSchema = z.object({
   slug: z.string().trim().min(3).max(30),
@@ -14,7 +15,7 @@ const reportSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     // anti-spam laporan: maks 8 per jam per IP
-    const rl = rateLimit(req, "report", 8, 60 * 60 * 1000);
+    const rl = await rateLimit(req, "report", 8, 60 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Terlalu banyak laporan. Coba lagi nanti ya." },
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("POST /api/report error:", describeError(err), err);
+    reportError(err, { route: "POST /api/report" });
     return NextResponse.json(
       { error: "Gagal mengirim laporan. Coba lagi ya." },
       { status: 500 }

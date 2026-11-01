@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const openSchema = z.object({ letterId: z.string().min(1) });
 
@@ -65,6 +66,7 @@ export async function POST(
     });
   } catch (err) {
     console.error("POST /api/letters/[slug]/open error:", describeError(err), err);
+    reportError(err, { route: "POST /api/letters/[slug]/open" });
     return NextResponse.json({ error: "Gagal membuka surat." }, { status: 500 });
   }
 }

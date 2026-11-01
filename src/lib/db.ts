@@ -98,21 +98,30 @@ function makePool(connectionString: string | undefined): PgPool {
   return pool
 }
 
-function makeClient(): PrismaClient {
-  const hd = hyperdriveConnectionString()
-  const adapter = hd
-    ? new PrismaPg(makePool(hd))
-    : new PrismaPg(makePool(envDatabaseUrl()))
+// Pool pg BERSAMA: dipakai Prisma (via adapter) SEKALIGUS query manual
+// (mis. rate limiter S-04). Satu isolate = satu pool. Karena rate limiter
+// jalan SEBELUM query utama dalam request yang sama, client yang barusan
+// dibuka limiter langsung di-reuse oleh query Prisma berikutnya — tidak ada
+// biaya koneksi ekstra per request.
+let sharedPool: PgPool | undefined
 
-  if (!hd && !envDatabaseUrl()) {
-    console.warn(
-      '[db] Tidak ada binding Hyperdrive maupun DATABASE_URL — query database akan gagal. ' +
-        'Set binding HYPERDRIVE_DB di wrangler.jsonc, atau .env untuk lokal.'
-    )
+export function getPgPool(): PgPool {
+  if (!sharedPool) {
+    const cs = hyperdriveConnectionString() ?? envDatabaseUrl()
+    if (!cs) {
+      console.warn(
+        '[db] Tidak ada binding Hyperdrive maupun DATABASE_URL — query database akan gagal. ' +
+          'Set binding HYPERDRIVE_DB di wrangler.jsonc, atau .env untuk lokal.'
+      )
+    }
+    sharedPool = makePool(cs)
   }
+  return sharedPool
+}
 
+function makeClient(): PrismaClient {
   return new PrismaClient({
-    adapter,
+    adapter: new PrismaPg(getPgPool()),
     ...(process.env.NODE_ENV === 'production' ? {} : { log: ['query'] as const }),
   })
 }

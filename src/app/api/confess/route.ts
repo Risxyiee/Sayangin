@@ -6,6 +6,7 @@ import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { makeSlug, makeToken } from "@/lib/token";
 import { describeError } from "@/lib/log-error";
 import { THEME_KEYS, THEME_INVALID_MESSAGE, isThemeSelectable } from "@/lib/themes";
+import { reportError } from "@/lib/monitor";
 
 const confessSchema = z.object({
   fromName: z.string().trim().max(40).optional().default(""),
@@ -26,7 +27,7 @@ const confessSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     // anti-spam: maks 5 confess per 15 menit per IP
-    const rl = rateLimit(req, "confess-create", 5, 15 * 60 * 1000);
+    const rl = await rateLimit(req, "confess-create", 5, 15 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Sabar ya — kamu udah bikin banyak confess. Coba lagi nanti 😅" },
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("POST /api/confess error:", describeError(err), err);
+    reportError(err, { route: "POST /api/confess" });
     return NextResponse.json(
       { error: "Gagal membuat confess. Coba lagi ya." },
       { status: 500 }

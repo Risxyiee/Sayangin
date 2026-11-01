@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,7 @@ export async function GET() {
     });
   } catch (err) {
     console.error("GET /api/stats error:", describeError(err), err);
+    reportError(err, { route: "GET /api/stats" });
     // DB gagal → jangan tampilkan angka palsu, biarkan UI pakai fallback
     return NextResponse.json(
       { error: "statistik tidak tersedia" },

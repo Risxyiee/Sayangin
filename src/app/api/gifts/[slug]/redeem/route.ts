@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import type { CouponsData, GiftProgress } from "@/lib/gift-data";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const redeemSchema = z.object({
   index: z.number().int().min(0).max(9),
@@ -19,7 +20,7 @@ export async function POST(
     const { slug } = await params;
 
     // anti-spam: maks 30 penukaran per jam per IP
-    const rl = rateLimit(req, "gift-redeem", 30, 60 * 60 * 1000);
+    const rl = await rateLimit(req, "gift-redeem", 30, 60 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Terlalu banyak coba-coba. Coba lagi nanti ya." },
@@ -85,6 +86,7 @@ export async function POST(
     return NextResponse.json({ ok: true, progress: next });
   } catch (err) {
     console.error("POST /api/gifts/[slug]/redeem error:", describeError(err), err);
+    reportError(err, { route: "POST /api/gifts/[slug]/redeem" });
     return NextResponse.json(
       { error: "Gagal memakai kupon. Coba lagi ya." },
       { status: 500 }

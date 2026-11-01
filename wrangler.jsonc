@@ -11,6 +11,10 @@
   "observability": {
     "enabled": true
   },
+  // S-05 monitoring: log console.error semua API terlihat di dashboard
+  // Cloudflare (Workers → Logs) berkat observability di atas; error
+  // terstruktur juga tersimpan di tabel error_log (Supabase) via
+  // src/lib/monitor.ts. Sentry bisa disusulkan nanti kalau traffic naik.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE_DB",

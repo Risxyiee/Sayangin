@@ -17,6 +17,7 @@ import {
 import { THEME_KEYS, THEME_INVALID_MESSAGE } from "@/lib/themes";
 import { withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const createSchema = z.object({
   type: z.enum(GIFT_TYPES),
@@ -40,7 +41,7 @@ const DATA_SCHEMA: Record<GiftType, z.ZodTypeAny> = {
 export async function POST(req: NextRequest) {
   try {
     // anti-spam: maks 5 kado per 15 menit per IP
-    const rl = rateLimit(req, "gift-create", 5, 15 * 60 * 1000);
+    const rl = await rateLimit(req, "gift-create", 5, 15 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Sabar ya — kamu udah bikin banyak kado. Coba lagi nanti 😅" },
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("POST /api/gifts error:", describeError(err), err);
+    reportError(err, { route: "POST /api/gifts" });
     return NextResponse.json(
       { error: "Gagal membuat kado. Coba lagi ya." },
       { status: 500 }

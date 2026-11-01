@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 export async function GET(
   req: NextRequest,
@@ -81,6 +82,7 @@ export async function GET(
     return NextResponse.json({ ...safe, preview: isPreview });
   } catch (err) {
     console.error("GET /api/confess/[slug] error:", describeError(err), err);
+    reportError(err, { route: "GET /api/confess/[slug]" });
     return NextResponse.json(
       { error: "Gagal memuat confess." },
       { status: 500 }

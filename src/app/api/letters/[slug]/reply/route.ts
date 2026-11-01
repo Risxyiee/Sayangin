@@ -4,6 +4,7 @@ import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
+import { reportError } from "@/lib/monitor";
 
 const replySchema = z.object({
   letterId: z.string().trim().min(5).max(40),
@@ -25,7 +26,7 @@ export async function POST(
     const { slug } = await params;
 
     // anti-spam: maks 15 balasan per jam per IP
-    const rl = rateLimit(req, "letter-reply", 15, 60 * 60 * 1000);
+    const rl = await rateLimit(req, "letter-reply", 15, 60 * 60 * 1000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Terlalu banyak balasan sekaligus. Coba lagi nanti ya 😅" },
@@ -99,6 +100,7 @@ export async function POST(
     });
   } catch (err) {
     console.error("POST /api/letters/[slug]/reply error:", describeError(err), err);
+    reportError(err, { route: "POST /api/letters/[slug]/reply" });
     return NextResponse.json(
       { error: "Gagal mengirim balasan. Coba lagi ya." },
       { status: 500 }
