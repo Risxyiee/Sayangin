@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, withDbRetry } from "@/lib/db";
+import { db, withDbRetry, isUniqueViolation } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { makeSlug, makeToken } from "@/lib/token";
@@ -93,26 +93,31 @@ export async function POST(req: NextRequest) {
     const senderKey = makeToken(16);
     // withDbRetry: kalau kena koneksi zombie Hyperdrive, ulang sekali di
     // koneksi baru — pengguna tidak melihat errornya.
+    //
+    // TANPA pre-check findUnique(slug): query pre-check yang NULL ter-cache
+    // Hyperdrive sebelum baris dibuat → GET sesaat usai create membaca cache
+    // NULL → 404 (insiden null-read 2026-11-01). Uniqueness via catch P2002.
     const confession = await withDbRetry(async () => {
-      let slug = makeSlug();
-      // pastikan unik
       for (let i = 0; i < 5; i++) {
-        const exists = await db.confession.findUnique({ where: { slug } });
-        if (!exists) break;
-        slug = makeSlug();
+        try {
+          return await db.confession.create({
+            data: {
+              slug: makeSlug(),
+              senderKey,
+              fromName: fromName ?? "",
+              toName,
+              message,
+              theme,
+              isPublic,
+              ...(unlock ? { unlockAt: unlock } : {}),
+            },
+          });
+        } catch (err) {
+          if (isUniqueViolation(err) && i < 4) continue; // slug tabrakan — regenerate
+          throw err;
+        }
       }
-      return db.confession.create({
-        data: {
-          slug,
-          senderKey,
-          fromName: fromName ?? "",
-          toName,
-          message,
-          theme,
-          isPublic,
-          ...(unlock ? { unlockAt: unlock } : {}),
-        },
-      });
+      throw new Error("gagal membuat slug unik setelah 5 percobaan");
     });
 
     return NextResponse.json(

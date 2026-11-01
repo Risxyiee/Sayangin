@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { Pool } from 'pg'
 import type { Pool as PgPool } from 'pg'
@@ -82,14 +82,15 @@ function makePool(connectionString: string | undefined): PgPool {
     // request app mayoritas sekuensial, 3 jelas cukup, dan makin sedikit
     // koneksi terbuka makin sedikit koneksi basi yang bisa dijadwalkan user.
     connectionTimeoutMillis: 5_000, // gagal cepat, jangan biarkan user nunggu lama
-    // 3 dtk: pelajaran insiden produksi 2026-11-01 (POST /api/gifts wall 18,5
-    // dtk → 500). query_timeout 6 dtk membuat attempt-2 withDbRetry overshoot:
-    // limiter 2,5 dtk + attempt-1 6 dtk + attempt-2 6 dtk ≈ 18,5 dtk user
-    // menatap hening. 3 dtk = masih 3× slack koneksi dingin Hyperdrive (TLS +
-    // auth di jaringan internal Cloudflare biasanya < 300 ms), sementara
-    // koneksi basi terpotong 2× lebih cepat → total worst-case terpangkas ke
-    // ±6,5 dtk untuk seluruh blok retry. Respons normal < 2 dtk.
-    query_timeout: 3_000,
+    // 4,5 dtk: audit produksi 2026-11-01 (scripts/audit_all_flows.sh) menemukan
+    // hampir semua request menggenangi 3 dtk pas — polanya: query PERTAMA pada
+    // koneksi segar menunggu Hyperdrive dial origin dingin (TLS + auth ke
+    // Supabase), yang terhitung di dalam query_timeout. 3 dtk memotong dial
+    // sehat itu → withDbRetry mengulang di koneksi lain → 3,3–6,8 dtk per
+    // request (12 dari 25 panggilan audit > 3 dtk). 4,5 dtk menyerap dial
+    // dingin (tipikal 2–3 dtk) tanpa retry; koneksi basi tetap dipotong, dan
+    // anggaran keras withDbRetry (8,5 dtk) tetap membatasi worst-case user.
+    query_timeout: 4_500,
     statement_timeout: 8_000, // server-side: potong query nangkring
     // PENTING: di node-postgres, 0 = DISABLED — koneksi idle tidak pernah
     // ditutup dan DIPAKAI-ULANG request berikutnya. Itulah sumber zombie
@@ -176,6 +177,22 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 // habis, error naik cepat dengan pesan rapi + tombol coba lagi — BUKAN
 // 18–24 dtk hening seperti episode lama.
 const RETRYABLE = /query read timeout|connection terminated|timeout exceeded|ECONNRESET|socket hang up|anggaran db/i
+
+/**
+ * Deteksi tabrakan unique constraint (P2002) — antar varian error adapter
+ * (engine klasik vs driver adapter bisa membungkus pesan berbeda).
+ * Dipakai pola create-and-catch: TIDAK ada pre-check findUnique(slug) sebelum
+ * create — query pre-check yang menghasilkan NULL bisa di-cache Hyperdrive
+ * (automatic query caching) tepat sebelum baris dibuat, lalu GET sesaat
+ * setelahnya membaca cache NULL → 404 "tidak ditemukan" padahal datanya ada
+ * (insiden null-read produksi 2026-11-01: respond/letters/gifts 404 usai
+ * create). Satu-satunya query yang menyentuh slug baru adalah INSERT-nya.
+ */
+export function isUniqueViolation(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) return err.code === 'P2002'
+  const msg = err instanceof Error ? err.message : String(err)
+  return /P2002|unique constraint|duplicate key/i.test(msg)
+}
 
 /** Sisa waktu minimum agar satu retry masih masuk akal (query timeout 3 dtk + jeda). */
 const MIN_RETRY_HEADROOM_MS = 1_000

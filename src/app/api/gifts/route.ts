@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry, isUniqueViolation } from "@/lib/db";
 import { makeSlug, makeToken } from "@/lib/token";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
@@ -15,7 +15,6 @@ import {
   type GiftType,
 } from "@/lib/gift-data";
 import { THEME_KEYS, THEME_INVALID_MESSAGE } from "@/lib/themes";
-import { withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
 
@@ -86,25 +85,30 @@ export async function POST(req: NextRequest) {
 
     // withDbRetry: kalau kena koneksi zombie Hyperdrive, ulang sekali di
     // koneksi baru — pengguna tidak melihat errornya.
+    // TANPA pre-check findUnique(slug) — query pre-check yang NULL ter-cache
+    // Hyperdrive sebelum baris dibuat → GET sesaat usai create 404 (insiden
+    // null-read 2026-11-01). Uniqueness ditangani catch P2002 di bawah.
     const gift = await withDbRetry(async () => {
-      let slug = makeSlug();
       for (let i = 0; i < 5; i++) {
-        const exists = await db.gift.findUnique({ where: { slug } });
-        if (!exists) break;
-        slug = makeSlug();
+        try {
+          return await db.gift.create({
+            data: {
+              slug: makeSlug(),
+              senderKey: makeToken(16),
+              type,
+              fromName: fromName ?? "",
+              toName,
+              theme: THEMES.has(theme) ? theme : "rose",
+              data: JSON.stringify(data),
+            },
+            select: { slug: true, id: true, senderKey: true },
+          });
+        } catch (err) {
+          if (isUniqueViolation(err) && i < 4) continue; // slug tabrakan — regenerate
+          throw err;
+        }
       }
-      return db.gift.create({
-        data: {
-          slug,
-          senderKey: makeToken(16),
-          type,
-          fromName: fromName ?? "",
-          toName,
-          theme: THEMES.has(theme) ? theme : "rose",
-          data: JSON.stringify(data),
-        },
-        select: { slug: true, id: true, senderKey: true },
-      });
+      throw new Error("gagal membuat slug unik setelah 5 percobaan");
     });
 
     return NextResponse.json(

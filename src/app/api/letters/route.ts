@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, withDbRetry } from "@/lib/db";
+import { db, withDbRetry, isUniqueViolation } from "@/lib/db";
 import { makeSlug, makeToken } from "@/lib/token";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
@@ -88,31 +88,35 @@ export async function POST(req: NextRequest) {
     // withDbRetry: koneksi zombie Hyperdrive sesekali muncul — ulang di
     // koneksi baru, user tidak melihat errornya (pola sama dgn confess/gifts).
     const set = await withDbRetry(async () => {
-      let slug = makeSlug();
-      // pastikan unik
+      // TANPA pre-check findUnique(slug) — query pre-check yang NULL ter-cache
+      // Hyperdrive sebelum baris dibuat → GET sesaat usai create 404 (insiden
+      // null-read 2026-11-01). Uniqueness ditangani catch P2002 di bawah.
       for (let i = 0; i < 5; i++) {
-        const exists = await db.letterSet.findUnique({ where: { slug } });
-        if (!exists) break;
-        slug = makeSlug();
+        try {
+          return await db.letterSet.create({
+            data: {
+              slug: makeSlug(),
+              senderKey: makeToken(16),
+              fromName: fromName ?? "",
+              toName,
+              theme: THEMES.has(theme) ? theme : "rose",
+              letters: {
+                create: sorted.map((l, i) => ({
+                  order: i,
+                  title: l.title,
+                  body: l.body,
+                  unlockDays: l.unlockDays,
+                })),
+              },
+            },
+            select: { slug: true, id: true, senderKey: true },
+          });
+        } catch (err) {
+          if (isUniqueViolation(err) && i < 4) continue; // slug tabrakan — regenerate
+          throw err;
+        }
       }
-      return db.letterSet.create({
-        data: {
-          slug,
-          senderKey: makeToken(16),
-          fromName: fromName ?? "",
-          toName,
-          theme: THEMES.has(theme) ? theme : "rose",
-          letters: {
-            create: sorted.map((l, i) => ({
-              order: i,
-              title: l.title,
-              body: l.body,
-              unlockDays: l.unlockDays,
-            })),
-          },
-        },
-        select: { slug: true, id: true, senderKey: true },
-      });
+      throw new Error("gagal membuat slug unik setelah 5 percobaan");
     });
 
     return NextResponse.json(
