@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import PremiumConfess from "@/app/kado/[id]/PremiumConfess";
 import { Textarea } from "@/components/ui/textarea";
 import { Heart, Loader2, Lock, Share2, X } from "lucide-react";
 import { CONFESS_THEMES, type ConfessionTheme } from "@/lib/themes";
@@ -24,7 +25,6 @@ type Stage =
   | "hidden"
   | "locked"
   | "closed"
-  | "typing"
   | "question"
   | "yes"
   | "later";
@@ -104,74 +104,6 @@ export function FallingPieces({ active, kind }: { active: boolean; kind: "confet
   );
 }
 
-/* ---------- envelope visual ---------- */
-function Envelope({ open, accent }: { open: boolean; accent: string }) {
-  return (
-    <div className="perspective-1200 relative h-[150px] w-[230px] sm:h-[170px] sm:w-[260px]">
-      {/* amplop belakang */}
-      <div className="absolute inset-0 rounded-md bg-[#f6efe4] shadow-2xl" />
-      {/* surat yang keluar */}
-      <motion.div
-        initial={{ y: 14, scale: 0.94, opacity: 0 }}
-        animate={
-          open
-            ? { y: -84, scale: 1, opacity: 1 }
-            : { y: 14, scale: 0.94, opacity: 0 }
-        }
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="absolute left-1/2 top-2 h-[120px] w-[86%] -translate-x-1/2 rounded-sm bg-white p-3 shadow-lg"
-      >
-        <div className="font-hand text-lg leading-5 text-neutral-800">
-          Buat kamu yang spesial
-        </div>
-        <div className="mt-2 space-y-1.5">
-          <div className="h-1.5 w-4/5 rounded-sm bg-neutral-200" />
-          <div className="h-1.5 w-3/5 rounded-sm bg-neutral-200" />
-        </div>
-      </motion.div>
-      {/* amplop depan */}
-      <div
-        className="absolute inset-0 z-10 rounded-md bg-[#efe5d4] shadow-lg"
-        style={{ clipPath: "polygon(0 18%, 50% 62%, 100% 18%, 100% 100%, 0 100%)" }}
-      />
-      {/* segitiga kiri-kanan */}
-      <div
-        className="absolute inset-0 z-10 rounded-md bg-[#e9dcc6]/80"
-        style={{ clipPath: "polygon(0 18%, 50% 62%, 0 100%)" }}
-      />
-      <div
-        className="absolute inset-0 z-10 rounded-md bg-[#eee2cf]/80"
-        style={{ clipPath: "polygon(100% 18%, 50% 62%, 100% 100%)" }}
-      />
-      {/* flap */}
-      <motion.div
-        initial={false}
-        animate={{ rotateX: open ? 180 : 0 }}
-        transition={{ duration: 0.65, ease: "easeInOut" }}
-        style={{ transformOrigin: "top", clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
-        className="absolute left-0 top-0 z-20 h-[58%] w-full rounded-t-md bg-[#e5d7bf]"
-      />
-      {/* segel lilin */}
-      <motion.div
-        animate={open ? { opacity: 0, scale: 0.4 } : { opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        className="absolute left-1/2 top-[46%] z-30 -translate-x-1/2"
-      >
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-[#9d1c34] shadow-lg"
-          style={{ animation: open ? undefined : "seal-glow 2s ease-in-out infinite" }}
-        >
-          <Heart className="h-5 w-5 fill-white text-white" />
-        </div>
-      </motion.div>
-      <span className="sr-only">Amplop surat, {open ? "terbuka" : "tertutup"}</span>
-      <span aria-hidden className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/50" style={{ color: accent }}>
-        {" "}
-      </span>
-    </div>
-  );
-}
-
 /* ---------- fullscreen confession experience ---------- */
 export default function ConfessionView({
   slug,
@@ -189,7 +121,6 @@ export default function ConfessionView({
   const [stage, setStage] = useState<Stage>(preview ? "closed" : "loading");
   const [isPreview, setIsPreview] = useState(false);
   const [reportState, setReportState] = useState<"idle" | "done">("idle");
-  const [typed, setTyped] = useState("");
   const [answered, setAnswered] = useState<string | null>(null);
   // balasan tertulis penerima (loop dua arah)
   const [replyOpen, setReplyOpen] = useState(false);
@@ -200,100 +131,7 @@ export default function ConfessionView({
   // kirim terjadwal: waktu buka surat (ISO) saat stage "locked"
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [shareState, setShareState] = useState<"idle" | "copied" | "sent">("idle");
-  const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* ritual buka: ketuk & tahan amplop — progres bertahap ala ritual kompetitor,
-     tapi tetap pakai identitas amplop + segel lilin. Fallback: dobel-klik / tombol. */
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [releasedEarly, setReleasedEarly] = useState(false);
-  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  // umpan balik tap cepat — penerima yang cuma ngeklik tidak boleh diem:
-  // amplop digoyang + pesan jelas; 3x tap cepat = buka langsung
-  const [nudge, setNudge] = useState(false);
-  const tapCount = useRef(0);
-  const holdStartAt = useRef(0);
-  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tapReset = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const stopHold = () => {
-    if (holdTimer.current) {
-      clearInterval(holdTimer.current);
-      holdTimer.current = null;
-    }
-  };
-
-  const openNow = () => {
-    stopHold();
-    setHoldProgress(0);
-    setTyped("");
-    setStage("typing");
-  };
-
-  const startHold = () => {
-    if (stage !== "closed") return;
-    setReleasedEarly(false);
-    stopHold();
-    holdStartAt.current = Date.now();
-    holdTimer.current = setInterval(() => {
-      setHoldProgress((p) => Math.min(100, p + 2)); // ~2,5 detik sampai terbuka
-    }, 50);
-  };
-
-  const cancelHold = () => {
-    if (stage !== "closed") return;
-    stopHold();
-    const heldMs = Date.now() - holdStartAt.current;
-    setHoldProgress((p) => {
-      if (p >= 100) return p; // efek samping ditangani effect di bawah
-      if (p > 2) setReleasedEarly(true);
-      return 0;
-    });
-    // Tap cepat (< 350ms) bukan "tahan": dulu ini diem total sehingga
-    // penerima mengira suratnya rusak. Sekarang amplop digoyang + pesan
-    // jelas, dan 3x tap cepat langsung membuka — tidak ada jalur buntu.
-    if (heldMs < 350) {
-      tapCount.current += 1;
-      setNudge(true);
-      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-      nudgeTimer.current = setTimeout(() => setNudge(false), 450);
-      if (tapReset.current) clearTimeout(tapReset.current);
-      tapReset.current = setTimeout(() => {
-        tapCount.current = 0;
-      }, 2500);
-      if (tapCount.current >= 3) {
-        tapCount.current = 0;
-        setNudge(false);
-        openNow();
-      }
-    }
-  };
-
-  // terbuka otomatis saat tahan penuh
-  useEffect(() => {
-    if (stage === "closed" && holdProgress >= 100) openNow();
-  }, [holdProgress, stage]);
-
-  // bersihkan timer ritual saat pindah stage / unmount
-  useEffect(() => stopHold, [stopHold]);
-  useEffect(
-    () => () => {
-      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-      if (tapReset.current) clearTimeout(tapReset.current);
-    },
-    []
-  );
-
-  const ritualCopy = releasedEarly
-    ? "eh, lepas? tahan TERUS sampai terbuka ya 🙈"
-    : holdProgress === 0
-      ? nudge
-        ? "itu tap doang 😅 tekan & TAHAN terus sampai kebuka"
-        : "tekan & TAHAN amplopnya sampai terbuka (±2 detik)"
-      : holdProgress < 35
-        ? "amplopnya bergetar heboh…"
-        : holdProgress < 70
-          ? "segel lilinnya meleleh pelan-pelan…"
-          : "hampir… tarik napas dulu 🥹";
 
   const load = useCallback(() => {
     if (preview || !slug) return;
@@ -351,22 +189,6 @@ export default function ConfessionView({
     return () => clearTimeout(t);
   }, [unlockedJustNow, load]);
 
-  // efek mesin ketik
-  useEffect(() => {
-    if (stage !== "typing" || !data) return;
-    let i = 0;
-    typeTimer.current = setInterval(() => {
-      i += 1;
-      setTyped(data.message.slice(0, i));
-      if (i >= data.message.length) {
-        if (typeTimer.current) clearInterval(typeTimer.current);
-        setTimeout(() => setStage("question"), 700);
-      }
-    }, 38);
-    return () => {
-      if (typeTimer.current) clearInterval(typeTimer.current);
-    };
-  }, [stage, data]);
 
   const theme = CONFESS_THEMES[data?.theme ?? "rose"] ?? CONFESS_THEMES.rose;
   const senderName = data?.fromName?.trim() || "Seseorang yang diam-diam perhatian";
@@ -389,7 +211,6 @@ export default function ConfessionView({
 
   const changeAnswer = () => {
     // kembali ke pilihan (mis. "later" → "yes") — surat tampil utuh
-    setTyped(data?.message ?? "");
     setAnswered(null);
     setReplyOpen(false);
     setReplyError("");
@@ -583,72 +404,29 @@ export default function ConfessionView({
           </motion.div>
         )}
 
-        {/* ------ AMPLOP TERTUTUP — ritual ketuk & tahan ------ */}
+        {/* ------ TERSEGEL — seremoni Heartstring (upgrade alur confess asli) ------ */}
         {data && stage === "closed" && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center"
-          >
-            <p className="font-hand text-3xl text-rose-200">Buat {data.toName},</p>
-            <p className="mt-1 text-sm tracking-wide text-white/60">
-              seseorang meninggalkan surat untukmu
-            </p>
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Ketuk dan tahan amplopnya untuk membuka surat"
-              onPointerDown={startHold}
-              onPointerUp={cancelHold}
-              onPointerLeave={cancelHold}
-              onPointerCancel={cancelHold}
-              onDoubleClick={openNow}
-              onKeyDown={(e) => {
-                if ((e.key === " " || e.key === "Enter") && !e.repeat) {
-                  e.preventDefault();
-                  startHold();
-                }
-              }}
-              onKeyUp={(e) => {
-                if (e.key === " " || e.key === "Enter") cancelHold();
-              }}
-              className="mt-10 cursor-pointer touch-none select-none rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-              style={{
-                transform: `scale(${1 + (holdProgress / 100) * 0.07})`,
-                transition: "transform 0.15s ease-out",
-              }}
-            >
-              <div
-                className={
-                  holdProgress > 0 ? "anim-wobble" : nudge ? "anim-nudge" : "anim-float"
-                }
-              >
-                <Envelope open={false} accent={theme.accent} />
-              </div>
-            </div>
-            <div
-              className="mt-8 h-1.5 w-44 overflow-hidden rounded-full bg-white/10"
-              aria-hidden
-            >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-300 transition-[width] duration-100"
-                style={{ width: `${holdProgress}%` }}
-              />
-            </div>
-            <p className="mt-3 h-5 text-[13px] font-medium text-white/75" aria-live="polite">
-              {ritualCopy}
-            </p>
+          <div className="w-full">
+            <PremiumConfess
+              targetName={data.toName}
+              message={data.message}
+              fomoInitials={null}
+              senderName={data.fromName?.trim() || null}
+              createdAt={null}
+              revealName={null}
+              onOpenComplete={() => setStage("question")}
+            />
             <button
-              onClick={openNow}
-              className="mt-1 text-xs text-white/45 underline underline-offset-2 transition-colors hover:text-white/80"
+              onClick={() => setStage("question")}
+              className="mx-auto mt-2 block text-xs text-white/45 underline underline-offset-2 transition-colors hover:text-white/80"
             >
-              buka langsung tanpa ritual
+              lewati seremoninya, buka suratnya langsung
             </button>
-          </motion.div>
+          </div>
         )}
 
-        {/* ------ SURAT + MESIN KETIK ------ */}
-        {data && (stage === "typing" || stage === "question") && (
+        {/* ------ SURAT + PILIHAN JAWABAN ------ */}
+        {data && stage === "question" && (
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -660,10 +438,7 @@ export default function ConfessionView({
                 Hai {data.toName},
               </p>
               <p className="mt-4 min-h-[120px] whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-800">
-                {typed}
-                {stage === "typing" && (
-                  <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-primary align-middle" />
-                )}
+                {data.message}
               </p>
               <p className="mt-6 text-right font-hand text-xl text-neutral-600">
                 — {data.fromName?.trim() || "Seseorang"}
