@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-export const GIFT_TYPES = ["bouquet", "photobox", "cake", "coupons", "playlist"] as const;
+export const GIFT_TYPES = ["bouquet", "photobox", "cake", "coupons", "playlist", "timeline"] as const;
 export type GiftType = (typeof GIFT_TYPES)[number];
 
 export const GIFT_META: Record<
@@ -36,6 +36,11 @@ export const GIFT_META: Record<
     emoji: "🎵",
     label: "Playlist Kita",
     ogTitle: (t) => `Ada playlist spesial buat ${t} 🎵`,
+  },
+  timeline: {
+    emoji: "📜",
+    label: "Timeline Kisah",
+    ogTitle: (t) => `Ada kisah kalian buat ${t} 📜`,
   },
 };
 
@@ -118,12 +123,35 @@ export const playlistDataSchema = z.object({
     .max(15, "Maksimal 15 lagu"),
 });
 
+/* ---------- timeline kisah kalian ---------- */
+export const timelineMomentSchema = z.object({
+  date: z.string().trim().max(30, "Tanggalnya kepanjangan").optional().default(""),
+  caption: z.string().trim().min(2, "Caption momen minimal 2 karakter").max(140),
+  photo: z
+    .string()
+    .regex(/^data:image\/(jpeg|png|webp);base64,/, "Format foto nggak didukung")
+    .max(220_000, "Fotonya kegedean — coba yang lebih kecil")
+    .optional(),
+});
+
+export const timelineDataSchema = z.object({
+  moments: z
+    .array(timelineMomentSchema)
+    .min(3, "Minimal 3 momen ya 📜")
+    .max(10, "Maksimal 10 momen"),
+  music: z.enum(["musicbox", "lullaby", "senja", "none"]).optional().default("musicbox"),
+  endingType: z.enum(["pesan", "voucher"]).optional().default("pesan"),
+  endingText: z.string().trim().min(3, "Kejutan penutupnya minimal 3 karakter").max(400),
+});
+
 export type BouquetData = z.infer<typeof bouquetDataSchema>;
 export type PhotoboxData = z.infer<typeof photoboxDataSchema>;
 export type CakeData = z.infer<typeof cakeDataSchema>;
 export type CouponsData = z.infer<typeof couponsDataSchema>;
 export type PlaylistSong = z.infer<typeof playlistSongSchema>;
 export type PlaylistData = z.infer<typeof playlistDataSchema>;
+export type TimelineMoment = z.infer<typeof timelineMomentSchema>;
+export type TimelineData = z.infer<typeof timelineDataSchema>;
 
 export type GiftProgress = { redeemed?: Record<string, string> };
 
@@ -149,6 +177,14 @@ export function giftTexts(type: string, data: unknown): string[] {
         ...(Array.isArray(d.songs) ? d.songs : []).map((s) => {
           const o = s as { title?: string; artist?: string; note?: string };
           return `${o.title ?? ""} ${o.artist ?? ""} ${o.note ?? ""}`;
+        }),
+      ];
+    case "timeline":
+      return [
+        String(d.endingText ?? ""),
+        ...(Array.isArray(d.moments) ? d.moments : []).map((m) => {
+          const o = m as { date?: string; caption?: string };
+          return `${o.date ?? ""} ${o.caption ?? ""}`;
         }),
       ];
     default:

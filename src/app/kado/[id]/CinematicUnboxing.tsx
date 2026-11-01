@@ -43,6 +43,7 @@ import PremiumLoveCoupon from "./PremiumLoveCoupon"
 import PremiumCandleBlow from "./PremiumCandleBlow"
 import PremiumConfess from "./PremiumConfess"
 import PremiumPlaylist from "./PremiumPlaylist"
+import PremiumTimeline, { type TimelineMomentData } from "./PremiumTimeline"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +114,37 @@ function dataPhotos(data: Record<string, string | number> | null): string[] | nu
       (x): x is string =>
         typeof x === "string" && x.startsWith("data:image/") && x.length <= 300_000
     ).slice(0, 4)
+    return out.length ? out : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * kadoData.moments — JSON string daftar momen Timeline Kisah dari Creator
+ * Studio (pola sama dengan coupons/photos). Parse aman: salah bentuk → null.
+ */
+function dataMoments(data: Record<string, string | number> | null): TimelineMomentData[] | null {
+  const raw = data?.["moments"]
+  if (typeof raw !== "string") return null
+  try {
+    const arr: unknown = JSON.parse(raw)
+    if (!Array.isArray(arr)) return null
+    const out = arr
+      .filter(
+        (x): x is { date?: string; caption?: string; photo?: string } =>
+          !!x && typeof x === "object" && typeof (x as { caption?: unknown }).caption === "string"
+      )
+      .map((x) => ({
+        date: typeof x.date === "string" ? x.date.trim().slice(0, 30) : "",
+        caption: (x.caption ?? "").trim().slice(0, 140),
+        photo:
+          typeof x.photo === "string" && x.photo.startsWith("data:image/")
+            ? x.photo
+            : undefined,
+      }))
+      .filter((x) => x.caption)
+      .slice(0, 10)
     return out.length ? out : null
   } catch {
     return null
@@ -306,6 +338,22 @@ export default function CinematicUnboxing({
           onOpenComplete={() => setPhase(3)}
         />
       )
+    if (kado.kadoType === "timeline")
+      return (
+        <PremiumTimeline
+          targetName={kado.targetName}
+          message={kado.message}
+          fomoInitials={kado.fomoInitials}
+          senderName={kado.senderName}
+          createdAt={kado.createdAt}
+          revealName={reveal}
+          moments={dataMoments(kado.kadoData)}
+          music={dataStr(kado.kadoData, "music")}
+          endingType={dataStr(kado.kadoData, "endingType")}
+          endingText={dataStr(kado.kadoData, "endingText")}
+          onOpenComplete={() => setPhase(3)}
+        />
+      )
     // kompatibilitas kado lama (sebelum hard refactor) — tetap pengalaman premium
     if (kado.kadoType === "playlist")
       return (
@@ -362,9 +410,11 @@ export default function CinematicUnboxing({
                           ? "Lilinnya udah padam… sekarang giliran lo. 🕯️"
                           : kado.kadoType === "confess"
                             ? "Pengakuannya udah terbaca… sekarang giliran lo. 💜"
-                            : kado.kadoType === "playlist"
-                              ? "Lagunya udah diputar… sekarang giliran lo. 🎵"
-                              : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
+                            : kado.kadoType === "timeline"
+                              ? "Kisahnya udah kebaca… sekarang giliran lo. 📜"
+                              : kado.kadoType === "playlist"
+                                ? "Lagunya udah diputar… sekarang giliran lo. 🎵"
+                                : "Suratnya udah kebaca… sekarang giliran lo. ✉️"}
                 </p>
               )}
               {accepted && (

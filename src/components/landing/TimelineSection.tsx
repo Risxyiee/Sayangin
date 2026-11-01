@@ -91,6 +91,22 @@ export default function TimelineSection() {
           <p className="mt-6 text-xs text-white/40">
             Demo di samping otomatis scroll seperti yang dialami dia.
           </p>
+
+          {/* CTA — fitur ini nyata & bisa langsung diracik / dicoba */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <a
+              href="/create?tipe=timeline"
+              className="inline-block rounded-md bg-primary px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#b52743]"
+            >
+              Racik Timeline Kisah Kalian →
+            </a>
+            <a
+              href="/kado/demo-timeline?pratinjau=1"
+              className="inline-block rounded-md border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white/85 transition-colors hover:bg-white/10"
+            >
+              Coba Demo 👁
+            </a>
+          </div>
         </motion.div>
 
         <motion.div

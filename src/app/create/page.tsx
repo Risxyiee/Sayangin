@@ -16,7 +16,7 @@
  * - fomoInitials dihitung ulang di SERVER — klien cuma kirim senderName + isAnonymous.
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
@@ -105,6 +105,24 @@ const COUPON_MIN = 3
 const PHOTOBOX_MIN = 3
 const PHOTOBOX_MAX = 4
 
+/** Timeline: batas momen per kisah — ditampilkan jelas di form (min/maks). */
+const TIMELINE_MIN = 3
+const TIMELINE_MAX = 10
+
+/** Baris momen awal Timeline — 3 kosong, bisa ditambah sampai 10. */
+const DEFAULT_TIMELINE_ROWS: { date: string; caption: string; photo: string | null }[] = [
+  { date: "", caption: "", photo: null },
+  { date: "", caption: "", photo: null },
+  { date: "", caption: "", photo: null },
+]
+
+const TIMELINE_MUSIC_PILLS: { value: "musicbox" | "lullaby" | "senja" | "none"; label: string }[] = [
+  { value: "musicbox", label: "🎁 Kotak Musik" },
+  { value: "lullaby", label: "🌙 Nina Bobo" },
+  { value: "senja", label: "🌆 Gitar Senja" },
+  { value: "none", label: "🔇 Tanpa Musik" },
+]
+
 /** Kelas input bersama biar semua field seragam & elegan. */
 const inputCls =
   "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-100 " +
@@ -142,6 +160,12 @@ export default function CreatePage() {
   const [photoboxCaption, setPhotoboxCaption] = useState("")
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  /** Editor Timeline Kisah: momen (tanggal+caption+foto), musik, kejutan penutup. */
+  const [timelineRows, setTimelineRows] = useState(DEFAULT_TIMELINE_ROWS)
+  const [timelineMusic, setTimelineMusic] = useState<"musicbox" | "lullaby" | "senja" | "none">("musicbox")
+  const [timelineEnding, setTimelineEnding] = useState<"pesan" | "voucher">("pesan")
+  const [timelineEndingText, setTimelineEndingText] = useState("")
+  const [timelinePhotoBusy, setTimelinePhotoBusy] = useState<number | null>(null)
 
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -149,13 +173,27 @@ export default function CreatePage() {
   const reduceMotion = useReducedMotion()
   const router = useRouter()
 
+  // Praseleksi tipe kado dari query (?tipe=timeline) — dipakai CTA landing.
+  useEffect(() => {
+    if (kadoType) return
+    const tipe = new URLSearchParams(window.location.search).get("tipe")
+    if (tipe && KADO_OPTIONS.some((o) => o.value === tipe)) {
+      selectKado(tipe as KadoType)
+    }
+  }, [])
+
   const canNextStep1 = targetName.trim().length > 0 && message.trim().length > 0
   /** Kupon butuh minimal 3 judul terisi sebelum boleh lanjut. */
   const couponValid =
     kadoType !== "coupon" || couponRows.filter((r) => r.title.trim()).length >= COUPON_MIN
   /** Photobox butuh minimal 3 foto terunggah. */
   const photoboxValid = kadoType !== "photobox" || photoUrls.length >= PHOTOBOX_MIN
-  const canPreview = kadoType !== null && couponValid && photoboxValid
+  /** Timeline butuh minimal 3 momen ber-caption + isi kejutan penutup. */
+  const timelineValid =
+    kadoType !== "timeline" ||
+    (timelineRows.filter((r) => r.caption.trim().length >= 2).length >= TIMELINE_MIN &&
+      timelineEndingText.trim().length >= 3)
+  const canPreview = kadoType !== null && couponValid && photoboxValid && timelineValid
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
@@ -195,6 +233,24 @@ export default function CreatePage() {
     setPhotoBusy(false)
   }
 
+  /**
+   * Unggah + kompres foto untuk SATU momen timeline.
+   */
+  async function handleAddMomentPhoto(index: number, files: FileList | null) {
+    if (!files || files.length === 0 || timelinePhotoBusy !== null) return
+    setTimelinePhotoBusy(index)
+    try {
+      const url = await compressImageFile(files[0])
+      setTimelineRows((prev) =>
+        prev.map((r, j) => (j === index ? { ...r, photo: url } : r))
+      )
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Gagal memproses foto")
+    } finally {
+      setTimelinePhotoBusy(null)
+    }
+  }
+
   /** Simpan kado via POST /api/kado, lalu redirect ke halaman share. */
   async function handleGenerate() {
     if (!kadoType || generating) return
@@ -219,6 +275,21 @@ export default function CreatePage() {
         finalKadoData = {
           caption: photoboxCaption.trim().slice(0, 60),
           photos: JSON.stringify(photoUrls),
+        }
+      } else if (kadoType === "timeline") {
+        finalKadoData = {
+          moments: JSON.stringify(
+            timelineRows
+              .filter((r) => r.caption.trim().length >= 2)
+              .map((r) => ({
+                date: r.date.trim().slice(0, 30),
+                caption: r.caption.trim().slice(0, 140),
+                ...(r.photo ? { photo: r.photo } : {}),
+              }))
+          ),
+          music: timelineMusic,
+          endingType: timelineEnding,
+          endingText: timelineEndingText.trim().slice(0, 400),
         }
       }
 
@@ -343,6 +414,16 @@ export default function CreatePage() {
                   onPhotoboxCaption={setPhotoboxCaption}
                   onAddPhotos={handleAddPhotos}
                   onRemovePhoto={(i) => setPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
+                  timelineRows={timelineRows}
+                  timelineMusic={timelineMusic}
+                  timelineEnding={timelineEnding}
+                  timelineEndingText={timelineEndingText}
+                  timelinePhotoBusy={timelinePhotoBusy}
+                  onTimelineRows={setTimelineRows}
+                  onTimelineMusic={setTimelineMusic}
+                  onTimelineEnding={setTimelineEnding}
+                  onTimelineEndingText={setTimelineEndingText}
+                  onAddMomentPhoto={handleAddMomentPhoto}
                   onSelectKado={selectKado}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
@@ -360,6 +441,8 @@ export default function CreatePage() {
                   couponCount={couponRows.filter((r) => r.title.trim()).length}
                   occasion={occasion}
                   photoCount={photoUrls.length}
+                  timelineCount={timelineRows.filter((r) => r.caption.trim().length >= 2).length}
+                  timelineEnding={timelineEnding}
                   generating={generating}
                   errorMsg={errorMsg}
                   onBack={() => goTo(2, -1)}
@@ -528,6 +611,17 @@ interface StepLockProps {
   onPhotoboxCaption: (v: string) => void
   onAddPhotos: (files: FileList | null) => void
   onRemovePhoto: (index: number) => void
+  /** Editor Timeline Kisah — hanya aktif saat kadoType "timeline". */
+  timelineRows: { date: string; caption: string; photo: string | null }[]
+  timelineMusic: "musicbox" | "lullaby" | "senja" | "none"
+  timelineEnding: "pesan" | "voucher"
+  timelineEndingText: string
+  timelinePhotoBusy: number | null
+  onTimelineRows: (rows: { date: string; caption: string; photo: string | null }[]) => void
+  onTimelineMusic: (v: "musicbox" | "lullaby" | "senja" | "none") => void
+  onTimelineEnding: (v: "pesan" | "voucher") => void
+  onTimelineEndingText: (v: string) => void
+  onAddMomentPhoto: (index: number, files: FileList | null) => void
   onSelectKado: (type: KadoType) => void
   onBack: () => void
   onNext: () => void
@@ -768,6 +862,179 @@ function StepLock(props: StepLockProps) {
         </div>
       )}
 
+      {/* Editor garis waktu — hanya untuk Timeline Kisah (3-10 momen) */}
+      {props.kadoType === "timeline" && (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-300">Momen-momen kisahnya</p>
+            <span className="text-xs text-zinc-500">
+              {props.timelineRows.filter((r) => r.caption.trim()).length} momen · min {TIMELINE_MIN}, maks {TIMELINE_MAX}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {props.timelineRows.map((row, i) => (
+              <div key={i} className="rounded-xl border border-white/10 bg-white/5 p-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="mt-2.5 text-[10px] font-bold tabular-nums text-zinc-500">{i + 1}.</span>
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      value={row.date}
+                      onChange={(e) =>
+                        props.onTimelineRows(
+                          props.timelineRows.map((r, j) => (j === i ? { ...r, date: e.target.value } : r))
+                        )
+                      }
+                      placeholder="Tanggal — mis. 12 Feb 2025 (opsional)"
+                      maxLength={30}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-200 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+                    />
+                    <input
+                      value={row.caption}
+                      onChange={(e) =>
+                        props.onTimelineRows(
+                          props.timelineRows.map((r, j) => (j === i ? { ...r, caption: e.target.value } : r))
+                        )
+                      }
+                      placeholder={`Momen ${i + 1} — mis. "chat pertama: dia reply 2 menit"`}
+                      maxLength={140}
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+                    />
+                  </div>
+                  {props.timelineRows.length > TIMELINE_MIN && (
+                    <button
+                      type="button"
+                      aria-label={`Hapus momen ${i + 1}`}
+                      onClick={() => props.onTimelineRows(props.timelineRows.filter((_, j) => j !== i))}
+                      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xs text-zinc-500 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* foto momen — opsional, satu per momen */}
+                <div className="mt-2 flex items-center gap-2 pl-5">
+                  {row.photo ? (
+                    <div className="relative h-12 w-12 overflow-hidden rounded-lg border border-white/10">
+                      <img src={row.photo} alt={`Foto momen ${i + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        aria-label={`Hapus foto momen ${i + 1}`}
+                        onClick={() =>
+                          props.onTimelineRows(props.timelineRows.map((r, j) => (j === i ? { ...r, photo: null } : r)))
+                        }
+                        className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-bl-md bg-black/70 text-[8px] text-zinc-200 hover:bg-rose-500/80"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-[10px] font-semibold text-zinc-400 transition-colors hover:border-rose-400/40 hover:text-rose-300 ${
+                        props.timelinePhotoBusy === i ? "pointer-events-none opacity-60" : ""
+                      }`}
+                    >
+                      {props.timelinePhotoBusy === i ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-3 w-3" />
+                      )}
+                      {props.timelinePhotoBusy === i ? "Mengompres…" : "+ Foto (opsional)"}
+                      <input
+                        type="file"
+                        accept={PHOTO_ACCEPT}
+                        className="hidden"
+                        onChange={(e) => {
+                          props.onAddMomentPhoto(i, e.target.files)
+                          e.target.value = ""
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {props.timelineRows.length < TIMELINE_MAX && (
+            <button
+              type="button"
+              onClick={() =>
+                props.onTimelineRows([...props.timelineRows, { date: "", caption: "", photo: null }])
+              }
+              className="mt-2.5 w-full rounded-xl border border-dashed border-white/15 bg-white/[0.03] py-2 text-xs font-semibold text-zinc-400 transition-colors hover:border-rose-400/40 hover:text-rose-300"
+            >
+              + Tambah momen lagi
+            </button>
+          )}
+
+          {/* Musik latar */}
+          <p className="mt-4 mb-2 text-sm font-medium text-zinc-300">Musik latarnya</p>
+          <div className="flex flex-wrap gap-2">
+            {TIMELINE_MUSIC_PILLS.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => props.onTimelineMusic(m.value)}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                  props.timelineMusic === m.value
+                    ? "border-rose-400/60 bg-rose-500/15 text-rose-200"
+                    : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-zinc-600">
+            Musik mulai otomatis pas dia ketuk "Mulai Perjalanan".
+          </p>
+
+          {/* Kejutan penutup */}
+          <p className="mt-4 mb-2 text-sm font-medium text-zinc-300">Kejutan di halaman terakhir</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => props.onTimelineEnding("pesan")}
+              className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors ${
+                props.timelineEnding === "pesan"
+                  ? "border-rose-400/60 bg-rose-500/15 text-rose-200"
+                  : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10"
+              }`}
+            >
+              💌 Pesan Rahasia
+            </button>
+            <button
+              type="button"
+              onClick={() => props.onTimelineEnding("voucher")}
+              className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors ${
+                props.timelineEnding === "voucher"
+                  ? "border-amber-300/60 bg-amber-400/15 text-amber-200"
+                  : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10"
+              }`}
+            >
+              🎟️ Kode Voucher
+            </button>
+          </div>
+          <textarea
+            value={props.timelineEndingText}
+            onChange={(e) => props.onTimelineEndingText(e.target.value)}
+            placeholder={
+              props.timelineEnding === "pesan"
+                ? "Pesan rahasiamu — mis. \"sejak hari itu, aku yakin kamu yang terbaik…\""
+                : "Kode voucher — mis. \"FREE-PELUK-SEUMUR-HIDUP\""
+            }
+            rows={2}
+            maxLength={400}
+            className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-500/20"
+          />
+          <p className="mt-2 text-xs text-zinc-500">
+            Kisahnya dia gulir pelan-pelan — ditutup kejutan dari kamu.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -806,6 +1073,10 @@ interface StepGenerateProps {
   occasion: "ultah" | "anniversary" | "graduasi"
   /** Jumlah foto terunggah (kadoType "photobox") — tampil di ringkasan. */
   photoCount: number
+  /** Jumlah momen terisi (kadoType "timeline") — tampil di ringkasan. */
+  timelineCount: number
+  /** Jenis kejutan penutup (kadoType "timeline") — tampil di ringkasan. */
+  timelineEnding: "pesan" | "voucher"
   generating: boolean
   errorMsg: string | null
   onBack: () => void
@@ -856,7 +1127,7 @@ function StepGenerate(props: StepGenerateProps) {
             {selected?.label ?? "—"}
           </span>
         </div>
-        {(props.kadoType === "coupon" || props.kadoType === "candle" || props.kadoType === "photobox") && (
+        {(props.kadoType === "coupon" || props.kadoType === "candle" || props.kadoType === "photobox" || props.kadoType === "timeline") && (
           <div className="flex items-center justify-between gap-3">
             <span className="text-zinc-500">Detail</span>
             <span className="font-medium text-zinc-200">
@@ -864,7 +1135,9 @@ function StepGenerate(props: StepGenerateProps) {
                 ? `${props.couponCount} kupon siap sobek`
                 : props.kadoType === "photobox"
                   ? `${props.photoCount} foto siap dicuci`
-                  : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
+                  : props.kadoType === "timeline"
+                    ? `${props.timelineCount} momen + ${props.timelineEnding === "voucher" ? "kode voucher" : "pesan rahasia"}`
+                    : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
             </span>
           </div>
         )}
