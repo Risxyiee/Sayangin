@@ -79,9 +79,14 @@ function makePool(connectionString: string | undefined): PgPool {
     // ── batas higiene koneksi (lihat komentar arsitektur di atas) ──
     max: 5, // per isolate; pooling global dilakukan Hyperdrive
     connectionTimeoutMillis: 8_000, // gagal cepat, jangan biarkan user nunggu lama
-    query_timeout: 4_000, // client-side: koneksi mati diam dipotong 4 dtk (respons sah < 2 dtk)
+    query_timeout: 6_000, // client-side: potong koneksi yang mati diam. 6 dtk = slack untuk koneksi dingin (TLS+auth via Hyperdrive) — 4 dtk pernah terbukti memotong episode gangguan origin (log POST /api/confess SIN, wall 16 dtk). Respons normal < 2 dtk.
     statement_timeout: 8_000, // server-side: potong query nangkring
-    idleTimeoutMillis: 0, // JANGAN pakai ulang koneksi antar-request: data live — koneksi reuse = sumber zombie, koneksi segar 100% sehat. Biaya ±0,5 dtk/request; pooling berat tetap di Hyperdrive.
+    // PENTING: di node-postgres, 0 = DISABLED — koneksi idle tidak pernah
+    // ditutup dan DIPAKAI-ULANG request berikutnya. Itulah sumber zombie
+    // "Query read timeout" berulang: koneksi yang hang tetap duduk di pool.
+    // 1 dtk = reuse masih terjadi DI DALAM satu request (rate limiter → query
+    // utama, gap-nya < 1 dtk), tapi koneksi lintas-request SELALU segar.
+    idleTimeoutMillis: 1_000,
     maxUses: 250, // daur ulang koneksi sebelum menua/jadi zombie
     // catatan: keepAlive TIDAK dipakai — di runtime Workers socket yang menempel
     // (keepalive) berisiko menggleding limit koneksi simultan per isolate dan
@@ -154,8 +159,9 @@ export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
   let lastErr: unknown
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
-      // jeda 80–200 ms — beri kesempatan pool membuka koneksi yang benar-benar baru
-      await new Promise((r) => setTimeout(r, 80 + Math.random() * 120))
+      // jeda 150–400 ms — beri Hyperdrive waktu membuang koneksi yang sakit
+      // dan pool membuka yang benar-benar baru
+      await new Promise((r) => setTimeout(r, 150 + Math.random() * 250))
     }
     try {
       return await fn()
