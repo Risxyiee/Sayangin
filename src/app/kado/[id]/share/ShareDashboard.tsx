@@ -56,6 +56,7 @@ const KADO_TYPE_LABEL: Record<string, string> = {
   quiz: "Kuis",
   bouquet: "Buket Bunga",
   openwhen: "Open When",
+  photobox: "Photobox",
 }
 
 /** Teks alibi persis seperti spesifikasi — [LINK] diganti URL kado asli. */
