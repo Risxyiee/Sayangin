@@ -33,6 +33,7 @@ import {
   MousePointerClick,
   ScanLine,
   Stamp,
+  Ticket,
   UserRound,
   Wand2,
   type LucideIcon,
@@ -44,7 +45,7 @@ import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen" | "photobox"
+type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen" | "photobox" | "coupon"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -68,6 +69,7 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
   { value: "openwhen", label: "Open When", desc: "Segel lilin surat kangen", icon: Stamp },
   { value: "photobox", label: "Photobox", desc: "Goyang HP buat cuci foto", icon: Camera },
+  { value: "coupon", label: "Love Coupon", desc: "Sobek tiket buat klaim", icon: Ticket },
 ]
 
 /** Konfigurasi default per kadoType — quiz diisi sendiri oleh pembuat kado. */
@@ -79,6 +81,7 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
   openwhen: null, // interaksinya bawaan PremiumOpenWhen (judul & prompt default)
   photobox: null, // foto teks vintage bawaan PremiumPhotobox (kadoData.imageUrl opsional)
+  coupon: { title: "1x Bebas Ngambek" }, // judul kupon — bisa diganti via kadoData.title
 }
 
 /** Kelas input bersama biar semua field seragam & elegan. */
