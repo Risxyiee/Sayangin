@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
@@ -48,10 +48,12 @@ export async function POST(
       return NextResponse.json({ error: MODERATION_ERROR }, { status: 400 });
     }
 
-    const confession = await db.confession.findUnique({
-      where: { slug },
-      select: { id: true, response: true, reply: true },
-    });
+    const confession = await withDbRetry(() =>
+      db.confession.findUnique({
+        where: { slug },
+        select: { id: true, response: true, reply: true },
+      })
+    );
     if (!confession) {
       return NextResponse.json(
         { error: "Suratnya nggak ketemu." },
@@ -72,11 +74,13 @@ export async function POST(
       );
     }
 
-    const updated = await db.confession.update({
-      where: { slug },
-      data: { reply, repliedAt: new Date() },
-      select: { reply: true, repliedAt: true },
-    });
+    const updated = await withDbRetry(() =>
+      db.confession.update({
+        where: { slug },
+        data: { reply, repliedAt: new Date() },
+        select: { reply: true, repliedAt: true },
+      })
+    );
 
     return NextResponse.json({
       ok: true,

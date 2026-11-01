@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
@@ -29,39 +29,51 @@ export async function POST(req: NextRequest) {
     }
     const { slug } = parsed.data;
 
-    const confession = await db.confession.findUnique({
-      where: { slug },
-      select: { id: true, reportCount: true },
-    });
+    const confession = await withDbRetry(() =>
+      db.confession.findUnique({
+        where: { slug },
+        select: { id: true, reportCount: true },
+      })
+    );
     if (confession) {
-      await db.confession.update({
-        where: { id: confession.id },
-        data: { reportCount: { increment: 1 } },
-      });
+      await withDbRetry(() =>
+        db.confession.update({
+          where: { id: confession.id },
+          data: { reportCount: { increment: 1 } },
+        })
+      );
       return NextResponse.json({ ok: true });
     }
 
-    const set = await db.letterSet.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const set = await withDbRetry(() =>
+      db.letterSet.findUnique({
+        where: { slug },
+        select: { id: true },
+      })
+    );
     if (set) {
-      await db.letterSet.update({
-        where: { id: set.id },
-        data: { reportCount: { increment: 1 } },
-      });
+      await withDbRetry(() =>
+        db.letterSet.update({
+          where: { id: set.id },
+          data: { reportCount: { increment: 1 } },
+        })
+      );
       return NextResponse.json({ ok: true });
     }
 
-    const gift = await db.gift.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const gift = await withDbRetry(() =>
+      db.gift.findUnique({
+        where: { slug },
+        select: { id: true },
+      })
+    );
     if (gift) {
-      await db.gift.update({
-        where: { id: gift.id },
-        data: { reportCount: { increment: 1 } },
-      });
+      await withDbRetry(() =>
+        db.gift.update({
+          where: { id: gift.id },
+          data: { reportCount: { increment: 1 } },
+        })
+      );
       return NextResponse.json({ ok: true });
     }
 

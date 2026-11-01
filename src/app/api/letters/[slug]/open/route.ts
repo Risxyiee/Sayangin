@@ -51,13 +51,15 @@ export async function POST(
     }
 
     const now = new Date();
-    const updated = await db.letter.update({
-      where: { id: letter.id },
-      data: {
-        views: { increment: 1 },
-        openedAt: letter.openedAt ?? now,
-      },
-    });
+    const updated = await withDbRetry(() =>
+      db.letter.update({
+        where: { id: letter.id },
+        data: {
+          views: { increment: 1 },
+          openedAt: letter.openedAt ?? now,
+        },
+      })
+    );
 
     return NextResponse.json({
       title: letter.title,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import type { CouponsData, GiftProgress } from "@/lib/gift-data";
 import { describeError } from "@/lib/log-error";
@@ -33,7 +33,7 @@ export async function POST(
       return NextResponse.json({ error: "Data tidak valid" }, { status: 400 });
     }
 
-    const gift = await db.gift.findUnique({ where: { slug } });
+    const gift = await withDbRetry(() => db.gift.findUnique({ where: { slug } }));
     if (!gift) {
       return NextResponse.json(
         { error: "Kadonya nggak ketemu." },
@@ -78,10 +78,12 @@ export async function POST(
     redeemed[String(index)] = new Date().toISOString();
     const next: GiftProgress = { redeemed };
 
-    await db.gift.update({
-      where: { slug },
-      data: { progress: JSON.stringify(next) },
-    });
+    await withDbRetry(() =>
+      db.gift.update({
+        where: { slug },
+        data: { progress: JSON.stringify(next) },
+      })
+    );
 
     return NextResponse.json({ ok: true, progress: next });
   } catch (err) {

@@ -46,13 +46,15 @@ export async function GET(
 
     const now = new Date();
     if (!isPreview) {
-      await db.letterSet.update({
-        where: { slug },
-        data: {
-          views: { increment: 1 },
-          openedAt: set.openedAt ?? now,
-        },
-      });
+      await withDbRetry(() =>
+        db.letterSet.update({
+          where: { slug },
+          data: {
+            views: { increment: 1 },
+            openedAt: set.openedAt ?? now,
+          },
+        })
+      );
     }
 
     const startedAt = set.startedAt;

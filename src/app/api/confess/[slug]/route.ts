@@ -68,13 +68,15 @@ export async function GET(
       }
 
       // catat aktivitas buka (untuk halaman status pengirim)
-      await db.confession.update({
-        where: { slug },
-        data: {
-          views: { increment: 1 },
-          openedAt: confession.openedAt ?? new Date(),
-        },
-      });
+      await withDbRetry(() =>
+        db.confession.update({
+          where: { slug },
+          data: {
+            views: { increment: 1 },
+            openedAt: confession.openedAt ?? new Date(),
+          },
+        })
+      );
     }
 
     const { senderKey: _sk, reportCount: _rc, views: _v, openedAt: _o, unlockAt: _u, ...safe } =

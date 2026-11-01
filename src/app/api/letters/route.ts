@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { makeSlug, makeToken } from "@/lib/token";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
@@ -76,33 +76,37 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let slug = makeSlug();
-    for (let i = 0; i < 5; i++) {
-      const exists = await db.letterSet.findUnique({ where: { slug } });
-      if (!exists) break;
-      slug = makeSlug();
-    }
-
     // urutkan berdasarkan jeda unlock biar ordernya konsisten
     const sorted = [...letters].sort((a, b) => a.unlockDays - b.unlockDays);
 
-    const set = await db.letterSet.create({
-      data: {
-        slug,
-        senderKey: makeToken(16),
-        fromName: fromName ?? "",
-        toName,
-        theme: THEMES.has(theme) ? theme : "rose",
-        letters: {
-          create: sorted.map((l, i) => ({
-            order: i,
-            title: l.title,
-            body: l.body,
-            unlockDays: l.unlockDays,
-          })),
+    // withDbRetry: koneksi zombie Hyperdrive sesekali muncul — ulang di
+    // koneksi baru, user tidak melihat errornya (pola sama dgn confess/gifts).
+    const set = await withDbRetry(async () => {
+      let slug = makeSlug();
+      // pastikan unik
+      for (let i = 0; i < 5; i++) {
+        const exists = await db.letterSet.findUnique({ where: { slug } });
+        if (!exists) break;
+        slug = makeSlug();
+      }
+      return db.letterSet.create({
+        data: {
+          slug,
+          senderKey: makeToken(16),
+          fromName: fromName ?? "",
+          toName,
+          theme: THEMES.has(theme) ? theme : "rose",
+          letters: {
+            create: sorted.map((l, i) => ({
+              order: i,
+              title: l.title,
+              body: l.body,
+              unlockDays: l.unlockDays,
+            })),
+          },
         },
-      },
-      select: { slug: true, id: true, senderKey: true },
+        select: { slug: true, id: true, senderKey: true },
+      });
     });
 
     return NextResponse.json(

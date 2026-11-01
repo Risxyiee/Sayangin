@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import type { GiftProgress } from "@/lib/gift-data";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
@@ -13,7 +13,9 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const gift = await db.gift.findUnique({ where: { slug } });
+    // withDbRetry: koneksi zombie Hyperdrive sesekali muncul — ulang di
+    // koneksi baru, user tidak melihat errornya.
+    const gift = await withDbRetry(() => db.gift.findUnique({ where: { slug } }));
 
     if (!gift) {
       return NextResponse.json(
@@ -38,13 +40,15 @@ export async function GET(
     }
 
     if (!isPreview) {
-      await db.gift.update({
-        where: { slug },
-        data: {
-          views: { increment: 1 },
-          openedAt: gift.openedAt ?? new Date(),
-        },
-      });
+      await withDbRetry(() =>
+        db.gift.update({
+          where: { slug },
+          data: {
+            views: { increment: 1 },
+            openedAt: gift.openedAt ?? new Date(),
+          },
+        })
+      );
     }
 
     let data: unknown = {};

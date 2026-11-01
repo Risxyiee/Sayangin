@@ -87,11 +87,13 @@ export async function POST(
       );
     }
 
-    const updated = await db.letter.update({
-      where: { id: letter.id },
-      data: { reply: body, repliedAt: new Date() },
-      select: { reply: true, repliedAt: true },
-    });
+    const updated = await withDbRetry(() =>
+      db.letter.update({
+        where: { id: letter.id },
+        data: { reply: body, repliedAt: new Date() },
+        select: { reply: true, repliedAt: true },
+      })
+    );
 
     return NextResponse.json({
       ok: true,

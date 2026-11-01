@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
 
@@ -23,7 +23,7 @@ export async function POST(
       );
     }
 
-    const existing = await db.confession.findUnique({ where: { slug } });
+    const existing = await withDbRetry(() => db.confession.findUnique({ where: { slug } }));
     if (!existing) {
       return NextResponse.json(
         { error: "Confess tidak ditemukan." },
@@ -31,11 +31,13 @@ export async function POST(
       );
     }
 
-    const updated = await db.confession.update({
-      where: { slug },
-      data: { response: parsed.data.response, respondedAt: new Date() },
-      select: { slug: true, response: true },
-    });
+    const updated = await withDbRetry(() =>
+      db.confession.update({
+        where: { slug },
+        data: { response: parsed.data.response, respondedAt: new Date() },
+        select: { slug: true, response: true },
+      })
+    );
 
     return NextResponse.json(updated);
   } catch (err) {

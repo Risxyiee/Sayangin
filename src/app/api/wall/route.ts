@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
@@ -16,22 +16,24 @@ export async function GET(req: NextRequest) {
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? 48);
     const limit = Math.min(Math.max(limitRaw, 1), 96);
 
-    const rows = await db.confession.findMany({
-      where: { isPublic: true, reportCount: { lt: 3 } },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      select: {
-        id: true,
-        fromName: true,
-        toName: true,
-        theme: true,
-        createdAt: true,
-        response: true,
-        reactions: {
-          select: { heart: true, laugh: true, cry: true, bloom: true },
+    const rows = await withDbRetry(() =>
+      db.confession.findMany({
+        where: { isPublic: true, reportCount: { lt: 3 } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true,
+          fromName: true,
+          toName: true,
+          theme: true,
+          createdAt: true,
+          response: true,
+          reactions: {
+            select: { heart: true, laugh: true, cry: true, bloom: true },
+          },
         },
-      },
-    });
+      })
+    );
 
     return NextResponse.json({
       items: rows.map((r) => ({
@@ -79,10 +81,12 @@ export async function POST(req: NextRequest) {
     }
 
     // pastikan confess-nya memang publik & tidak di-hide
-    const target = await db.confession.findUnique({
-      where: { id },
-      select: { isPublic: true, reportCount: true },
-    });
+    const target = await withDbRetry(() =>
+      db.confession.findUnique({
+        where: { id },
+        select: { isPublic: true, reportCount: true },
+      })
+    );
     if (!target || !target.isPublic || target.reportCount >= 3) {
       return NextResponse.json(
         { error: "Suratnya tidak ada di dinding" },
@@ -95,23 +99,25 @@ export async function POST(req: NextRequest) {
     const cry = type === "cry";
     const bloom = type === "bloom";
 
-    const updated = await db.reactionCount.upsert({
-      where: { confessionId: id },
-      update: {
-        ...(heart ? { heart: { increment: 1 } } : {}),
-        ...(laugh ? { laugh: { increment: 1 } } : {}),
-        ...(cry ? { cry: { increment: 1 } } : {}),
-        ...(bloom ? { bloom: { increment: 1 } } : {}),
-      },
-      create: {
-        confessionId: id,
-        heart: heart ? 1 : 0,
-        laugh: laugh ? 1 : 0,
-        cry: cry ? 1 : 0,
-        bloom: bloom ? 1 : 0,
-      },
-      select: { heart: true, laugh: true, cry: true, bloom: true },
-    });
+    const updated = await withDbRetry(() =>
+      db.reactionCount.upsert({
+        where: { confessionId: id },
+        update: {
+          ...(heart ? { heart: { increment: 1 } } : {}),
+          ...(laugh ? { laugh: { increment: 1 } } : {}),
+          ...(cry ? { cry: { increment: 1 } } : {}),
+          ...(bloom ? { bloom: { increment: 1 } } : {}),
+        },
+        create: {
+          confessionId: id,
+          heart: heart ? 1 : 0,
+          laugh: laugh ? 1 : 0,
+          cry: cry ? 1 : 0,
+          bloom: bloom ? 1 : 0,
+        },
+        select: { heart: true, laugh: true, cry: true, bloom: true },
+      })
+    );
 
     return NextResponse.json({ reactions: updated });
   } catch (err) {
