@@ -46,6 +46,9 @@ export default function FooterCta() {
             <a href="#kado" className="transition-colors hover:text-foreground">
               Kado
             </a>
+            <a href="/create" className="transition-colors hover:text-foreground">
+              Kado Kejutan
+            </a>
             <a href="#harga" className="transition-colors hover:text-foreground">
               Harga
             </a>

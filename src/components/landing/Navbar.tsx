@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 const LINKS = [
   { href: "#confess", label: "Confess" },
   { href: "#kado", label: "Kado Digital" },
+  { href: "/create", label: "Kado Kejutan 💝" },
   { href: "/dinding", label: "Dinding 👀" },
   { href: "#cara", label: "Cara Pakai" },
   { href: "#harga", label: "Harga" },
@@ -56,14 +57,14 @@ export default function Navbar() {
         </div>
 
         <a
-          href="#confess"
+          href="/create"
           className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
             scrolled
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-white text-neutral-900 hover:bg-white/90"
           }`}
         >
-          Tulis surat
+          Bikin kado
         </a>
       </nav>
     </header>

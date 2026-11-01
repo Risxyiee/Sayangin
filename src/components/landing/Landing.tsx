@@ -7,6 +7,7 @@ import ConfessSection from "./ConfessSection";
 import StatusTeaser from "./StatusTeaser";
 import GiftsSection from "./GiftsSection";
 import GiftStudio from "./GiftStudio";
+import KadoSurpriseSection from "./KadoSurpriseSection";
 import OpenWhenSection from "./OpenWhenSection";
 import TimelineSection from "./TimelineSection";
 import HowItWorks from "./HowItWorks";
@@ -25,6 +26,7 @@ export default function Landing() {
         <StatusTeaser />
         <GiftsSection />
         <GiftStudio />
+        <KadoSurpriseSection />
         <OpenWhenSection />
         <TimelineSection />
         <HowItWorks />

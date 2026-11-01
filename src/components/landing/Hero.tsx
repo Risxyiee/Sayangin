@@ -245,10 +245,10 @@ export default function Hero() {
               Tulis suratnya
             </a>
             <a
-              href="#kado"
+              href="/create"
               className="w-full rounded-md border border-white/25 px-7 py-3.5 text-center text-sm font-semibold text-white/90 transition-colors hover:border-white/50 hover:text-white sm:w-auto"
             >
-              Lihat kado digital
+              Bikin kado kejutan 💝
             </a>
           </div>
 
@@ -256,7 +256,7 @@ export default function Hero() {
             {[
               { v: "Rp0", k: "confess anonim" },
               { v: "±3 menit", k: "dari tulis ke kirim" },
-              { v: "6 kado", k: "gratis (masa uji)" },
+              { v: "10 kado", k: "gratis (masa uji)" },
             ].map((s) => (
               <div key={s.v}>
                 <div className="font-display text-lg font-bold text-white">{s.v}</div>

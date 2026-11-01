@@ -447,8 +447,11 @@ export default function PremiumPlaylist({
           {!dropped ? (
             <motion.p
               key="hint"
-              exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-              transition={{ duration: 0.25 }}
+              exit={
+                reduceMotion
+                  ? undefined
+                  : { opacity: 0, y: -6, transition: { duration: 0.25, ease: "easeOut" } }
+              }
               animate={reduceMotion ? { opacity: 1 } : { opacity: [1, 0.35, 1] }}
               transition={
                 reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }

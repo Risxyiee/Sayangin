@@ -12,7 +12,7 @@ const STEPS = [
   {
     icon: Palette,
     title: "2. Pilih",
-    desc: "Pilih tema warna dan kado digitalnya — confess, buket, surat, photobox, sampai timeline.",
+    desc: "Pilih kunci bukanya — sidik jari, kartu gosok, kuis, buket yang mekar, lilin yang ditiup, sampai piringan hitam.",
   },
   {
     icon: Send,

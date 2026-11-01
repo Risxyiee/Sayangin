@@ -33,7 +33,7 @@ const PLANS = [
       "Kartu QR siap cetak buat tempel di hadiah fisik",
     ],
     cta: "Bikin Kado Gratis",
-    href: "#kado",
+    href: "/create",
   },
   {
     name: "Paket Sayang",
@@ -42,14 +42,14 @@ const PLANS = [
     note: "semua kado sekaligus — gratis selama masa uji",
     highlight: true,
     features: [
-      "Semua 6 kado digital",
+      "Semua 6 kado digital + 6 kado kejutan premium",
       "Scrollytelling timeline kisah kalian",
       "5 surat Open When Letters",
       "Couple quiz: dia harus jawab bener buat buka hadiah",
       "Prioritas request fitur",
     ],
     cta: "Bikin Semua Kado Gratis",
-    href: "#kado",
+    href: "/create",
   },
 ];
 
