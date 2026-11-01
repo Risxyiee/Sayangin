@@ -3,11 +3,12 @@
 /**
  * Creator Studio Kangenin — halaman /create
  *
- * Wizard 3 langkah untuk merangkai kado kejutan premium (hard refactor:
- * alur kunci lama fingerprint/tap/scratch/quiz & playlist SUDAH DIHAPUS —
- * pilihannya kini hanya 6 pengalaman premium, tanpa duplikasi):
+ * Wizard 3 langkah untuk merangkai kado kejutan premium (alur kunci lama
+ * fingerprint/tap/scratch/quiz SUDAH DIHAPUS — pilihannya kini 8 pengalaman
+ * premium, tanpa duplikasi):
  *   1. Pesan & identitas FOMO (anonim total default, inisial bertopeng "R***I")
- *   2. Pilih kado kejutan (bouquet / openwhen / photobox / coupon / candle / confess)
+ *   2. Pilih kado kejutan (bouquet / openwhen / photobox / coupon / candle /
+ *      confess / timeline / playlist)
  *   3. Ringkasan + Generate Link Kado → POST /api/kado → redirect /kado/[id]/share
  *
  * Catatan integrasi:
@@ -35,6 +36,7 @@ import {
   ImagePlus,
   Loader2,
   Mail,
+  Music,
   Stamp,
   Ticket,
   UserRound,
@@ -42,6 +44,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
+import { extractSpotifyTrackId } from "@/utils/spotify"
 import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout"
 import { saveKadoHistoryEntry } from "@/lib/kado-history"
 import { compressImageFile, PHOTO_ACCEPT } from "@/lib/image-compress"
@@ -51,7 +54,15 @@ import { compressImageFile, PHOTO_ACCEPT } from "@/lib/image-compress"
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "confess" | "timeline"
+type KadoType =
+  | "bouquet"
+  | "openwhen"
+  | "photobox"
+  | "coupon"
+  | "candle"
+  | "confess"
+  | "timeline"
+  | "playlist"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -67,7 +78,7 @@ interface KadoCreatePayload {
 /** Bentuk respons POST /api/kado. */
 type KadoApiResponse = { success?: boolean; data?: { id?: string }; error?: string }
 
-/** Enam + satu pengalaman premium — HANYA ini (tanpa opsi bawaan lama). */
+/** Delapan pengalaman premium — HANYA ini (tanpa opsi bawaan lama). */
 const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: LucideIcon }[] = [
   { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
   { value: "openwhen", label: "Open When", desc: "Segel lilin surat kangen", icon: Stamp },
@@ -76,6 +87,7 @@ const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: Lucide
   { value: "candle", label: "Candle Blow", desc: "Tiup lilin lewat mic", icon: Flame },
   { value: "confess", label: "Confess", desc: "Tahan hati, buka pengakuan", icon: Heart },
   { value: "timeline", label: "Timeline Kisah", desc: "Gulir kenangan, musik latar", icon: Images },
+  { value: "playlist", label: "Playlist Lagu", desc: "Geser jarum, putar lagu kalian", icon: Music },
 ]
 
 /** Konfigurasi default per kadoType — interaksi lain bawaan komponen premiumnya. */
@@ -87,6 +99,7 @@ const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null
   candle: null, // kadoData dibangun saat generate: { occasion }
   confess: null, // interaksi bawaan PremiumConfess (tahan lambang hati)
   timeline: null, // kadoData dibangun saat generate: { moments, music, endingType, endingText }
+  playlist: null, // kadoData dibangun saat generate: { spotifyId } — kosong = lagu bawaan
 }
 
 /** Baris kupon awal di Creator Studio — 5 klasic, bisa diedit/ditambah (maks 6). */
@@ -166,6 +179,8 @@ export default function CreatePage() {
   const [timelineEnding, setTimelineEnding] = useState<"pesan" | "voucher">("pesan")
   const [timelineEndingText, setTimelineEndingText] = useState("")
   const [timelinePhotoBusy, setTimelinePhotoBusy] = useState<number | null>(null)
+  /** Kado Playlist (lagu): link Spotify opsional — kosong = lagu bawaan Kangenin. */
+  const [playlistUrl, setPlaylistUrl] = useState("")
 
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -193,7 +208,11 @@ export default function CreatePage() {
     kadoType !== "timeline" ||
     (timelineRows.filter((r) => r.caption.trim().length >= 2).length >= TIMELINE_MIN &&
       timelineEndingText.trim().length >= 3)
-  const canPreview = kadoType !== null && couponValid && photoboxValid && timelineValid
+  /** Playlist: link Spotify opsional — kalau diisi HARUS link track valid. */
+  const playlistSpotifyId = extractSpotifyTrackId(playlistUrl)
+  const playlistValid = kadoType !== "playlist" || (playlistUrl.trim() === "" || playlistSpotifyId !== null)
+  const canPreview =
+    kadoType !== null && couponValid && photoboxValid && timelineValid && playlistValid
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
@@ -291,6 +310,11 @@ export default function CreatePage() {
           endingType: timelineEnding,
           endingText: timelineEndingText.trim().slice(0, 400),
         }
+      } else if (kadoType === "playlist") {
+        // ID track diekstrak di klien (link apa pun bentuknya) — API cuma
+        // terima string pendek. Kosong → null → PremiumPlaylist pakai lagu
+        // bawaan Kangenin.
+        finalKadoData = playlistSpotifyId ? { spotifyId: playlistSpotifyId } : null
       }
 
       const payload: KadoCreatePayload = {
@@ -424,6 +448,10 @@ export default function CreatePage() {
                   onTimelineEnding={setTimelineEnding}
                   onTimelineEndingText={setTimelineEndingText}
                   onAddMomentPhoto={handleAddMomentPhoto}
+                  playlistUrl={playlistUrl}
+                  playlistValid={playlistValid}
+                  playlistSpotifyId={playlistSpotifyId}
+                  onPlaylistUrl={setPlaylistUrl}
                   onSelectKado={selectKado}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
@@ -443,6 +471,7 @@ export default function CreatePage() {
                   photoCount={photoUrls.length}
                   timelineCount={timelineRows.filter((r) => r.caption.trim().length >= 2).length}
                   timelineEnding={timelineEnding}
+                  playlistHasSong={kadoType === "playlist" && playlistSpotifyId !== null}
                   generating={generating}
                   errorMsg={errorMsg}
                   onBack={() => goTo(2, -1)}
@@ -622,6 +651,11 @@ interface StepLockProps {
   onTimelineEnding: (v: "pesan" | "voucher") => void
   onTimelineEndingText: (v: string) => void
   onAddMomentPhoto: (index: number, files: FileList | null) => void
+  /** Editor Playlist Lagu — hanya aktif saat kadoType "playlist". */
+  playlistUrl: string
+  playlistValid: boolean
+  playlistSpotifyId: string | null
+  onPlaylistUrl: (v: string) => void
   onSelectKado: (type: KadoType) => void
   onBack: () => void
   onNext: () => void
@@ -1050,6 +1084,39 @@ function StepLock(props: StepLockProps) {
         </div>
       )}
 
+      {/* Editor playlist lagu — hanya untuk Playlist (link Spotify opsional) */}
+      {props.kadoType === "playlist" && (
+        <div>
+          <label htmlFor="playlistUrl" className="mb-1.5 block text-sm font-medium text-zinc-300">
+            Link lagu Spotify (opsional)
+          </label>
+          <input
+            id="playlistUrl"
+            value={props.playlistUrl}
+            onChange={(e) => props.onPlaylistUrl(e.target.value)}
+            placeholder="mis. https://open.spotify.com/track/…"
+            inputMode="url"
+            className={`w-full rounded-xl border px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors duration-200 ${
+              props.playlistValid
+                ? "border-white/10 bg-white/5 focus:border-rose-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-rose-500/20"
+                : "border-rose-400/50 bg-rose-500/5 focus:ring-2 focus:ring-rose-500/20"
+            }`}
+          />
+          <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+            {props.playlistUrl.trim() === "" ? (
+              <>Kosongin aja → piringannya mutar <span className="text-zinc-300">lagu bawaan Kangenin</span>.</>
+            ) : props.playlistSpotifyId ? (
+              <span className="text-emerald-300">✓ Lagunya kepasang — jarumnya bakal mutar lagu ini.</span>
+            ) : (
+              <span className="text-rose-300">Link belum valid — buka lagunya di Spotify, tap Bagikan → Salin link, lalu tempel di sini.</span>
+            )}
+          </p>
+          <p className="mt-2 text-xs text-zinc-500">
+            Penerima menggeser jarum piringan retro — lagunya diputar via Spotify resmi (dia bisa pause/play sendiri).
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -1092,6 +1159,8 @@ interface StepGenerateProps {
   timelineCount: number
   /** Jenis kejutan penutup (kadoType "timeline") — tampil di ringkasan. */
   timelineEnding: "pesan" | "voucher"
+  /** Kado Playlist: true = lagu pilihan pengirim, false = lagu bawaan. */
+  playlistHasSong: boolean
   generating: boolean
   errorMsg: string | null
   onBack: () => void
@@ -1142,7 +1211,7 @@ function StepGenerate(props: StepGenerateProps) {
             {selected?.label ?? "—"}
           </span>
         </div>
-        {(props.kadoType === "coupon" || props.kadoType === "candle" || props.kadoType === "photobox" || props.kadoType === "timeline") && (
+        {(props.kadoType === "coupon" || props.kadoType === "candle" || props.kadoType === "photobox" || props.kadoType === "timeline" || props.kadoType === "playlist") && (
           <div className="flex items-center justify-between gap-3">
             <span className="text-zinc-500">Detail</span>
             <span className="font-medium text-zinc-200">
@@ -1152,7 +1221,11 @@ function StepGenerate(props: StepGenerateProps) {
                   ? `${props.photoCount} foto siap dicuci`
                   : props.kadoType === "timeline"
                     ? `${props.timelineCount} momen + ${props.timelineEnding === "voucher" ? "kode voucher" : "pesan rahasia"}`
-                    : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
+                    : props.kadoType === "playlist"
+                      ? props.playlistHasSong
+                        ? "Lagu pilihanmu siap diputar"
+                        : "Lagu bawaan Kangenin"
+                      : OCCASION_PILLS.find((o) => o.value === props.occasion)?.label ?? "—"}
             </span>
           </div>
         )}

@@ -216,6 +216,18 @@ const DEMO_KADOS: Record<string, KadoForUnboxing> = {
     },
     createdAt: DEMO_DATE,
   },
+  "demo-playlist": {
+    id: "demo-playlist",
+    targetName: "Kamu",
+    message:
+      "Lagu ini nggak sengaja jadi lagu kita — sekarang dia mutar di sini, buat kamu. Geser jarumnya pelan-pelan, dengerin sampai habis ya.",
+    senderName: "Rizri",
+    fomoInitials: "R***I",
+    kadoType: "playlist",
+    // spotifyId null → PremiumPlaylist memakai lagu bawaan Kangenin
+    kadoData: null,
+    createdAt: DEMO_DATE,
+  },
 }
 
 interface OpenPageProps {

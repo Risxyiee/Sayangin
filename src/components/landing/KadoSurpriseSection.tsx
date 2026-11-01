@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * KadoSurpriseSection — showcase lima pengalaman premium di Creator Studio
+ * KadoSurpriseSection — showcase enam pengalaman premium di Creator Studio
  * (/create). SATU fitur confess di landing (ConfessSection di atas) — versi
  * sinematiknya (Heartstring) tetap ada di Creator Studio sebagai "Kado
  * Confess" dan di-upsell dari panel sukses ConfessSection, bukan ditampilkan
@@ -18,6 +18,7 @@ import {
   Camera,
   Flame,
   Flower2,
+  Music,
   Stamp,
   Ticket,
   type LucideIcon,
@@ -71,6 +72,14 @@ const SURPRISES: {
     tag: "tiup mic → padam",
     demo: "demo-candle",
   },
+  {
+    num: "06",
+    icon: Music,
+    title: "Playlist Lagu",
+    desc: "Piringan retro dengan jarum sungguhan. Geser jarumnya — lagu pilihanmu diputar lewat Spotify.",
+    tag: "geser jarum → lagu jalan",
+    demo: "demo-playlist",
+  },
 ];
 
 export default function KadoSurpriseSection() {
@@ -92,7 +101,7 @@ export default function KadoSurpriseSection() {
           <p className="mt-3 text-base leading-relaxed text-muted-foreground">
             Kado kejutan di Creator Studio: penerima tidak hanya
             mengeklik link — dia menarik, menggoyang, menyobek, meniup,
-            lalu pesanmu muncul. Semuanya gratis selama masa uji.
+            menggeser jarum — lalu pesanmu muncul. Semuanya gratis selama masa uji.
           </p>
         </motion.div>
 
