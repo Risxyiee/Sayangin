@@ -1200,7 +1200,7 @@ export default function PremiumLoveCoupon({
           </p>
         )}
         {babak === "sobek" && tornCount === 0 && (
-          <p className="text-[11px] text-zinc-600">klaimnya resmi — berlaku selamanya, nggak bisa ditukar</p>
+          <p className="text-[11px] text-zinc-600">klaimnya resmi — khusus buat kalian, nggak bisa ditukar</p>
         )}
       </div>
 
@@ -1280,7 +1280,7 @@ function ClosingCard({
           </div>
 
           <p className="relative mt-4 text-center text-[11px] italic text-amber-200/80">
-            kuponnya berlaku selamanya — nggak bisa ditukar, nggak bisa dibatalkan 🤍
+            kuponnya sah buat kalian — nggak bisa ditukar, nggak bisa dibatalkan 🤍
           </p>
 
           <div className="relative mt-4 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />

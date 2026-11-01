@@ -15,7 +15,7 @@ const PLANS = [
       "Kartu ucapan sederhana",
       "5 tema warna (termasuk edisi terbatas)",
       "Link aktif langsung setelah dibuat",
-      "Watermark kecil Kangenin",
+      "Ada kredit kecil \u201cdibuat gratis di Kangenin\u201d di halaman surat",
     ],
     cta: "Confess Gratis",
     href: "#confess",
@@ -28,7 +28,7 @@ const PLANS = [
     highlight: false,
     features: [
       "Pilih 1 kado kejutan: buket, open when, photobox, coupon, candle, confess, atau timeline",
-      "Tanpa watermark",
+      "Pengalaman buka sinematik — animasi + efek suara",
       "Upload foto sendiri (photobox & timeline)",
       "Kartu QR siap cetak buat tempel di hadiah fisik",
     ],
