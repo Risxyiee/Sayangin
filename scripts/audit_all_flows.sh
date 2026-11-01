@@ -78,12 +78,16 @@ def walk(o):
             r=walk(v)
             if r: return r
 print(walk(d) or '')")
-api "POST start" POST "/api/letters/$LSLUG/start"
-expect 200 "letters start"
-api "POST open" POST "/api/letters/$LSLUG/open" "{\"letterId\":\"$LETTER_ID\"}"
-expect 200 "letters open (hari-0)"
-api "POST reply surat" POST "/api/letters/$LSLUG/reply" "{\"letterId\":\"$LETTER_ID\",\"body\":\"Tes balasan audit, terima kasih.\"}"
-expect 200 "letters reply"
+if [ -z "$LETTER_ID" ]; then
+  say "SKIP open+reply surat" "(GET gagal — tak ada letterId; lihat cek di atas)"
+else
+  api "POST start" POST "/api/letters/$LSLUG/start"
+  expect 200 "letters start"
+  api "POST open" POST "/api/letters/$LSLUG/open" "{\"letterId\":\"$LETTER_ID\"}"
+  expect 200 "letters open (hari-0)"
+  api "POST reply surat" POST "/api/letters/$LSLUG/reply" "{\"letterId\":\"$LETTER_ID\",\"body\":\"Tes balasan audit, terima kasih.\"}"
+  expect 200 "letters reply"
+fi
 api "GET  status/[senderKey] letters" GET "/api/status/$LKEY"
 expect 200 "letters status (sender view)"
 
