@@ -39,8 +39,9 @@ import { reportError } from "@/lib/monitor";
 const createSchema = z.object({
   targetName: z.string().trim().min(1, "Nama penerima wajib diisi").max(60),
   message: z.string().trim().min(1, "Pesan utama wajib diisi").max(1000),
-  // anonim → kirim isAnonymous: true; senderName kosong juga dianggap anonim
-  senderName: z.string().trim().max(60).optional().default(""),
+  // anonim → kirim isAnonymous: true; UI mengirim senderName: null saat
+  // anonim — nullish (bukan cuma optional) supaya null valid dan dianggap ""
+  senderName: z.string().trim().max(60).nullish().default(""),
   isAnonymous: z.boolean().optional().default(false),
   // kadoType fleksibel (pendekatan JSONB): tipe baru tidak butuh ubah schema —
   // cukup token alfanumerik biar rapi di URL & log
