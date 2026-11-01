@@ -92,12 +92,16 @@ function makePool(connectionString: string | undefined): PgPool {
     // anggaran keras withDbRetry (8,5 dtk) tetap membatasi worst-case user.
     query_timeout: 4_500,
     statement_timeout: 8_000, // server-side: potong query nangkring
-    // PENTING: di node-postgres, 0 = DISABLED — koneksi idle tidak pernah
-    // ditutup dan DIPAKAI-ULANG request berikutnya. Itulah sumber zombie
-    // "Query read timeout" berulang: koneksi yang hang tetap duduk di pool.
-    // 1 dtk = reuse masih terjadi DI DALAM satu request (rate limiter → query
-    // utama, gap-nya < 1 dtk), tapi koneksi lintas-request SELALU segar.
-    idleTimeoutMillis: 1_000,
+    // PENTING: di node-postgres, 0 = DISABLED. Semula 1 dtk (anti-zombie
+    // episode 2026-11-01) — tapi itu mematikan koneksi SEHAT juga: hampir
+    // tiap request membayar dial dingin Hyperdrive→origin dari nol, dan
+    // koneksi yang kena basi di baris pertama mendominasi (audit produksi:
+    // 11/25 panggilan > 3 dtk). Sekarang 30 dtk: koneksi tetap hangat lintas
+    // request dalam hidup isolate. Risiko zombie ditangani lapis lain —
+    // query_timeout 4,5 dtk memotong + MENGHANCURKAN klien yang menggantung,
+    // 'error' handler membuang klien idle yang mati, maxUses 250 mendaur
+    // ulang, dan withDbRetry mengulang di koneksi baru kalau lolos semua.
+    idleTimeoutMillis: 30_000,
     maxUses: 250, // daur ulang koneksi sebelum menua/jadi zombie
     // catatan: keepAlive TIDAK dipakai — di runtime Workers socket yang menempel
     // (keepalive) berisiko menggleding limit koneksi simultan per isolate dan
