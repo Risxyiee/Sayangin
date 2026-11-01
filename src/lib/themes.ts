@@ -2,7 +2,7 @@
  * Sumber tunggal (single source of truth) untuk tema surat/kado Kangenin.
  *
  * Dipakai bersama oleh:
- *  - komponen UI (ConfessionView, ConfessSection, GiftStudio, dst.) untuk
+ *  - komponen UI (ConfessionView, ConfessSection, GiftView, dst.) untuk
  *    merender pratinjau & pemilih tema;
  *  - API routes (POST /api/confess, /api/gifts, /api/letters) untuk validasi `theme`.
  *

@@ -3,9 +3,11 @@
 /**
  * Creator Studio Kangenin — halaman /create
  *
- * Wizard 3 langkah untuk merangkai kado kejutan:
+ * Wizard 3 langkah untuk merangkai kado kejutan premium (hard refactor:
+ * alur kunci lama fingerprint/tap/scratch/quiz & playlist SUDAH DIHAPUS —
+ * pilihannya kini hanya 6 pengalaman premium, tanpa duplikasi):
  *   1. Pesan & identitas FOMO (anonim total default, inisial bertopeng "R***I")
- *   2. Pilih kunci buka (fingerprint / tap / scratch / quiz)
+ *   2. Pilih kado kejutan (bouquet / openwhen / photobox / coupon / candle / confess)
  *   3. Ringkasan + Generate Link Kado → POST /api/kado → redirect /kado/[id]/share
  *
  * Catatan integrasi:
@@ -14,26 +16,22 @@
  * - fomoInitials dihitung ulang di SERVER — klien cuma kirim senderName + isAnonymous.
  */
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   ArrowLeft,
   ArrowRight,
-  BrainCircuit,
   Camera,
   Check,
-  Disc3,
   EyeOff,
-  Fingerprint,
   Flame,
   Flower2,
+  Gift,
+  Heart,
   Loader2,
-  LockKeyhole,
   Mail,
-  MousePointerClick,
-  ScanLine,
   Stamp,
   Ticket,
   UserRound,
@@ -41,14 +39,14 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
-import { extractSpotifyTrackId } from "@/utils/spotify"
+import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & konstanta
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3
-type KadoType = "fingerprint" | "tap" | "scratch" | "quiz" | "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "playlist"
+type KadoType = "bouquet" | "openwhen" | "photobox" | "coupon" | "candle" | "confess"
 
 /** Payload yang dikirim Creator Studio ke POST /api/kado. */
 interface KadoCreatePayload {
@@ -64,31 +62,24 @@ interface KadoCreatePayload {
 /** Bentuk respons POST /api/kado. */
 type KadoApiResponse = { success?: boolean; data?: { id?: string }; error?: string }
 
+/** Enam pengalaman premium — HANYA ini (tanpa opsi bawaan lama, tanpa duplikat). */
 const KADO_OPTIONS: { value: KadoType; label: string; desc: string; icon: LucideIcon }[] = [
-  { value: "fingerprint", label: "Sidik Jari", desc: "Tahan layar 3 detik", icon: Fingerprint },
-  { value: "tap", label: "Tap Layar", desc: "Ketuk berkali-kali", icon: MousePointerClick },
-  { value: "scratch", label: "Kartu Gosok", desc: "Gosok buat mengintip", icon: ScanLine },
-  { value: "quiz", label: "Kuis", desc: "Jawab dulu, baru buka", icon: BrainCircuit },
   { value: "bouquet", label: "Buket Bunga", desc: "Tarik pita, bunga mekar", icon: Flower2 },
   { value: "openwhen", label: "Open When", desc: "Segel lilin surat kangen", icon: Stamp },
   { value: "photobox", label: "Photobox", desc: "Goyang HP buat cuci foto", icon: Camera },
   { value: "coupon", label: "Love Coupon", desc: "Sobek tiket buat klaim", icon: Ticket },
   { value: "candle", label: "Candle Blow", desc: "Tiup lilin lewat mic", icon: Flame },
-  { value: "playlist", label: "Playlist", desc: "Putar lagu di piringan hitam", icon: Disc3 },
+  { value: "confess", label: "Confess", desc: "Tahan hati, buka pengakuan", icon: Heart },
 ]
 
-/** Konfigurasi default per kadoType — quiz diisi sendiri oleh pembuat kado. */
+/** Konfigurasi default per kadoType — interaksi lain bawaan komponen premiumnya. */
 const DEFAULT_KADO_DATA: Record<KadoType, Record<string, string | number> | null> = {
-  fingerprint: { holdMs: 3000 },
-  tap: { taps: 5 },
-  scratch: { coverText: "Gosok pelan-pelan ✨" },
-  quiz: null,
   bouquet: null, // interaksinya bawaan PremiumBouquet (pita emas)
   openwhen: null, // interaksinya bawaan PremiumOpenWhen (judul & prompt default)
   photobox: null, // foto teks vintage bawaan PremiumPhotobox (kadoData.imageUrl opsional)
   coupon: { title: "1x Bebas Ngambek" }, // judul kupon — bisa diganti via kadoData.title
   candle: null, // interaksi bawaan PremiumCandleBlow (mic + tiupan, fallback tap 3x)
-  playlist: null, // lagu dipilih via input link Spotify (kadoData.spotifyId)
+  confess: null, // interaksi bawaan PremiumConfess (tahan lambang hati)
 }
 
 /** Kelas input bersama biar semua field seragam & elegan. */
@@ -120,14 +111,6 @@ export default function CreatePage() {
   const [kadoType, setKadoType] = useState<KadoType | null>(null)
   const [kadoData, setKadoData] = useState<Record<string, string | number> | null>(null)
 
-  // Draft jawaban kuis — tersimpan walau sempat ganti-ganti tipe kado
-  const [quizQuestion, setQuizQuestion] = useState("")
-  const [quizAnswer, setQuizAnswer] = useState("")
-
-  // Draft link Spotify (playlist) — trackId diekstrak real-time via regex
-  const [spotifyUrl, setSpotifyUrl] = useState("")
-  const spotifyId = useMemo(() => extractSpotifyTrackId(spotifyUrl), [spotifyUrl])
-
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -135,28 +118,17 @@ export default function CreatePage() {
   const router = useRouter()
 
   const canNextStep1 = targetName.trim().length > 0 && message.trim().length > 0
-  const canPreview =
-    kadoType !== null &&
-    (kadoType !== "quiz" || (quizQuestion.trim().length > 0 && quizAnswer.trim().length > 0)) &&
-    (kadoType !== "playlist" || spotifyId !== null)
+  const canPreview = kadoType !== null
 
   function goTo(next: Step, direction: 1 | -1) {
     setDir(direction)
     setStep(next)
   }
 
-  /** Pilih tipe kado → kadoData langsung diisi default-nya (quiz menunggu input user). */
+  /** Pilih tipe kado → kadoData langsung diisi default-nya. */
   function selectKado(type: KadoType) {
     setKadoType(type)
-    setKadoData(
-      type === "quiz" ? { question: quizQuestion, answer: quizAnswer } : DEFAULT_KADO_DATA[type]
-    )
-  }
-
-  function updateQuiz(field: "question" | "answer", value: string) {
-    if (field === "question") setQuizQuestion(value)
-    else setQuizAnswer(value)
-    setKadoData((prev) => ({ ...(prev ?? {}), [field]: value }))
+    setKadoData(DEFAULT_KADO_DATA[type])
   }
 
   /** Simpan kado via POST /api/kado, lalu redirect ke halaman share. */
@@ -172,19 +144,18 @@ export default function CreatePage() {
         senderName: isAnonymous ? null : senderName.trim() || null,
         isAnonymous,
         kadoType,
-        kadoData:
-          kadoType === "playlist"
-            ? spotifyId
-              ? { spotifyId } // playlist: kadoData dirakit dari hasil ekstraksi link
-              : kadoData
-            : kadoData,
+        kadoData,
       }
 
-      const res = await fetch("/api/kado", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      const res = await fetchWithTimeout(
+        "/api/kado",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        20_000
+      )
       const json = (await res.json().catch(() => null)) as KadoApiResponse | null
 
       if (res.ok && json?.success && json.data?.id) {
@@ -192,8 +163,12 @@ export default function CreatePage() {
         return
       }
       setErrorMsg(json?.error ?? "Gagal membuat kado. Coba lagi ya.")
-    } catch {
-      setErrorMsg("Koneksi bermasalah — cek internetmu lalu coba lagi ya.")
+    } catch (e) {
+      setErrorMsg(
+        isTimeoutError(e)
+          ? FETCH_TIMEOUT_MESSAGE
+          : "Koneksi bermasalah — cek internetmu lalu coba lagi ya."
+      )
     } finally {
       setGenerating(false)
     }
@@ -254,15 +229,8 @@ export default function CreatePage() {
               {step === 2 && (
                 <StepLock
                   kadoType={kadoType}
-                  kadoData={kadoData}
-                  quizQuestion={quizQuestion}
-                  quizAnswer={quizAnswer}
-                  spotifyUrl={spotifyUrl}
-                  spotifyId={spotifyId}
                   canPreview={canPreview}
                   onSelectKado={selectKado}
-                  onQuizChange={updateQuiz}
-                  onSpotifyUrlChange={setSpotifyUrl}
                   onBack={() => goTo(1, -1)}
                   onNext={() => goTo(3, 1)}
                 />
@@ -416,7 +384,7 @@ function StepIdentity(props: StepIdentityProps) {
         disabled={!props.canNext}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_24px_-6px_rgba(244,63,94,0.5)] transition-shadow hover:shadow-[0_0_32px_-4px_rgba(244,63,94,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
-        Lanjut Pilih Kunci
+        Lanjut Pilih Kado
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>
@@ -424,20 +392,13 @@ function StepIdentity(props: StepIdentityProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 2 — Pilih tantangan (kunci buka kado)
+// Step 2 — Pilih kado kejutan (6 pengalaman premium)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface StepLockProps {
   kadoType: KadoType | null
-  kadoData: Record<string, string | number> | null
-  quizQuestion: string
-  quizAnswer: string
-  spotifyUrl: string
-  spotifyId: string | null
   canPreview: boolean
   onSelectKado: (type: KadoType) => void
-  onQuizChange: (field: "question" | "answer", value: string) => void
-  onSpotifyUrlChange: (value: string) => void
   onBack: () => void
   onNext: () => void
 }
@@ -447,11 +408,12 @@ function StepLock(props: StepLockProps) {
     <div className="space-y-5">
       <div>
         <p className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-          <LockKeyhole className="h-4 w-4 text-rose-300" />
-          Pilih Kunci Buka Kado
+          <Gift className="h-4 w-4 text-rose-300" />
+          Pilih Kado Kejutannya
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          Target harus menyelesaikan tantangan ini dulu sebelum kado terbuka.
+          Penerima harus mengalaminya dulu — menarik, menggoyang, menyobek,
+          meniup, menahan — sebelum pesanmu terbuka.
         </p>
       </div>
 
@@ -490,93 +452,6 @@ function StepLock(props: StepLockProps) {
         })}
       </div>
 
-      {/* Form kuis — hanya muncul kalau quiz dipilih */}
-      <AnimatePresence initial={false}>
-        {props.kadoType === "quiz" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
-          >
-            <div>
-              <label htmlFor="quizQuestion" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Pertanyaan Kuis
-              </label>
-              <input
-                id="quizQuestion"
-                value={props.quizQuestion}
-                onChange={(e) => props.onQuizChange("question", e.target.value)}
-                placeholder="Kapan kita pertama kali jalan?"
-                maxLength={120}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label htmlFor="quizAnswer" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Jawaban
-              </label>
-              <input
-                id="quizAnswer"
-                value={props.quizAnswer}
-                onChange={(e) => props.onQuizChange("answer", e.target.value)}
-                placeholder="Minggu"
-                maxLength={60}
-                className={inputCls}
-              />
-              <p className="mt-2 text-xs text-zinc-500">
-                Jawaban tidak peka huruf besar-kecil — target boleh salah ketik sedikit.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Form Spotify — hanya muncul kalau playlist dipilih */}
-      <AnimatePresence initial={false}>
-        {props.kadoType === "playlist" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
-          >
-            <div>
-              <label htmlFor="spotifyUrl" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Paste Link Lagu Spotify
-              </label>
-              <input
-                id="spotifyUrl"
-                value={props.spotifyUrl}
-                onChange={(e) => props.onSpotifyUrlChange(e.target.value)}
-                placeholder="https://open.spotify.com/track/..."
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                className={inputCls}
-              />
-              <p className="mt-2 text-xs text-zinc-500">
-                Contoh: open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT — ID lagunya otomatis
-                diekstrak dari link.
-              </p>
-              {props.spotifyUrl.trim().length > 0 &&
-                (props.spotifyId ? (
-                  <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-300">
-                    <Check className="h-3.5 w-3.5" />
-                    Lagu terdeteksi (ID: {props.spotifyId}) — siap diputar di turntable.
-                  </p>
-                ) : (
-                  <p className="mt-1.5 text-xs font-medium text-amber-300/90">
-                    Link belum dikenali — pakai link open.spotify.com/track/... ya.
-                  </p>
-                ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="flex gap-3 pt-1">
         <button
           onClick={props.onBack}
@@ -590,7 +465,7 @@ function StepLock(props: StepLockProps) {
           disabled={!props.canPreview}
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_0_24px_-6px_rgba(244,63,94,0.5)] transition-shadow hover:shadow-[0_0_32px_-4px_rgba(244,63,94,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
-          Preview
+          Lanjut Ringkasan
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
@@ -659,23 +534,6 @@ function StepGenerate(props: StepGenerateProps) {
             {selected?.label ?? "—"}
           </span>
         </div>
-        {props.kadoType === "quiz" && props.kadoData && (
-          <div className="border-t border-white/5 pt-2.5 text-xs text-zinc-400">
-            <p>
-              <span className="text-zinc-500">Tanya:</span> {props.kadoData.question || "—"}
-            </p>
-            <p className="mt-1">
-              <span className="text-zinc-500">Jawab:</span> {props.kadoData.answer || "—"}
-            </p>
-          </div>
-        )}
-        {props.kadoType === "playlist" && props.kadoData?.spotifyId && (
-          <div className="border-t border-white/5 pt-2.5 text-xs text-zinc-400">
-            <p>
-              <span className="text-zinc-500">Track Spotify:</span> {String(props.kadoData.spotifyId)}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Aksi */}

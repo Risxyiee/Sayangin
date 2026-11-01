@@ -462,7 +462,6 @@ export default function PremiumPhotobox({
                   }}
                 >
                   {imageUrl && !imgFailed ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={imageUrl}
                       alt={`Foto kado untuk ${targetName}`}

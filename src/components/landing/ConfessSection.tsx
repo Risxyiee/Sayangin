@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ConfessionView, { CONFESS_THEMES } from "@/components/confess/ConfessionView";
 import { LS_KEYS, lsGet, lsSet } from "@/lib/local-store";
+import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout";
 
 type Phase = "closed" | "opening" | "letter" | "question" | "yes";
 const DEMO_MSG =
@@ -256,18 +257,22 @@ export default function ConfessSection() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/confess", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fromName: fromName.trim(),
-          toName: toName.trim(),
-          message: message.trim(),
-          theme,
-          isPublic: showOnWall,
-          unlockAt: unlockDateFor(unlockPreset),
-        }),
-      });
+      const res = await fetchWithTimeout(
+        "/api/confess",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fromName: fromName.trim(),
+            toName: toName.trim(),
+            message: message.trim(),
+            theme,
+            isPublic: showOnWall,
+            unlockAt: unlockDateFor(unlockPreset),
+          }),
+        },
+        20_000
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal membuat confess");
       setLink(`${window.location.origin}/?k=${data.slug}`);
@@ -294,7 +299,13 @@ export default function ConfessSection() {
         120
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Terjadi kesalahan. Coba lagi.");
+      setError(
+        isTimeoutError(e)
+          ? FETCH_TIMEOUT_MESSAGE
+          : e instanceof Error
+            ? e.message
+            : "Terjadi kesalahan. Coba lagi."
+      );
     } finally {
       setLoading(false);
     }

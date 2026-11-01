@@ -10,6 +10,9 @@
     "preview:cf": "opennextjs-cloudflare preview",
     "start": "next start",
     "lint": "eslint .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:ci": "playwright test --retries=2 --workers=1",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -91,6 +94,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.20.15",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/pg": "^8.23.1",

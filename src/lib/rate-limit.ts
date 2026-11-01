@@ -89,6 +89,14 @@ let pgBackoffUntil = 0;
 // tabel belum dibuat → jangan coba DB lagi di isolate ini (perlu SQL manual)
 let tableMissing = false;
 
+// ── Anggaran waktu limiter (pelajaran insiden 2026-11-01, wallTime 24,5 dtk) ──
+// Fail-open lama baru terjadi SETELAH query limiter menggantung 6 dtk
+// (query_timeout) — di episode gangguan origin itu menambah 6 dtk hening di
+// depan query utama. Sekarang: kalau limiter tak selesai dalam 2,5 dtk,
+// langsung pindah ke limiter memori; query DB yang tertinggal tetap ditunggu
+// handler-nya (set backoff saat benar-benar gagal) tanpa menggantung request.
+const LIMITER_BUDGET_MS = 2_500;
+
 /**
  * Cek apakah request lolos batas (dipanggil dengan `await`).
  * @param key       nama aksi, mis. "confess-create"
@@ -109,7 +117,22 @@ export async function rateLimit(
   }
 
   try {
-    const res = await getPgPool().query(UPSERT_SQL, [id, windowSecs]);
+    const q = getPgPool().query(UPSERT_SQL, [id, windowSecs]);
+    // anti unhandled-rejection kalau query kalah race dan gagal belakangan;
+    // penanganan backoff asli tetap lewat catch di bawah (race yang reject).
+    q.catch(() => {});
+    let limiterTimer: ReturnType<typeof setTimeout> | undefined;
+    const res = await Promise.race([
+      q,
+      new Promise<never>((_, reject) => {
+        limiterTimer = setTimeout(
+          () => reject(new Error("rate-limit budget habis (2,5 dtk)")),
+          LIMITER_BUDGET_MS
+        );
+      }),
+    ]).finally(() => {
+      if (limiterTimer) clearTimeout(limiterTimer);
+    });
     const row = res.rows[0] as { count: number; retry_after: number } | undefined;
     const count = Number(row?.count ?? 1);
 

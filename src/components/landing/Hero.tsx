@@ -256,7 +256,7 @@ export default function Hero() {
             {[
               { v: "Rp0", k: "confess anonim" },
               { v: "±3 menit", k: "dari tulis ke kirim" },
-              { v: "10 kado", k: "gratis (masa uji)" },
+              { v: "6 kado", k: "kejutan premium (masa uji)" },
             ].map((s) => (
               <div key={s.v}>
                 <div className="font-display text-lg font-bold text-white">{s.v}</div>

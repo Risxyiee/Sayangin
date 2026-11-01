@@ -77,9 +77,19 @@ function makePool(connectionString: string | undefined): PgPool {
   const pool = new Pool({
     ...(connectionString ? { connectionString } : {}),
     // ── batas higiene koneksi (lihat komentar arsitektur di atas) ──
-    max: 5, // per isolate; pooling global dilakukan Hyperdrive
-    connectionTimeoutMillis: 8_000, // gagal cepat, jangan biarkan user nunggu lama
-    query_timeout: 6_000, // client-side: potong koneksi yang mati diam. 6 dtk = slack untuk koneksi dingin (TLS+auth via Hyperdrive) — 4 dtk pernah terbukti memotong episode gangguan origin (log POST /api/confess SIN, wall 16 dtk). Respons normal < 2 dtk.
+    max: 3, // per isolate; pooling global dilakukan Hyperdrive. 5→3: kurangi
+    // jumlah koneksi origin Supabase (free tier max_connections terbatas) —
+    // request app mayoritas sekuensial, 3 jelas cukup, dan makin sedikit
+    // koneksi terbuka makin sedikit koneksi basi yang bisa dijadwalkan user.
+    connectionTimeoutMillis: 5_000, // gagal cepat, jangan biarkan user nunggu lama
+    // 3 dtk: pelajaran insiden produksi 2026-11-01 (POST /api/gifts wall 18,5
+    // dtk → 500). query_timeout 6 dtk membuat attempt-2 withDbRetry overshoot:
+    // limiter 2,5 dtk + attempt-1 6 dtk + attempt-2 6 dtk ≈ 18,5 dtk user
+    // menatap hening. 3 dtk = masih 3× slack koneksi dingin Hyperdrive (TLS +
+    // auth di jaringan internal Cloudflare biasanya < 300 ms), sementara
+    // koneksi basi terpotong 2× lebih cepat → total worst-case terpangkas ke
+    // ±6,5 dtk untuk seluruh blok retry. Respons normal < 2 dtk.
+    query_timeout: 3_000,
     statement_timeout: 8_000, // server-side: potong query nangkring
     // PENTING: di node-postgres, 0 = DISABLED — koneksi idle tidak pernah
     // ditutup dan DIPAKAI-ULANG request berikutnya. Itulah sumber zombie
@@ -148,28 +158,62 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
 // ── Perisai anti-zombie ──────────────────────────────────────────────────────
 // Hyperdrive sesekali menyerahkan koneksi "mati diam" (query terkirim, jawaban
-// tak kunjung datang) walau origin-nya direct & config baru. Timeout 4 dtk
-// memotongnya, lalu helper ini mengulang di koneksi baru — maksimal 3 percobaan
-// dengan jeda kecil ber-jitter. Peluang ketiga attempt semuanya kena zombie
-// sangat kecil (± 0.4³ ≈ 6% → dengan jeda, jauh di bawah itu), dan kesalahan
+// tak kunjung datang) walau origin-nya direct & config baru. Timeout memotong
+// koneksi itu, lalu helper ini mengulang di koneksi baru. Kesalahan
 // validasi/bisnis TIDAK pernah diulang.
-const RETRYABLE = /query read timeout|connection terminated|timeout exceeded|ECONNRESET|socket hang up/i
+//
+// ANGGARAN WAKTU KERAS (budgetMs, bawaan 8,5 dtk) — dua lapis:
+//   1. Sebelum memulai attempt, cek sisa anggaran (lapis lama; kurang —
+//      insiden produksi 2026-11-01 POST /api/gifts wall 18,5 dtk: attempt-2
+//      DIMULAI saat anggaran masih sisa lalu menggantung sampai query_timeout
+//      penuh tanpa ada yang memotongnya).
+//   2. Setiap attempt di-race dengan sisa anggaran (lapis baru): attempt yang
+//      menggantung DIPOTONG tepat saat anggaran habis, jadi total waktu blok
+//      DB DIJAMIN ≤ budgetMs + jeda, apa pun yang terjadi di bawahnya. Query
+//      yang tertinggal tetap diawasi query_timeout (3 dtk) — klien basi
+//      dibunuh lalu dibuang pool; tidak menumpuk di max=3.
+// Peluang ketiga attempt semuanya kena zombie sangat kecil; kalau anggaran
+// habis, error naik cepat dengan pesan rapi + tombol coba lagi — BUKAN
+// 18–24 dtk hening seperti episode lama.
+const RETRYABLE = /query read timeout|connection terminated|timeout exceeded|ECONNRESET|socket hang up|anggaran db/i
 
-export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
+/** Sisa waktu minimum agar satu retry masih masuk akal (query timeout 3 dtk + jeda). */
+const MIN_RETRY_HEADROOM_MS = 1_000
+
+export async function withDbRetry<T>(
+  fn: () => Promise<T>,
+  opts?: { budgetMs?: number }
+): Promise<T> {
+  const budgetMs = opts?.budgetMs ?? 8_500
+  const deadline = Date.now() + budgetMs
   let lastErr: unknown
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       // jeda 150–400 ms — beri Hyperdrive waktu membuang koneksi yang sakit
       // dan pool membuka yang benar-benar baru
-      await new Promise((r) => setTimeout(r, 150 + Math.random() * 250))
+      const wait = 150 + Math.random() * 250
+      if (Date.now() + wait + MIN_RETRY_HEADROOM_MS > deadline) break // anggaran habis
+      await new Promise((r) => setTimeout(r, wait))
     }
+    // Lapis 2 — potong attempt yang menggantung pada batas anggaran.
+    let budgetTimer: ReturnType<typeof setTimeout> | undefined
+    const budgetGuard = new Promise<never>((_, reject) => {
+      budgetTimer = setTimeout(() => {
+        reject(new Error("anggaran db terlampaui — koneksi di potong agar user tidak menunggu"))
+      }, Math.max(250, deadline - Date.now()))
+    })
     try {
-      return await fn()
+      return await Promise.race([fn(), budgetGuard])
     } catch (err) {
       lastErr = err
       const msg = err instanceof Error ? err.message : String(err)
       if (!RETRYABLE.test(msg)) throw err
       console.warn(`[db] koneksi macet (attempt ${attempt + 1}/3), ulang:`, msg)
+      // episode gangguan penuh: sisa anggaran tak cukup untuk satu percobaan
+      // lagi yang sehat → berhenti, biarkan error naik dengan cepat.
+      if (Date.now() + MIN_RETRY_HEADROOM_MS > deadline) break
+    } finally {
+      if (budgetTimer) clearTimeout(budgetTimer)
     }
   }
   throw lastErr

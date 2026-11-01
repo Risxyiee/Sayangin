@@ -67,3 +67,7 @@ db/*.db-journal
 tool-results/
 upload/
 download/
+
+# playwright
+playwright-report/
+test-results/

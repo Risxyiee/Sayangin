@@ -2,22 +2,22 @@
 
 /**
  * KadoSurpriseSection — showcase enam pengalaman premium di Creator Studio
- * (/create). Selama ini fiturnya sudah ada tapi TIDAK ada satu pun link dari
- * landing page ke /create, jadi pengunjung (dan pemilik) merasa situs "masih
- * seperti awal". Section ini membuat fitur kejutan itu terlihat & bisa
- * diakses: navbar, hero, pricing, dan footer kini menunjuk ke /create.
+ * (/create). Satu-satunya showcase kado di landing setelah hard refactor:
+ * GiftsSection, GiftStudio, dan OpenWhenSection (alur lama) sudah DIHAPUS —
+ * UI tidak ganda lagi. Navbar, hero, status teaser, pricing, dan footer
+ * semuanya menunjuk ke /create.
  *
- * Gaya visual mengikuti GiftsSection: kicker + heading center, kartu
- * rounded-lg border bg-card dengan nomor, ikon lucide, deskripsi interaksi,
- * dan chip tag — grid sm:2 lg:3 dengan fade-up whileInView.
+ * Gaya visual: kicker + heading center, kartu rounded-lg border bg-card
+ * dengan nomor, ikon lucide, deskripsi interaksi, dan chip tag — grid
+ * sm:2 lg:3 dengan fade-up whileInView.
  */
 
 import { motion } from "framer-motion";
 import {
   Camera,
-  Disc3,
   Flame,
   Flower2,
+  Heart,
   Stamp,
   Ticket,
   type LucideIcon,
@@ -67,10 +67,10 @@ const SURPRISES: {
   },
   {
     num: "06",
-    icon: Disc3,
-    title: "Playlist",
-    desc: "Turntable retro: geser jarumnya ke piringan, vinyl berputar 33⅓ RPM, lagumu main dari Spotify.",
-    tag: "geser jarum → lagu main",
+    icon: Heart,
+    title: "Confess",
+    desc: "Pengakuan yang tersegel detak jantung: tahan lambangnya 1,5 detik — kunang-kunang naik, surat pengakuannya terbuka.",
+    tag: "tahan hati → pengakuan",
   },
 ];
 
@@ -92,8 +92,8 @@ export default function KadoSurpriseSection() {
           </h2>
           <p className="mt-3 text-base leading-relaxed text-muted-foreground">
             Enam pengalaman premium di Creator Studio: penerima tidak hanya
-            mengeklik link — dia menarik, menggoyang, menyobek, meniup, lalu
-            pesanmu muncul. Semuanya gratis selama masa uji.
+            mengeklik link — dia menarik, menggoyang, menyobek, meniup,
+            menahan, lalu pesanmu muncul. Semuanya gratis selama masa uji.
           </p>
         </motion.div>
 

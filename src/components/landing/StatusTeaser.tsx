@@ -109,10 +109,10 @@ export default function StatusTeaser() {
                 Coba gratis di atas
               </a>
               <a
-                href="#openwhen"
+                href="/create"
                 className="rounded-md border border-border px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-secondary"
               >
-                Atau bikin surat mingguan
+                Atau racik kado kejutan
               </a>
             </div>
           </motion.div>

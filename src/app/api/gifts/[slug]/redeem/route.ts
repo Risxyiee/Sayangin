@@ -28,7 +28,14 @@ export async function POST(
       );
     }
 
-    const parsed = redeemSchema.safeParse(await req.json());
+    // body rusak / bukan JSON → 400 rapi (bukan 500 dari outer catch)
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Format request tidak valid" }, { status: 400 });
+    }
+    const parsed = redeemSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Data tidak valid" }, { status: 400 });
     }

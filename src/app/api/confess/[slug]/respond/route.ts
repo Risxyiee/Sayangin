@@ -14,7 +14,13 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-    const body = await req.json();
+    // body rusak / bukan JSON → 400 rapi (bukan 500 dari outer catch)
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Format request tidak valid" }, { status: 400 });
+    }
     const parsed = respondSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

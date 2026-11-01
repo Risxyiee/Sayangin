@@ -299,9 +299,12 @@ export default function PremiumCandleBlow({
     timerRef.current = setTimeout(notifyOpenComplete, reduceMotion ? 600 : WISH_WAIT_MS)
   }, [stopAudio, notifyOpenComplete, reduceMotion])
 
-  // rAF loop membaca blowOut lewat ref — bebas stale closure
+  // rAF loop membaca blowOut lewat ref — bebas stale closure.
+  // Sinkronisasi lewat effect (bukan saat render) — aturan react-hooks/refs.
   const blowRef = useRef(blowOut)
-  blowRef.current = blowOut
+  useEffect(() => {
+    blowRef.current = blowOut
+  }, [blowOut])
 
   // ── Loop analisis audio (requestAnimationFrame)
   const startLoop = useCallback(() => {

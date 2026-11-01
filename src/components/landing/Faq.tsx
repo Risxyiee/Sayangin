@@ -23,11 +23,11 @@ const FAQS = [
   },
   {
     q: "Kami LDR (jarak jauh), cocok nggak?",
-    a: "Justru paling cocok. Fitur favorit couple LDR: Open When Letters (surat untuk momen-momen tertentu), timeline kisah, playlist bersama, dan kupon yang bisa 'dipakai' pas ketemu.",
+    a: "Justru paling cocok. Fitur favorit couple LDR: Open When bersegel lilin (surat untuk momen-momen tertentu), timeline kisah, candle blow yang ditiup lewat mic, dan kupon yang bisa 'dipakai' pas ketemu.",
   },
   {
     q: "Bisa dipakai buat ulang tahun?",
-    a: "Bisa. Kombinasi paling populer: timeline scrollytelling + kue digital tiup lilin + surat terakhir. Kamu juga bisa cetak kartu QR dan tempel di kado fisik supaya ada kejutan digitalnya.",
+    a: "Bisa. Kombinasi paling populer: timeline scrollytelling + candle blow (tiup lilin lewat mic sampai padam) + surat pengakuan. Kamu juga bisa cetak kartu QR dan tempel di kado fisik supaya ada kejutan digitalnya.",
   },
   {
     q: "Datanya aman? Bisa dihapus?",

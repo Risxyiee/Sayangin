@@ -27,7 +27,7 @@ const PLANS = [
     note: "gratis selama masa uji — nanti Rp19rb sekali bayar",
     highlight: false,
     features: [
-      "Pilih 1 kado digital: buket, surat, photobox, kue, coupons, atau playlist",
+      "Pilih 1 kado kejutan premium: buket, open when, photobox, coupon, candle, atau confess",
       "Tanpa watermark",
       "Upload foto & musik asli",
       "Kartu QR siap cetak buat tempel di hadiah fisik",
@@ -42,10 +42,10 @@ const PLANS = [
     note: "semua kado sekaligus — gratis selama masa uji",
     highlight: true,
     features: [
-      "Semua 6 kado digital + 6 kado kejutan premium",
+      "Semua 6 pengalaman kado kejutan premium",
       "Scrollytelling timeline kisah kalian",
-      "5 surat Open When Letters",
-      "Couple quiz: dia harus jawab bener buat buka hadiah",
+      "Open When bersegel lilin — surat untuk momen tertentu",
+      "Confess tersegel: dia harus tahan hati dulu buat buka",
       "Prioritas request fitur",
     ],
     cta: "Bikin Semua Kado Gratis",
