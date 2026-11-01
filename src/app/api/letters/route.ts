@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
 import { describeError } from "@/lib/log-error";
 import { reportError } from "@/lib/monitor";
+import { THEME_KEYS, THEME_INVALID_MESSAGE, isThemeSelectable } from "@/lib/themes";
 
 const letterSchema = z.object({
   title: z.string().trim().min(2, "Judul surat minimal 2 karakter").max(80),
@@ -16,14 +17,16 @@ const letterSchema = z.object({
 const createSchema = z.object({
   fromName: z.string().trim().max(40).optional().default(""),
   toName: z.string().trim().min(1, "Nama penerima wajib diisi").max(40),
-  theme: z.enum(["rose", "sunset", "midnight"]).optional().default("rose"),
+  // sumber tunggal tema: src/lib/themes.ts (UI & API pasti sinkron) —
+  // dulu cuma ["rose","sunset","midnight"] → sakura/matcha dari UI selalu 400
+  theme: z.enum(THEME_KEYS).optional().default("rose"),
   letters: z
     .array(letterSchema)
     .min(3, "Minimal 3 surat ya")
     .max(8, "Maksimal 8 surat"),
 });
 
-const THEMES = new Set(["rose", "sunset", "midnight"]);
+const THEMES = new Set<string>(THEME_KEYS);
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,12 +42,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const isTheme = issue?.path[0] === "theme";
       return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Data tidak valid" },
+        { error: isTheme ? THEME_INVALID_MESSAGE : (issue?.message ?? "Data tidak valid") },
         { status: 400 }
       );
     }
     const { fromName, toName, theme, letters } = parsed.data;
+
+    // tema edisi terbatas yang sudah lewat tidak boleh dipakai walau client
+    // lawas masih mengirimnya
+    if (!isThemeSelectable(theme)) {
+      return NextResponse.json(
+        { error: "Tema itu sudah tutup — udah lewat masa edisinya. Pilih tema lain ya." },
+        { status: 400 }
+      );
+    }
 
     // moderasi ringan: nama + semua judul & isi surat
     for (const field of [fromName, toName]) {

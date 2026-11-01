@@ -4,7 +4,7 @@
  * Dipakai bersama oleh:
  *  - komponen UI (ConfessionView, ConfessSection, GiftStudio, dst.) untuk
  *    merender pratinjau & pemilih tema;
- *  - API routes (POST /api/confess, /api/gifts) untuk validasi `theme`.
+ *  - API routes (POST /api/confess, /api/gifts, /api/letters) untuk validasi `theme`.
  *
  * ATURAN: menambah/menghapus tema HANYA di file ini — enum validasi API dan
  * pemilih UI otomatis ikut, jadi tidak akan pernah selangkah lagi (bug lama:
