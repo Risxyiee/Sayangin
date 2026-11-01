@@ -193,7 +193,7 @@ export default function CreatePage() {
 
         <h1 className="mb-1 text-2xl font-bold tracking-tight text-white">Creator Studio</h1>
         <p className="mb-6 text-sm text-zinc-400">
-          Rangkai kado kejutan — pesan rahasia plus kunci bukanya.
+          Rangkai kado kejutan — pesan rahasia plus pengalaman bukanya.
         </p>
 
         {/* Indikator langkah */}
