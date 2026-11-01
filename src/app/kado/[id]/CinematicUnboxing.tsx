@@ -157,6 +157,8 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           targetName={kado.targetName}
           message={kado.message}
           fomoInitials={kado.fomoInitials}
+          senderName={kado.senderName}
+          createdAt={kado.createdAt}
           revealName={reveal}
           onOpenComplete={() => setPhase(3)}
         />

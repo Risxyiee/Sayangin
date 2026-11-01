@@ -22,6 +22,11 @@
  *   chime(i)      — lonceng halus dua-nada detuned; i memilih nada berikutnya
  *                   (dipakai per baris surat, maks 4 nada berbeda).
  *   shimmer()     — hujan kilau: 5 chime kecil menyebar naik.
+ *   slide(dur?)   — kain/pita meluncur: noise bandpass menyapu naik pelan.
+ *   slip()        — simpul lepas: sapuan turun pendek + pop bass kecil.
+ *   pop(i)        — kuncup mekar: blip segitiga lembut, pitch naik per i.
+ *   rustle()      — derit kertas: dua burst noise pendek beruntun.
+ *   swell()       — akor hangat mengembang: penyambutan / kuncup pamungkas.
  *   toggleMuted() — mute/unmute master gain (tombol kecil di layar).
  *   muted         — state mute untuk ikon tombol.
  *
@@ -186,5 +191,45 @@ export function useKadoAudio() {
     notes.forEach((f, i) => tone(f, i * 0.09, 0.6, 0.07))
   }, [muted])
 
-  return { unlock, beat, crack, chime, shimmer, muted, toggleMuted }
+  /** Kain/pita meluncur — sapuan noise naik pelan; dur dalam detik. */
+  const slide = useCallback(
+    (dur = 0.35) => {
+      if (!ctxRef.current || muted) return
+      noise(0, dur, 300, 900, 0.12, 0.7)
+    },
+    [muted]
+  )
+
+  /** Simpul lepas — sapuan turun pendek + pop bass kecil. */
+  const slip = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    noise(0, 0.16, 1400, 350, 0.28, 0.9)
+    tone(150, 0.02, 0.1, 0.2, "triangle")
+  }, [muted])
+
+  /** Kuncup mekar — blip segitiga lembut; i menaikkan pitch per bunga. */
+  const pop = useCallback((i = 0) => {
+    if (!ctxRef.current || muted) return
+    const scale = [523.25, 587.33, 659.25, 783.99, 880]
+    tone(scale[i % scale.length], 0, 0.16, 0.13, "triangle")
+    noise(0, 0.05, 2000, 1000, 0.04, 1.5)
+  }, [muted])
+
+  /** Derit kertas — dua burst noise pendek beruntun. */
+  const rustle = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    noise(0, 0.08, 1400, 2600, 0.07, 1.3)
+    noise(0.1, 0.12, 1100, 2300, 0.06, 1.3)
+  }, [muted])
+
+  /** Akor hangat mengembang — penyambutan buket / kuncup pamungkas. */
+  const swell = useCallback(() => {
+    if (!ctxRef.current || muted) return
+    tone(392, 0, 1.3, 0.09)
+    tone(493.88, 0.06, 1.3, 0.08)
+    tone(587.33, 0.12, 1.3, 0.08)
+    tone(783.99, 0.22, 1.1, 0.05)
+  }, [muted])
+
+  return { unlock, beat, crack, chime, shimmer, slide, slip, pop, rustle, swell, muted, toggleMuted }
 }
