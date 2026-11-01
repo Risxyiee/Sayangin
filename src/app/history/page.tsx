@@ -31,7 +31,55 @@ import {
   Ticket,
   type LucideIcon,
 } from "lucide-react"
-import { KADO_HISTORY_KEY, parseKadoHistory, type KadoHistoryEntry } from "@/lib/kado-history"
+import { KADO_HISTORY_KEY, parseKadoHistory } from "@/lib/kado-history"
+import { LS_KEYS } from "@/lib/local-store"
+
+/**
+ * Entri gabungan untuk tampilan — dari dua sumber localStorage:
+ * 1. "kado"  → dibuat lewat Creator Studio (/create), punya id kado UUID.
+ * 2. "confess" → dibuat lewat form Confess di landing (/), punya slug +
+ *    senderKey; pratinjau via /?k=<slug>&p=<senderKey>, pantau via /?s=.
+ */
+type DisplayEntry = {
+  key: string
+  kind: "kado" | "confess"
+  /** id kado (UUID) atau slug confess */
+  id: string
+  /** khusus confess — kunci halaman pantau pengirim */
+  senderKey?: string
+  title: string
+  /** YYYY-MM-DD — dipakai urutan terbaru dulu */
+  date: string
+  type: string
+}
+
+/** Bentuk entri confess yang ditulis ConfessSection (landing) ke localStorage. */
+type ConfessionLsEntry = {
+  slug: string
+  senderKey: string
+  toName: string
+  type?: string
+  createdAt?: string
+}
+
+/** Parse daftar confess dari localStorage — entri rusak dibuang diam-diam. */
+function parseConfessions(raw: string | null | undefined): ConfessionLsEntry[] {
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (e): e is ConfessionLsEntry =>
+        !!e &&
+        typeof e === "object" &&
+        typeof (e as ConfessionLsEntry).slug === "string" &&
+        typeof (e as ConfessionLsEntry).senderKey === "string" &&
+        typeof (e as ConfessionLsEntry).toName === "string"
+    )
+  } catch {
+    return [] // JSON rusak → anggap kosong
+  }
+}
 
 /** Ikon + label tampilan per kadoType — sejalan dengan pilihan Creator Studio. */
 const TYPE_META: Record<string, { label: string; icon: LucideIcon }> = {
@@ -65,24 +113,49 @@ function subscribe(callback: () => void): () => void {
   return () => window.removeEventListener("storage", callback)
 }
 
-/** Snapshot klien: string mentah localStorage (stabil selama tak berubah). */
+/**
+ * Snapshot klien: gabungan string mentah KEDUA kunci (riwayat kado + confess
+ * dari landing). JSON.stringify dari dua string yang stabil → snapshot juga
+ * stabil selama storage tak berubah (syarat useSyncExternalStore).
+ */
 function getSnapshot(): string {
   try {
-    return window.localStorage.getItem(KADO_HISTORY_KEY) ?? ""
+    return JSON.stringify([
+      window.localStorage.getItem(KADO_HISTORY_KEY) ?? "",
+      window.localStorage.getItem(LS_KEYS.confessions) ?? "",
+    ])
   } catch {
-    return "" // storage diblokir (mis. mode privat ketat) → anggap kosong
+    return JSON.stringify(["", ""]) // storage diblokir (mis. mode privat) → kosong
   }
 }
 
 /** Snapshot server: selalu kosong — jaminan render awal identik (no hydration error). */
 function getServerSnapshot(): string {
-  return ""
+  return JSON.stringify(["", ""])
 }
 
 export default function HistoryPage() {
   // External store pattern — pola resmi React untuk localStorage (lihat doc header).
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-  const entries = useMemo(() => parseKadoHistory(raw), [raw])
+  const entries = useMemo<DisplayEntry[]>(() => {
+    const [kadoRaw, confRaw] = JSON.parse(raw) as [string, string]
+    const list: DisplayEntry[] = []
+    for (const e of parseKadoHistory(kadoRaw)) {
+      list.push({ key: `kado-${e.id}`, kind: "kado", id: e.id, title: e.title, date: e.date, type: e.type })
+    }
+    for (const c of parseConfessions(confRaw)) {
+      list.push({
+        key: `conf-${c.slug}`,
+        kind: "confess",
+        id: c.slug,
+        senderKey: c.senderKey,
+        title: `Untuk ${c.toName}`,
+        date: (c.createdAt ?? "").slice(0, 10) || "—",
+        type: "confess",
+      })
+    }
+    return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  }, [raw])
 
   return (
     <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.10),transparent_55%)] px-4 py-8 text-zinc-100">
@@ -107,7 +180,7 @@ export default function HistoryPage() {
 
         <h1 className="mb-1 text-2xl font-bold tracking-tight text-white">Kado Saya</h1>
         <p className="mb-6 text-sm text-zinc-400">
-          Riwayat kado yang pernah kamu buat di perangkat ini — tanpa akun, tanpa password.
+          Riwayat kado &amp; confess yang pernah kamu buat di perangkat ini — tanpa akun, tanpa password.
         </p>
 
         {entries.length === 0 ? (
@@ -120,8 +193,9 @@ export default function HistoryPage() {
               Belum ada kado yang dibuat di perangkat ini.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Setiap kado yang kamu rangkai lewat Creator Studio akan tercatat otomatis di sini —
-              biar link-nya gampang dicari lagi walau tab-nya tertutup.
+              Setiap kado dari Creator Studio dan confess dari halaman utama
+              tercatat otomatis di sini — biar link-nya gampang dicari lagi
+              walau tab-nya tertutup.
             </p>
             <Link
               href="/create"
@@ -139,7 +213,7 @@ export default function HistoryPage() {
                 const meta = typeMeta(e.type)
                 const Icon = meta.icon
                 return (
-                  <li key={e.id}>
+                  <li key={e.key}>
                     <article className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/30 backdrop-blur-md transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.08]">
                       {/* Ikon tipe kado */}
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-rose-400/30 bg-rose-500/15">
@@ -156,25 +230,49 @@ export default function HistoryPage() {
                         </p>
                       </div>
 
-                      {/* Aksi: pratinjau cepat + dashboard share */}
+                      {/* Aksi per jenis — pratinjau tidak pernah mengubah status kado */}
                       <div className="flex shrink-0 items-center gap-2">
-                        <Link
-                          href={`/kado/${e.id}?pratinjau=1`}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-300"
-                          aria-label={`Pratinjau ${e.title} — kado tidak akan terkunci`}
-                          title="Lihat pratinjau kado ini"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          href={`/kado/${e.id}/share`}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-500 px-3.5 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_28px_-4px_rgba(244,63,94,0.75)]"
-                          aria-label={`Buka Dashboard Share untuk ${e.title}`}
-                        >
-                          <LayoutDashboard className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Buka Dashboard Share</span>
-                          <span className="sm:hidden">Dashboard</span>
-                        </Link>
+                        {e.kind === "kado" ? (
+                          <>
+                            <Link
+                              href={`/kado/${e.id}?pratinjau=1`}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-300"
+                              aria-label={`Pratinjau ${e.title} — kado tidak akan terkunci`}
+                              title="Lihat pratinjau kado ini"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                            <Link
+                              href={`/kado/${e.id}/share`}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-500 px-3.5 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_28px_-4px_rgba(244,63,94,0.75)]"
+                              aria-label={`Buka Dashboard Share untuk ${e.title}`}
+                            >
+                              <LayoutDashboard className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Buka Dashboard Share</span>
+                              <span className="sm:hidden">Dashboard</span>
+                            </Link>
+                          </>
+                        ) : (
+                          <>
+                            <Link
+                              href={`/?k=${e.id}&p=${e.senderKey ?? ""}`}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-300"
+                              aria-label={`Pratinjau ${e.title} — hitungan & status tidak tercatat`}
+                              title="Lihat suratnya seperti yang diterima dia"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                            <Link
+                              href={`/?s=${e.senderKey ?? ""}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-500 px-3.5 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_28px_-4px_rgba(244,63,94,0.75)]"
+                              aria-label={`Pantau status ${e.title}`}
+                            >
+                              <LayoutDashboard className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Pantau Status</span>
+                              <span className="sm:hidden">Pantau</span>
+                            </Link>
+                          </>
+                        )}
                       </div>
                     </article>
                   </li>
