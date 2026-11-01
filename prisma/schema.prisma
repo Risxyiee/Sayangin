@@ -71,7 +71,7 @@ model Letter {
   unlockDays Int       @default(0) // 0 = langsung, 7 = minggu ke-1, dst.
   views      Int       @default(0)
   openedAt   DateTime?
-  reply      String?   // balasan penerima untuk surat ini
+  reply      String? // balasan penerima untuk surat ini
   repliedAt  DateTime?
 
   @@index([setId])
@@ -93,4 +93,36 @@ model Gift {
   reportCount Int       @default(0) // >=3 → konten disembunyikan sementara
   createdAt   DateTime  @default(now())
   openedAt    DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kado — penerus model Gift (yang masih nyimpan data sebagai JSON string) untuk
+// semua variasi fitur buka-kado. Konfigurasi interaksi tiap tipe disimpan di
+// kadoData (JSONB), jadi menambah kadoType baru cukup ganti VALUE — schema
+// tidak perlu diubah / tidak perlu migrasi.
+//
+// kadoType yang direncanakan + contoh bentuk kadoData-nya:
+//   fingerprint: { "holdMs": 3000, "hint": "Tahan sidikmu di layar 3 detik…" }
+//   quiz:        { "question": "Kapan kita jalan?", "answer": "Minggu", "hint": "Hari di akhir pekan" }
+//   tap:         { "taps": 5, "hint": "Ketuk 5 kali pelan-pelan" }
+//   scratch:     { "coverText": "Ada hadiah di baliknya ✨", "hint": "Gosok pelan-pelan" }
+//
+// status: "pending" (belum dibuka) → "opened" (sudah dibuka)
+//         → "accepted" | "rejected" (keputusan penerima).
+// Nilai kadoType/status divalidasi di lapisan API (zod), bukan constraint DB —
+// supaya tipe/status baru tetap bisa masuk tanpa menyentuh schema.
+// ─────────────────────────────────────────────────────────────────────────────
+model Kado {
+  id           String   @id @default(uuid()) @db.Uuid
+  targetName   String // nama penerima kado
+  message      String // isi pesan utama
+  senderName   String? // nama asli pengirim — null kalau anonim
+  fomoInitials String? // inisial bertopeng pengirim, mis. "R***I" (src/utils/fomoLogic.ts)
+  kadoType     String // fingerprint | quiz | tap | scratch | (tipe baru bebas)
+  kadoData     Json? // konfigurasi spesifik per kadoType — lihat contoh di atas
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([kadoType])
 }
