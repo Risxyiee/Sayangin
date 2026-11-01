@@ -14,7 +14,7 @@
  * sama, tidak ada re-render sama sekali.
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { motion, useReducedMotion } from "framer-motion"
 import {
@@ -26,6 +26,7 @@ import {
   Eye,
   EyeOff,
   Gift,
+  Heart,
   Loader2,
   Lock,
   MessageCircle,
@@ -94,6 +95,13 @@ async function copyToClipboard(text: string): Promise<boolean> {
       return false
     }
   }
+}
+
+/** Bentuk respons GET /api/kado/[id]/reply untuk polling dashboard. */
+interface ReplyState {
+  status: string | null
+  reply: string | null
+  repliedAt: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,6 +278,10 @@ export default function ShareDashboard(props: ShareDashboardProps) {
           </Link>
         </motion.div>
 
+        {/* Balasan penerima — loop dua arah: dia jawab kado → pesannya muncul
+            di sini. Polling 12 dtk + tombol muat ulang manual. */}
+        <ReplyCard kadoId={props.kadoId} targetName={props.targetName} />
+
         {/* 3 kartu opsi pengiriman */}
         <div className="space-y-4">
           <Card delay={0} reduceMotion={reduceMotion ?? false}>
@@ -301,6 +313,121 @@ export default function ShareDashboard(props: ShareDashboardProps) {
         </p>
       </div>
     </main>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kartu balasan penerima — polling GET /api/kado/[id]/reply
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ReplyCard({ kadoId, targetName }: { kadoId: string; targetName: string }) {
+  const [state, setState] = useState<ReplyState | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const reduceMotion = useReducedMotion()
+
+  const load = useCallback(async () => {
+    // tab di latar belakang → skip biar hemat baterai & kuota
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/kado/${kadoId}/reply`, { cache: "no-store" })
+      const json = (await res.json().catch(() => null)) as
+        | (ReplyState & { success?: boolean })
+        | null
+      if (res.ok && json?.success) {
+        setState({ status: json.status ?? null, reply: json.reply ?? null, repliedAt: json.repliedAt ?? null })
+        setFailed(false)
+      } else {
+        setFailed(true)
+      }
+    } catch {
+      setFailed(true)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [kadoId])
+
+  // muat pertama + polling tiap 12 detik
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 12_000)
+    // tab balik ke depan → langsung segarkan, jangan nunggu tick berikutnya
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [load])
+
+  const repliedAtLabel = state?.repliedAt
+    ? new Date(state.repliedAt).toLocaleString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
+
+  return (
+    <motion.section
+      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
+      className="mb-4 rounded-3xl border border-rose-400/25 bg-rose-500/[0.07] p-4 shadow-2xl shadow-black/40 backdrop-blur-md"
+    >
+      <div className="mb-3 flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-400/30 bg-rose-500/15 text-rose-300">
+          <Heart className="h-4.5 w-4.5" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white">
+            Balasan dari {targetName} 💬
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+            Kalau dia nulis balasan buatmu, pesannya muncul otomatis di sini.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          aria-label="Muat ulang balasan"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <Loader2 className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {state?.reply ? (
+        <div>
+          <div className="rounded-2xl rounded-tl-sm border border-rose-400/20 bg-black/25 px-4 py-3">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-100">
+              {state.reply}
+            </p>
+          </div>
+          <p className="mt-2 text-[11px] text-zinc-500">
+            Terkirim {repliedAtLabel ?? ""} — dari penerima, tanpa nama.
+          </p>
+        </div>
+      ) : failed ? (
+        <p className="text-xs text-zinc-500">
+          Gagal cek balasan — koneksi lagi rewel. Coba tombol muat ulang di atas.
+        </p>
+      ) : state === null ? (
+        <p className="text-xs text-zinc-500">Ngecek balasannya…</p>
+      ) : state.status === "pending" ? (
+        <p className="text-xs leading-relaxed text-zinc-500">
+          Kadonya <span className="text-zinc-300">belum dibuka</span> — balasannya bakal muncul di sini setelah dia buka &amp; jawab.
+        </p>
+      ) : (
+        <p className="text-xs leading-relaxed text-zinc-500">
+          Kadonya udah dibuka. <span className="text-zinc-300">Nunggu dia nulis balasan…</span> Pantauannya update sendiri tiap beberapa detik.
+        </p>
+      )}
+    </motion.section>
   )
 }
 

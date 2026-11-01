@@ -44,7 +44,7 @@ import PremiumCandleBlow from "./PremiumCandleBlow"
 import PremiumConfess from "./PremiumConfess"
 import PremiumPlaylist from "./PremiumPlaylist"
 import PremiumTimeline, { type TimelineMomentData } from "./PremiumTimeline"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, Send } from "lucide-react"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & util kecil
@@ -184,6 +184,14 @@ export default function CinematicUnboxing({
   const [submitting, setSubmitting] = useState<Outcome | null>(null)
   const [submitFailed, setSubmitFailed] = useState(false)
 
+  // Balasan tertulis penerima (loop dua arah) — muncul setelah jawab "diterima".
+  // Tersimpan di progress kado lewat POST /api/kado/[id]/reply, lalu tampil di
+  // dashboard pengirim (ShareDashboard) lewat polling GET-nya.
+  const [replyText, setReplyText] = useState("")
+  const [replySending, setReplySending] = useState(false)
+  const [replySent, setReplySent] = useState(false)
+  const [replyError, setReplyError] = useState<string | null>(null)
+
   const reduceMotion = useReducedMotion()
 
   /**
@@ -254,6 +262,42 @@ export default function CinematicUnboxing({
 
   const rejected = phase === 4 && outcome === "rejected"
   const accepted = phase === 4 && outcome === "accepted"
+
+  /**
+   * Kirim balasan tertulis penerima ke POST /api/kado/[id]/reply.
+   * Gagal → pesan error + tombol tetap aktif (bisa dicoba lagi). Sukses →
+   * kartu berubah jadi konfirmasi; pesannya muncul di dashboard pengirim
+   * (yang dia pantau lewat polling).
+   */
+  async function handleSendReply() {
+    if (replySending || replySent) return
+    const text = replyText.trim()
+    if (text.length < 2) {
+      setReplyError("Tulis balasannya dulu ya (min. 2 karakter).")
+      return
+    }
+    setReplySending(true)
+    setReplyError(null)
+    try {
+      const res = await fetch(`/api/kado/${kado.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: text }),
+      })
+      const json = (await res.json().catch(() => null)) as {
+        success?: boolean
+        error?: string
+      } | null
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error ?? "Gagal mengirim balasan. Coba lagi ya.")
+      }
+      setReplySent(true)
+    } catch (e) {
+      setReplyError(e instanceof Error ? e.message : "Gagal mengirim balasan. Coba lagi ya.")
+    } finally {
+      setReplySending(false)
+    }
+  }
   // If-chain tunggal pemilih pengalaman premium; dikembalikan sebagai isi
   // utama return komponen SEBELUM logika UI Dilemma di bawahnya. Setiap
   // komponen premium tetap terpasang sampai reveal supaya revealName
@@ -426,6 +470,73 @@ export default function CinematicUnboxing({
                   tersimpan (fase 4) tombol mati tidak boleh masih tampil */}
               {phase === 3 && (
                 <DilemmaButtons submitting={submitting} onChoice={handleChoice} failed={submitFailed} />
+              )}
+            </div>
+          </motion.div>
+        )}
+        {/* Fase 4 diterima — balasan tertulis untuk pengirim (loop dua arah).
+            Tidak tampil di mode pratinjau (pengirim tak perlu membalas diri
+            sendiri) dan tidak saat ditolak (rahasia tetap terjaga). */}
+        {accepted && !preview && (
+          <motion.div
+            key="reply"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+            className="mt-4 will-change-transform"
+          >
+            <div className="rounded-3xl border border-rose-400/25 bg-rose-500/[0.07] p-5 shadow-2xl shadow-black/40 backdrop-blur-md">
+              {replySent ? (
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-rose-100">
+                    Balasanmu terkirim 💜
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                    Pesanmu udah nongol di dashboard pengirimnya — dia tinggal buka halaman kado ini dari link punyanya.
+                  </p>
+                  <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm leading-relaxed text-zinc-200">
+                    “{replyText.trim()}”
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold text-rose-100">
+                    Mau nulis balasan buat dia? 💬
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                    Pesanmu bakal muncul di dashboard pengirim — tanpa nama, tanpa jejak.
+                  </p>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="mis. aku juga… makasih udah berani bilang 🤍"
+                    className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-rose-500/20"
+                  />
+                  {replyError && (
+                    <p role="alert" className="mt-2 text-xs leading-relaxed text-rose-300">
+                      {replyError}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleSendReply}
+                    disabled={replySending || replyText.trim().length < 2}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 px-6 py-3 text-sm font-bold text-white shadow-[0_0_24px_-6px_rgba(244,63,94,0.6)] transition-shadow hover:shadow-[0_0_32px_-4px_rgba(244,63,94,0.75)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {replySending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Mengirim…
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        Kirim balasannya
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </motion.div>
