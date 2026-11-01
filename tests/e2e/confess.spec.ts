@@ -25,6 +25,9 @@ test.describe("Confess", () => {
 
     // hasil: link kado penerima (?k=) dan link pantauan pengirim (?s=)
     await expect(page.getByText(/k=/).first()).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByText(/s=/).first()).toBeVisible()
+    // link halaman pantau (?s=) — anchor dengan teks label, URL di href
+    await expect(
+      page.getByRole("link", { name: /Pantau status/i })
+    ).toBeVisible()
   })
 })
