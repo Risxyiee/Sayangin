@@ -143,6 +143,7 @@ export default async function OpenKadoPage({ params }: OpenPageProps) {
           fomoInitials: true,
           kadoType: true,
           kadoData: true,
+          createdAt: true,
           status: true,
         },
       })
@@ -156,6 +157,7 @@ export default async function OpenKadoPage({ params }: OpenPageProps) {
         fomoInitials: row.fomoInitials,
         kadoType: row.kadoType,
         kadoData: toKadoData(row.kadoData),
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
         status: row.status,
       }
     }

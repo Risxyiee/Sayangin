@@ -13,7 +13,8 @@
  *        photobox → PremiumPhotobox     (polaroid dicuci goyangan/usap)
  *        coupon   → PremiumLoveCoupon   (tiket emas disobek)
  *        candle   → PremiumCandleBlow   (lilin ditiup lewat mic)
- *        confess  → PremiumConfess      (pengakuan tersegel detak jantung)
+ *        confess  → PremiumConfess      (Heartstring Edition — segel, 3 detak,
+ *                                        retak, surat baris-per-baris + audio)
  *        playlist → PremiumPlaylist     (turntable retro — kado lama)
  *      Tipe lama/tak dikenal (fingerprint/tap/scratch/quiz, dst.) jatuh ke
  *      PremiumConfess — tidak ada jalur mati, tidak ada render versi lama.
@@ -55,6 +56,8 @@ export interface KadoForUnboxing {
   fomoInitials: string | null
   kadoType: string
   kadoData: Record<string, string | number> | null
+  /** Dibuat kapan (ISO) — dipakai Confess untuk "tersegel <tanggal>". */
+  createdAt?: string | null
 }
 
 type Phase = 1 | 3 | 4
@@ -208,6 +211,8 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
           targetName={kado.targetName}
           message={kado.message}
           fomoInitials={kado.fomoInitials}
+          senderName={kado.senderName}
+          createdAt={kado.createdAt}
           revealName={reveal}
           onOpenComplete={() => setPhase(3)}
         />
@@ -231,6 +236,8 @@ export default function CinematicUnboxing({ kado }: { kado: KadoForUnboxing }) {
         targetName={kado.targetName}
         message={kado.message}
         fomoInitials={kado.fomoInitials}
+        senderName={kado.senderName}
+        createdAt={kado.createdAt}
         revealName={reveal}
         onOpenComplete={() => setPhase(3)}
       />
