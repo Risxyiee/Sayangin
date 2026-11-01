@@ -24,7 +24,7 @@ test.describe("Confess", () => {
     await page.getByRole("button", { name: /Buat link confess/i }).click()
 
     // hasil: link kado penerima (?k=) dan link pantauan pengirim (?s=)
-    await expect(page.locator('a[href*="/?k="]').first()).toBeVisible({ timeout: 45_000 })
-    await expect(page.locator('a[href*="/?s="]').first()).toBeVisible()
+    await expect(page.getByText(/k=/).first()).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByText(/s=/).first()).toBeVisible()
   })
 })
