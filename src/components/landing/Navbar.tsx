@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { History } from "lucide-react";
 
 const LINKS = [
   { href: "#confess", label: "Confess" },
   { href: "#kado", label: "Kado Digital" },
   { href: "/create", label: "Kado Kejutan 💝" },
+  { href: "/history", label: "Kado Saya 🕒" },
   { href: "/dinding", label: "Dinding 👀" },
   { href: "#cara", label: "Cara Pakai" },
   { href: "#harga", label: "Harga" },
@@ -56,16 +59,31 @@ export default function Navbar() {
           ))}
         </div>
 
-        <a
-          href="/create"
-          className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
-            scrolled
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-white text-neutral-900 hover:bg-white/90"
-          }`}
-        >
-          Bikin kado
-        </a>
+        <div className="flex items-center gap-2">
+          {/* Kado Saya (Ghost Dashboard) — selalu ada di mobile (LINKS cuma md+):
+              satu-satunya cara user menemukan lagi kado lama tanpa akun. */}
+          <Link
+            href="/history"
+            aria-label="Kado Saya — riwayat kado di perangkat ini"
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors md:hidden ${
+              scrolled
+                ? "border-border text-muted-foreground hover:text-foreground"
+                : "border-white/20 text-white/80 hover:text-white"
+            }`}
+          >
+            <History className="h-5 w-5" />
+          </Link>
+          <a
+            href="/create"
+            className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+              scrolled
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-white text-neutral-900 hover:bg-white/90"
+            }`}
+          >
+            Bikin kado
+          </a>
+        </div>
       </nav>
     </header>
   );
