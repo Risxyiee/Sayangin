@@ -76,6 +76,11 @@ function parseProgress(raw: unknown): KadoProgress {
   return {};
 }
 
+/** Nonce anti-cache yang AMAN diinterpolasi ke teks SQL (hanya [a-z0-9-]). */
+function sqlNonce(): string {
+  return dbNonce().replace(/[^a-zA-Z0-9-]/g, "");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET — baca status + balasan untuk dashboard pengirim
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,17 +107,16 @@ export async function GET(
       );
     }
 
-    // Anti-cache (read-after-write) DUA LAPIS:
-    //  1. nonce lewat PARAM $2 — parameter masuk cache-key Hyperdrive, beda
-    //     dengan komentar /* nc-… */ yang bisa dicoret dari teks query saat
-    //     normalisasi cache-key (episode balasan muncul telat ±1-3 menit).
-    //  2. header Cache-Control: no-store — cegah cache respons di edge.
-    const nc = dbNonce();
+    // Anti-cache (read-after-write): teks SQL dibikin UNIK per request — nonce
+    // diinterpolasi sebagai LITERAL (bukan komentar yang bisa dicoret
+    // normalisasi cache-key, bukan param yang ternyata diabaikan cache-key
+    // Hyperdrive — episode balasan muncul telat ±1-3 menit). Nonce hanya
+    // [a-z0-9-] dari dbNonce(), tak ada celah injeksi.
+    const nc = sqlNonce();
     const rows = await withDbRetry(() =>
       db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
-        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid AND $2::text <> '__never__' /* nc-${nc} */`,
-        id,
-        nc
+        `SELECT 'nc-${nc}' AS nonce_guard, "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid`,
+        id
       )
     );
     const kado = rows[0];
@@ -192,13 +196,12 @@ export async function POST(
       return NextResponse.json({ success: false, error: MODERATION_ERROR }, { status: 400 });
     }
 
-    // Baca anti-cache: nonce via PARAM $2 (bukan komentar — lihat GET di atas)
-    const nc = dbNonce();
+    // Baca anti-cache: teks SQL unik per request (lihat catatan GET di atas)
+    const nc = sqlNonce();
     const rows = await withDbRetry(() =>
       db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
-        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid AND $2::text <> '__never__' /* nc-${nc} */`,
-        id,
-        nc
+        `SELECT 'nc-${nc}' AS nonce_guard, "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid`,
+        id
       )
     );
     const kado = rows[0];
