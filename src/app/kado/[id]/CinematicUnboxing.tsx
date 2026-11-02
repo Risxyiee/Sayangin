@@ -184,13 +184,16 @@ export default function CinematicUnboxing({
   const [submitting, setSubmitting] = useState<Outcome | null>(null)
   const [submitFailed, setSubmitFailed] = useState(false)
 
-  // Balasan tertulis penerima (loop dua arah) — muncul setelah jawab "diterima".
+  // Balasan tertulis penerima (loop dua arah) — muncul setelah menjawab kado,
+  // baik "diterima" MAUPUN "ditolak" (opsi pesan penutup yang tetap anonim).
   // Tersimpan di progress kado lewat POST /api/kado/[id]/reply, lalu tampil di
   // dashboard pengirim (ShareDashboard) lewat polling GET-nya.
   const [replyText, setReplyText] = useState("")
   const [replySending, setReplySending] = useState(false)
   const [replySent, setReplySent] = useState(false)
   const [replyError, setReplyError] = useState<string | null>(null)
+  // jalur ditolak: kartu pesan opsional baru muncul setelah tombolnya diketuk
+  const [replyOpen, setReplyOpen] = useState(false)
 
   const reduceMotion = useReducedMotion()
 
@@ -274,6 +277,12 @@ export default function CinematicUnboxing({
     const text = replyText.trim()
     if (text.length < 2) {
       setReplyError("Tulis balasannya dulu ya (min. 2 karakter).")
+      return
+    }
+    // Mode pratinjau/demo: tidak ada POST — kado tidak pernah terkunci di
+    // pratinjau (POST bakal ditolak "masih pending"), jadi cukup simulasi.
+    if (preview) {
+      setReplySent(true)
       return
     }
     setReplySending(true)
@@ -475,9 +484,9 @@ export default function CinematicUnboxing({
           </motion.div>
         )}
         {/* Fase 4 diterima — balasan tertulis untuk pengirim (loop dua arah).
-            Tidak tampil di mode pratinjau (pengirim tak perlu membalas diri
-            sendiri) dan tidak saat ditolak (rahasia tetap terjaga). */}
-        {accepted && !preview && (
+            Di mode pratinjau/demo tetap tampil sebagai simulasi supaya pengirim
+            melihat pengalaman yang sama persis seperti yang diterima dia. */}
+        {accepted && (
           <motion.div
             key="reply"
             initial={reduceMotion ? false : { opacity: 0, y: 24 }}
@@ -551,15 +560,80 @@ export default function CinematicUnboxing({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: reduceMotion ? 0 : 0.9, duration: 0.6 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/95 px-6 text-center backdrop-blur-sm"
+            className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/95 px-6 text-center backdrop-blur-sm"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800/60">
-              <EyeOff className="h-6 w-6 text-zinc-400" strokeWidth={1.75} />
+            <div className="flex min-h-full w-full flex-col items-center justify-center py-10">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800/60">
+                <EyeOff className="h-6 w-6 text-zinc-400" strokeWidth={1.75} />
+              </div>
+              <p className="mt-5 text-lg font-semibold text-zinc-200">Rahasia tetap terjaga.</p>
+              <p className="mt-2 max-w-xs text-sm leading-relaxed text-zinc-500">
+                Identitas kamu nggak akan pernah kebuka. Tapi kalau mau,
+                kamu masih bisa ninggalin satu pesan buat dia.
+              </p>
+
+              {/* Opsi pesan penutup (tetap anonim) — pratinjau/demo: simulasi. */}
+              {replySent ? (
+                <div className="mt-6 w-full max-w-sm rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40">
+                  <p className="text-sm font-semibold text-zinc-100">
+                    Pesanmu terkirim 💜
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
+                    Pesannya muncul di dashboard pengirimnya — tanpa nama,
+                    tanpa jejak.
+                  </p>
+                  <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left text-sm leading-relaxed text-zinc-200">
+                    “{replyText.trim()}”
+                  </p>
+                </div>
+              ) : replyOpen ? (
+                <div className="mt-6 w-full max-w-sm rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/40">
+                  <p className="text-sm font-semibold text-zinc-100">
+                    Mau kirim pesan buat dia? 💬
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    Tanpa nama, tanpa jejak — dia cuma baca teksnya.
+                  </p>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="mis. makasih udah berani bilang. maaf ya… 🤍"
+                    className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors focus:border-zinc-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-zinc-500/20"
+                  />
+                  {replyError && (
+                    <p role="alert" className="mt-2 text-xs leading-relaxed text-rose-300">
+                      {replyError}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleSendReply}
+                    disabled={replySending || replyText.trim().length < 2}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-semibold text-zinc-100 transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {replySending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Mengirim…
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        Kirim pesannya
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setReplyOpen(true)}
+                  className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
+                >
+                  Mau kirim pesan buat dia? 💬
+                </button>
+              )}
             </div>
-            <p className="mt-5 text-lg font-semibold text-zinc-200">Rahasia tetap terjaga.</p>
-            <p className="mt-2 max-w-xs text-sm leading-relaxed text-zinc-500">
-              Dia nggak akan pernah tahu. Suratnya jadi kenangan yang sunyi.
-            </p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -17,9 +17,18 @@ import ConfessionView, { CONFESS_THEMES } from "@/components/confess/ConfessionV
 import { LS_KEYS, lsGet, lsSet } from "@/lib/local-store";
 import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout";
 
-type Phase = "closed" | "opening" | "letter" | "question" | "yes";
+type Phase = "closed" | "opening" | "letter" | "question" | "reply" | "sent";
 const DEMO_MSG =
   "Hei... aku udah lama pengen bilang ini. Setiap kamu ketawa, aku ikut senyum. Aku suka kamu. Sudah lama.";
+const DEMO_REPLY = "aku juga… makasih udah berani bilang 🤍";
+
+/* warna tema demo — kelas gradien SAMA dengan tema asli di lib/themes.ts,
+   muter tiap putaran supaya kelihatan bahwa pilihan tema benar-benar ngaruh */
+const DEMO_THEMES = [
+  { name: "Rose", bg: "from-[#2b0a1c] via-[#4a0e2e] to-[#160510]", dot: "#ff5f9e" },
+  { name: "Matcha", bg: "from-[#0f2118] via-[#1f4d33] to-[#081209]", dot: "#86efac" },
+  { name: "Midnight", bg: "from-[#150620] via-[#3b0764] to-[#0b0313]", dot: "#c084fc" },
+];
 
 /* cerita di balik tiap tema — ala kartu template kompetitor, gratis semua.
    Tema ber-flag limited ditampilkan dgn badge mundur (FOMO edisi terbatas). */
@@ -56,21 +65,24 @@ const UNLOCK_OPTIONS = [
   { value: "minggu", label: "Kejutan: buka seminggu lagi 📅" },
 ];
 
-/* ---------- demo looping di dalam HP ---------- */
+/* ---------- demo looping di dalam HP — cerminan alur asli hari ini:
+   amplop → surat → jawaban → “mau kirim pesan buat dia?” → balasan terkirim ---------- */
 function PhoneDemo() {
   const [phase, setPhase] = useState<Phase>("closed");
   const [chars, setChars] = useState(0);
+  const [loop, setLoop] = useState(0);
+  const theme = DEMO_THEMES[loop % DEMO_THEMES.length];
 
   useEffect(() => {
     let t1: ReturnType<typeof setTimeout>;
     let t2: ReturnType<typeof setInterval>;
     if (phase === "closed") {
-      t1 = setTimeout(() => setPhase("opening"), 2200);
+      t1 = setTimeout(() => setPhase("opening"), 2400);
     } else if (phase === "opening") {
       t1 = setTimeout(() => {
         setPhase("letter");
         setChars(0);
-      }, 750);
+      }, 800);
     } else if (phase === "letter") {
       t2 = setInterval(() => {
         setChars((c) => {
@@ -81,13 +93,16 @@ function PhoneDemo() {
           }
           return c + 1;
         });
-      }, 34);
+      }, 30);
     } else if (phase === "question") {
-      t1 = setTimeout(() => setPhase("yes"), 2600);
-    } else if (phase === "yes") {
+      t1 = setTimeout(() => setPhase("reply"), 2800);
+    } else if (phase === "reply") {
+      t1 = setTimeout(() => setPhase("sent"), 2200);
+    } else if (phase === "sent") {
       t1 = setTimeout(() => {
         setPhase("closed");
         setChars(0);
+        setLoop((l) => l + 1); // putaran baru → tema ganti
       }, 3400);
     }
     return () => {
@@ -100,12 +115,24 @@ function PhoneDemo() {
     <div className="relative mx-auto w-[290px] rounded-[2.4rem] border-[10px] border-neutral-800 bg-neutral-800 shadow-xl sm:w-[310px]">
       {/* notch */}
       <div className="absolute left-1/2 top-0 z-30 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-neutral-800" />
-      <div className="relative h-[480px] overflow-hidden rounded-[1.7rem] bg-[#faf8f3]">
-        {/* layar sesuai fase */}
+      <div
+        className={`relative h-[480px] overflow-hidden rounded-[1.7rem] bg-gradient-to-b transition-all duration-700 ${theme.bg}`}
+      >
+        {/* chip tema — bukti visual pilihan warna benar-benar dipakai */}
+        <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 backdrop-blur">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: theme.dot }}
+          />
+          <span className="text-[9px] font-semibold tracking-wide text-white/85">
+            Tema {theme.name}
+          </span>
+        </div>
+
         {phase === "closed" || phase === "opening" ? (
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-            <p className="font-hand text-2xl text-primary">Buat kamu,</p>
-            <p className="mt-0.5 text-[11px] text-neutral-500">
+            <p className="font-hand text-2xl text-white">Buat kamu,</p>
+            <p className="mt-0.5 text-[11px] text-white/60">
               seseorang meninggalkan surat
             </p>
             <div className="perspective-1200 relative mt-8 h-[120px] w-[180px] anim-float">
@@ -135,28 +162,32 @@ function PhoneDemo() {
                 <Check className="h-4 w-4 text-white" strokeWidth={3} />
               </div>
             </div>
-            <p className="mt-9 text-[11px] text-neutral-400">
+            <p className="mt-9 text-[11px] text-white/50">
               {phase === "opening" ? "membuka..." : "mengetuk otomatis..."}
             </p>
           </div>
-        ) : phase === "yes" ? (
-          <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <div className="relative h-9 w-9 anim-heartbeat">
+        ) : phase === "sent" ? (
+          <div className="relative z-10 flex h-full flex-col items-center justify-center px-5 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+              <div className="relative h-8 w-8 anim-heartbeat">
                 <div className="heart-shape" />
               </div>
             </div>
-            <p className="mt-5 font-display text-xl font-bold text-neutral-900">
-              Iya, aku juga!
+            <p className="mt-4 font-display text-lg font-bold text-white">
+              Balasanmu terkirim 💜
             </p>
-            <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-              Chat dia sekarang — jangan ditunda.
+            <div className="mt-3 w-full rounded-2xl rounded-tl-sm bg-white/10 px-3.5 py-2.5 text-left text-[11px] leading-relaxed text-white/90 backdrop-blur">
+              “{DEMO_REPLY}”
+            </div>
+            <p className="mt-3 text-[10px] leading-relaxed text-white/55">
+              Pesannya udah nongol di dashboard pengirimnya —
+              tanpa nama, tanpa jejak.
             </p>
           </div>
         ) : (
-          /* letter / question */
+          /* letter / question / reply */
           <div className="relative z-10 flex h-full flex-col justify-center px-4">
-            <div className="rounded-lg bg-white p-4 text-left shadow-md ring-1 ring-black/5">
+            <div className="rounded-lg bg-[#fffaf5] p-4 text-left shadow-md ring-1 ring-black/5">
               <p className="font-hand text-lg leading-6 text-primary">
                 Hai kamu,
               </p>
@@ -172,17 +203,34 @@ function PhoneDemo() {
             </div>
             {phase === "question" ? (
               <div className="mt-4 space-y-2">
+                <p className="text-center text-[10px] font-medium text-white/80">
+                  Jadi... gimana jawabanmu?
+                </p>
                 <div className="rounded-md bg-primary py-2.5 text-center text-[11px] font-bold text-white">
                   Iya, aku juga suka kamu
                 </div>
-                <div className="rounded-md border border-neutral-300 py-2.5 text-center text-[11px] text-neutral-600">
+                <div className="rounded-md border border-white/20 bg-white/5 py-2.5 text-center text-[11px] text-white/70">
                   Beri aku waktu dulu
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-center text-[10px] text-neutral-400">
-                membaca...
-              </p>
+              /* reply — kartu balasan, persis kartu aslinya */
+              <div className="mt-4 rounded-lg border border-white/20 bg-white/5 p-3 backdrop-blur">
+                <p className="text-[11px] font-bold text-white">
+                  Mau kirim pesan buat dia? 💬
+                </p>
+                {phase === "reply" ? (
+                  <div className="mt-2 flex items-center gap-1.5" aria-label="sedang menulis">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white/70" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white/70 [animation-delay:0.2s]" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white/70 [animation-delay:0.4s]" />
+                  </div>
+                ) : (
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-white/60">
+                    Balasannya muncul di dashboard pengirimnya — tanpa nama.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

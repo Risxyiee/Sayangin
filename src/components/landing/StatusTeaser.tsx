@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Eye, MailOpen, Heart } from "lucide-react";
+import { Check, Eye, MailOpen, Heart, MessageCircle } from "lucide-react";
 
 /* mini mock kartu status — persis seperti yang dilihat pengirim */
 function StatusMock() {
@@ -53,6 +53,21 @@ function StatusMock() {
               </p>
             </div>
           </div>
+
+          <div className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-left">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed]">
+              <MessageCircle className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-foreground">Balasan dari Sari 💬</p>
+              <p className="mt-1 rounded-md rounded-tl-sm bg-secondary px-2.5 py-1.5 text-[11px] leading-relaxed text-foreground">
+                &ldquo;aku juga… makasih udah berani bilang 🤍&rdquo;
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                dia nulis balasan langsung di suratnya — muncul di sini, tanpa nama.
+              </p>
+            </div>
+          </div>
         </div>
 
         <p className="mt-4 text-center text-[10px] text-muted-foreground">
@@ -84,7 +99,8 @@ export default function StatusTeaser() {
             <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
               Setiap surat punya halaman pantau pribadi: kelihatan{" "}
               <b className="text-foreground">sudah dibuka belum</b>, dibuka
-              berapa kali, sampai <b className="text-foreground">apa jawabannya</b> —
+              berapa kali, <b className="text-foreground">apa jawabannya</b>,
+              sampai <b className="text-foreground">balasan tertulis dari dia</b> —
               update otomatis.
             </p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
@@ -95,6 +111,10 @@ export default function StatusTeaser() {
               <li className="flex items-center gap-2.5">
                 <Check className="h-4 w-4 shrink-0 text-[#1faa59]" />
                 Jawab &ldquo;iya&rdquo;? Ada tombol langsung buka WA.
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Check className="h-4 w-4 shrink-0 text-[#1faa59]" />
+                Dia bisa nulis balasan rahasia — otomatis muncul di sini.
               </li>
               <li className="flex items-center gap-2.5">
                 <Check className="h-4 w-4 shrink-0 text-[#1faa59]" />
