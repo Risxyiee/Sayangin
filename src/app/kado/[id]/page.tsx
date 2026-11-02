@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { db, withDbRetry } from "@/lib/db"
 import { describeError } from "@/lib/log-error"
+import { CONFESS_THEMES, themeFromKadoData } from "@/lib/themes"
 import { Heart, PackageOpen, ServerCrash } from "lucide-react"
 import ReloadButton from "./share/ReloadButton"
 import CinematicUnboxing, { type KadoForUnboxing } from "./CinematicUnboxing"
@@ -40,9 +41,13 @@ function toKadoData(v: unknown): Record<string, string | number> | null {
 // UI fallback
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Shell({ children }: { children: React.ReactNode }) {
+/** Shell fallback — glow latar bisa ikut tema kado (default: rose). */
+function Shell({ children, glow = "rgba(244,63,94,0.10)" }: { children: React.ReactNode; glow?: string }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(244,63,94,0.10),transparent_55%)] px-4 py-8 text-zinc-100">
+    <main
+      className="flex min-h-dvh items-center justify-center bg-zinc-950 px-4 py-8 text-zinc-100"
+      style={{ backgroundImage: `radial-gradient(ellipse at top, ${glow}, transparent 55%)` }}
+    >
       <div className="w-full max-w-md">{children}</div>
     </main>
   )
@@ -323,7 +328,7 @@ export default async function OpenKadoPage({ params, searchParams }: OpenPagePro
   // pengirim bisa mengintip kadonya kapan pun, sebelum maupun sesudah dibuka.
   if (kado.status !== "pending" && !previewMode) {
     return (
-      <Shell>
+      <Shell glow={CONFESS_THEMES[themeFromKadoData(kado.kadoData)].glowTop}>
         <AlreadyOpenedCard />
       </Shell>
     )

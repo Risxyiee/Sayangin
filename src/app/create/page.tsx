@@ -37,12 +37,14 @@ import {
   Loader2,
   Mail,
   Music,
+  Palette,
   Stamp,
   Ticket,
   UserRound,
   Wand2,
   type LucideIcon,
 } from "lucide-react"
+import { CONFESS_THEMES, isThemeSelectable, THEME_KEYS, type ThemeKey } from "@/lib/themes"
 import { buildFomoIdentity, toFomoInitials } from "@/utils/fomoLogic"
 import { extractSpotifyTrackId } from "@/utils/spotify"
 import { FETCH_TIMEOUT_MESSAGE, fetchWithTimeout, isTimeoutError } from "@/lib/fetch-timeout"
@@ -164,6 +166,8 @@ export default function CreatePage() {
   const [senderName, setSenderName] = useState("")
   const [kadoType, setKadoType] = useState<KadoType | null>(null)
   const [kadoData, setKadoData] = useState<Record<string, string | number> | null>(null)
+  /** Tema warna kado (semua tipe) — ikut tersimpan di kadoData.theme. */
+  const [giftTheme, setGiftTheme] = useState<ThemeKey>("rose")
   /** Editor kupon (kadoType "coupon") — dikodekan ke kadoData.coupons saat generate. */
   const [couponRows, setCouponRows] = useState(DEFAULT_COUPON_ROWS)
   /** Momen lilin (kadoType "candle") — mengubah narasi ritual Wish Keeper. */
@@ -317,6 +321,10 @@ export default function CreatePage() {
         finalKadoData = playlistSpotifyId ? { spotifyId: playlistSpotifyId } : null
       }
 
+      // Tema warna ikut SEMUA tipe kado — selipkan setelah kadoData tipe
+      // terbentuk, supaya tidak tertimpa blok di atas. API menerima string.
+      finalKadoData = { ...(finalKadoData ?? {}), theme: giftTheme }
+
       const payload: KadoCreatePayload = {
         targetName: targetName.trim(),
         message: message.trim(),
@@ -427,6 +435,8 @@ export default function CreatePage() {
                 <StepLock
                   kadoType={kadoType}
                   canPreview={canPreview}
+                  theme={giftTheme}
+                  onTheme={setGiftTheme}
                   couponRows={couponRows}
                   onCouponRows={setCouponRows}
                   occasion={occasion}
@@ -626,6 +636,9 @@ function StepIdentity(props: StepIdentityProps) {
 interface StepLockProps {
   kadoType: KadoType | null
   canPreview: boolean
+  /** Tema warna kado — glow latar halaman kado mengikuti pilihan ini. */
+  theme: ThemeKey
+  onTheme: (t: ThemeKey) => void
   /** Editor kupon — hanya aktif saat kadoType "coupon". */
   couponRows: { title: string; desc: string }[]
   onCouponRows: (rows: { title: string; desc: string }[]) => void
@@ -729,6 +742,53 @@ function StepLock(props: StepLockProps) {
             </button>
           )
         })}
+      </div>
+
+      {/* Pemilih tema warna — satu sumber dengan tema confess (themes.ts).
+          Glow latar halaman kado mengikuti pilihan ini, semua tipe kado. */}
+      <div>
+        <p className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+          <Palette className="h-4 w-4 text-rose-300" />
+          Tema Warna Kadonya
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Latar &amp; suasana kadonya ikut warna ini — pilih yang paling kayak dia.
+        </p>
+        <div role="radiogroup" aria-label="Tema warna kado" className="mt-3 flex flex-wrap gap-2">
+          {THEME_KEYS.map((key) => {
+            const t = CONFESS_THEMES[key]
+            const selectable = isThemeSelectable(key)
+            const active = props.theme === key
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={!selectable}
+                onClick={() => props.onTheme(key)}
+                title={selectable ? `Tema ${t.name}` : "Edisi terbatasnya udah lewat"}
+                className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-35 ${
+                  active
+                    ? "border-rose-400/60 bg-rose-500/15 text-white shadow-[0_0_18px_-6px_rgba(244,63,94,0.6)]"
+                    : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/25 hover:bg-white/[0.08]"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className="h-3.5 w-3.5 rounded-full border border-white/25"
+                  style={{ backgroundColor: t.accent }}
+                />
+                {t.name}
+                {t.limited && selectable && (
+                  <span className="rounded-full border border-amber-300/40 bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-amber-300 uppercase">
+                    11.11
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Momen lilin — hanya untuk Candle Blow (narasi ritual Wish Keeper) */}

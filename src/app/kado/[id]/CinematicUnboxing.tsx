@@ -45,6 +45,7 @@ import PremiumConfess from "./PremiumConfess"
 import PremiumPlaylist from "./PremiumPlaylist"
 import PremiumTimeline, { type TimelineMomentData } from "./PremiumTimeline"
 import { Eye, EyeOff, Loader2, Send } from "lucide-react"
+import { CONFESS_THEMES, themeFromKadoData, type ThemeKey } from "@/lib/themes"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipe & util kecil
@@ -169,6 +170,7 @@ function fireConfetti(reduceMotion: boolean) {
 export default function CinematicUnboxing({
   kado,
   preview = false,
+  theme,
 }: {
   kado: KadoForUnboxing
   /**
@@ -177,7 +179,16 @@ export default function CinematicUnboxing({
    * dan statistik tidak tersentuh. Banner kecil mengingatkan posisi.
    */
   preview?: boolean
+  /**
+   * Tema warna kado (kadoData.theme dari Creator Studio) — mengubah glow
+   * latar halaman. Fallback aman: kalau tak dikirim/Invalid → rose.
+   * Kalau prop tak diisi, dicoba dibaca dari kadoData langsung.
+   */
+  theme?: ThemeKey | null
 }) {
+  // Sumber tema: prop eksplisit > kadoData.theme > rose. Kado demo (tanpa
+  // theme di kadoData) otomatis jatuh ke rose.
+  const themeCfg = CONFESS_THEMES[theme ?? themeFromKadoData(kado.kadoData)]
   // Fase: 1 = pengalaman premium berjalan, 3 = dilemma, 4 = reveal.
   const [phase, setPhase] = useState<Phase>(1)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
@@ -455,7 +466,14 @@ export default function CinematicUnboxing({
   }
 
   return (
-    <main className="min-h-dvh bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.14),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(244,63,94,0.12),transparent_55%)] px-4 py-8 text-zinc-100">
+    // Glow latar dari tema — inline style (JIT tailwind tidak meng-compile
+    // class dinamis runtime; nilai rgba tema disimpan di themes.ts).
+    <main
+      className="min-h-dvh bg-zinc-950 px-4 py-8 text-zinc-100"
+      style={{
+        backgroundImage: `radial-gradient(ellipse at top, ${themeCfg.glowTop}, transparent 55%), radial-gradient(ellipse at bottom, ${themeCfg.glowBottom}, transparent 55%)`,
+      }}
+    >
       <div className="mx-auto w-full max-w-md">
         {/* Pengalaman premium sesuai kadoType — return utama, sebelum Dilemma */}
         {renderExperience()}
