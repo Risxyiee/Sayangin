@@ -102,13 +102,17 @@ export async function GET(
       );
     }
 
-    // Anti-cache (read-after-write): balasan baru saja bisa ditulis penerima —
-    // nonce memaksa query ke origin, bukan cache Hyperdrive yang basi.
+    // Anti-cache (read-after-write) DUA LAPIS:
+    //  1. nonce lewat PARAM $2 — parameter masuk cache-key Hyperdrive, beda
+    //     dengan komentar /* nc-… */ yang bisa dicoret dari teks query saat
+    //     normalisasi cache-key (episode balasan muncul telat ±1-3 menit).
+    //  2. header Cache-Control: no-store — cegah cache respons di edge.
     const nc = dbNonce();
     const rows = await withDbRetry(() =>
       db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
-        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
-        id
+        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid AND $2::text <> '__never__' /* nc-${nc} */`,
+        id,
+        nc
       )
     );
     const kado = rows[0];
@@ -120,12 +124,15 @@ export async function GET(
     }
 
     const progress = parseProgress(kado.kadoData);
-    return NextResponse.json({
-      success: true,
-      status: kado.status,
-      reply: typeof progress.reply === "string" ? progress.reply : null,
-      repliedAt: typeof progress.repliedAt === "string" ? progress.repliedAt : null,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        status: kado.status,
+        reply: typeof progress.reply === "string" ? progress.reply : null,
+        repliedAt: typeof progress.repliedAt === "string" ? progress.repliedAt : null,
+      },
+      { headers: { "Cache-Control": "no-store, max-age=0", "CDN-Cache-Control": "no-store" } }
+    );
   } catch (err) {
     console.error("GET /api/kado/[id]/reply error:", describeError(err), err);
     reportError(err, { route: "GET /api/kado/[id]/reply" });
@@ -185,12 +192,13 @@ export async function POST(
       return NextResponse.json({ success: false, error: MODERATION_ERROR }, { status: 400 });
     }
 
-    // Baca anti-cache: status & kadoData terbaru dari origin
+    // Baca anti-cache: nonce via PARAM $2 (bukan komentar — lihat GET di atas)
     const nc = dbNonce();
     const rows = await withDbRetry(() =>
       db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
-        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
-        id
+        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1::uuid AND $2::text <> '__never__' /* nc-${nc} */`,
+        id,
+        nc
       )
     );
     const kado = rows[0];
