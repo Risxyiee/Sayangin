@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { db, withDbRetry, dbNonce } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { findProhibited, MODERATION_ERROR } from "@/lib/moderation";
@@ -15,11 +16,15 @@ import { reportError } from "@/lib/monitor";
 /**
  * Balasan penerima kado — loop dua arah pengirim ⇄ penerima.
  *
- * Disimpan di kolom `progress` (JSON string) model Kado:
- *   { "reply": "isi balasan", "repliedAt": "ISO timestamp" }
- * Tanpa migrasi skema: kolom `progress` memang dirancang untuk status
- * pemakaian oleh penerima (pola sama dengan redeem kupon di Gift.progress).
- *
+ * Disimpan di kolom `kadoData` (JSONB) model Kado — kolom yang MEMANG ADA
+ * sejak migrasi kado pertama, jadi benar-benar tanpa migrasi baru:
+ *   kadoData = { ...konfigurasi kadoType, "reply": "isi balasan",
+ *                "repliedAt": "ISO timestamp" }
+ * (Catatan: versi pertama route ini menulis ke kolom `progress` yang
+ *  ternyata TIDAK ada di tabel Kado → error 42703/500 di produksi. Kolom
+ *  `progress` hanya milik model Gift lawan. kadoData aman dipakai: satu-satunya
+ *  penulisnya adalah create di POST /api/kado — tidak ada jalur edit yang
+ *  menimpanya setelah kado jadi.)
  * GET  /api/kado/[id]/reply — dipakai dashboard pengirim (polling 12 dtk):
  *      { success, status, reply, repliedAt } — status mentah Kado, balasan,
  *      dan waktunya. Tidak ada isi rahasia kado di sini.
@@ -44,21 +49,29 @@ const replySchema = z.object({
     .max(500, "Balasannya kepanjangan — maks 500 karakter ya."),
 });
 
-/** Bentuk tersimpan di progress — reply + repliedAt + sisa kunci lain. */
+/** Bentuk tersimpan di kadoData — reply + repliedAt + konfigurasi kadoType lain. */
 type KadoProgress = Record<string, unknown> & {
   reply?: string;
   repliedAt?: string;
 };
 
-function parseProgress(raw: string | null | undefined): KadoProgress {
-  if (!raw) return {};
-  try {
-    const v: unknown = JSON.parse(raw);
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-      return v as KadoProgress;
+/**
+ * Parse kadoData — pg mengembalikan jsonb SUDAH ter-parse (object), tapi
+ * tetap terima string JSON biar tahan bentuk lama/baru.
+ */
+function parseProgress(raw: unknown): KadoProgress {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as KadoProgress;
+  }
+  if (typeof raw === "string") {
+    try {
+      const v: unknown = JSON.parse(raw);
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        return v as KadoProgress;
+      }
+    } catch {
+      /* bukan JSON valid — perlakukan kosong */
     }
-  } catch {
-    /* bukan JSON valid — perlakukan kosong */
   }
   return {};
 }
@@ -93,8 +106,8 @@ export async function GET(
     // nonce memaksa query ke origin, bukan cache Hyperdrive yang basi.
     const nc = dbNonce();
     const rows = await withDbRetry(() =>
-      db.$queryRawUnsafe<Array<{ status: string; progress: string }>>(
-        `SELECT "status", "progress" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
+      db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
+        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
         id
       )
     );
@@ -106,7 +119,7 @@ export async function GET(
       );
     }
 
-    const progress = parseProgress(kado.progress);
+    const progress = parseProgress(kado.kadoData);
     return NextResponse.json({
       success: true,
       status: kado.status,
@@ -172,11 +185,11 @@ export async function POST(
       return NextResponse.json({ success: false, error: MODERATION_ERROR }, { status: 400 });
     }
 
-    // Baca anti-cache: status & progress terbaru dari origin
+    // Baca anti-cache: status & kadoData terbaru dari origin
     const nc = dbNonce();
     const rows = await withDbRetry(() =>
-      db.$queryRawUnsafe<Array<{ status: string; progress: string }>>(
-        `SELECT "status", "progress" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
+      db.$queryRawUnsafe<Array<{ status: string; kadoData: unknown }>>(
+        `SELECT "status", "kadoData" FROM "Kado" WHERE "id" = $1 /* nc-${nc} */`,
         id
       )
     );
@@ -196,16 +209,18 @@ export async function POST(
       );
     }
 
-    const progress = parseProgress(kado.progress);
+    const progress = parseProgress(kado.kadoData);
     const repliedAt = new Date().toISOString();
     const next: KadoProgress = { ...progress, reply, repliedAt };
 
     // Last write wins — penerima boleh merapikan balasannya. Tidak ada kunci
     // sekali-jalan di sini (beda dengan status): teksnya bisa dikoreksi.
+    // Disimpan ke kadoData (jsonb) — lihat catatan header di atas.
+    // reply & repliedAt adalah string — JSON-aman untuk InputJsonValue.
     await withDbRetry(() =>
       db.kado.update({
         where: { id },
-        data: { progress: JSON.stringify(next) },
+        data: { kadoData: next as Prisma.InputJsonValue },
         select: { id: true },
       })
     );
