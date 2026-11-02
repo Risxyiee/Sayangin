@@ -33,7 +33,7 @@
  * prefers-reduced-motion.
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import confetti from "canvas-confetti"
 import PremiumBouquet from "./PremiumBouquet"
@@ -196,6 +196,26 @@ export default function CinematicUnboxing({
   const [replyOpen, setReplyOpen] = useState(false)
 
   const reduceMotion = useReducedMotion()
+
+  /**
+   * Statistik buka — catat SATU kunjungan per sesi browser per kado lewat
+   * POST /api/kado/[id]/opened (fire-and-forget; angka tampil di dashboard
+   * pengirim). Pratinjau & demo tidak pernah menghitung — pengirim tidak
+   * menggelembungkan statistik kadonya sendiri. Guard sessionStorage: refresh
+   * di tab yang sama tidak menaikkan angka; buka dari tab/perangkat lain
+   * tetap dihitung (memang kunjungan berbeda).
+   */
+  useEffect(() => {
+    if (preview || !kado.id || kado.id.startsWith("demo-")) return
+    const key = `kangenin-opened-${kado.id}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, "1")
+    } catch {
+      /* mode privat — biarkan tetap terkirim, rate limit API yang menjaga */
+    }
+    fetch(`/api/kado/${kado.id}/opened`, { method: "POST" }).catch(() => {})
+  }, [preview, kado.id])
 
   /**
    * Fase 3 — kirim keputusan ke PATCH /api/kado/[id]/status.

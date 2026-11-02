@@ -102,6 +102,9 @@ interface ReplyState {
   status: string | null
   reply: string | null
   repliedAt: string | null
+  /** Statistik buka (ditulis POST /api/kado/[id]/opened di halaman kado). */
+  openCount: number | null
+  lastOpenedAt: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -279,8 +282,14 @@ export default function ShareDashboard(props: ShareDashboardProps) {
         </motion.div>
 
         {/* Balasan penerima — loop dua arah: dia jawab kado → pesannya muncul
-            di sini. Polling 12 dtk + tombol muat ulang manual. */}
-        <ReplyCard kadoId={props.kadoId} targetName={props.targetName} />
+            di sini. Polling 12 dtk + tombol muat ulang manual. Sekaligus
+            statistik buka + tombol kabar WA (pesan terisi otomatis). */}
+        <ReplyCard
+          kadoId={props.kadoId}
+          targetName={props.targetName}
+          kadoUrl={kadoUrl}
+          waNumber={waNumber}
+        />
 
         {/* 3 kartu opsi pengiriman */}
         <div className="space-y-4">
@@ -320,7 +329,17 @@ export default function ShareDashboard(props: ShareDashboardProps) {
 // Kartu balasan penerima — polling GET /api/kado/[id]/reply
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ReplyCard({ kadoId, targetName }: { kadoId: string; targetName: string }) {
+function ReplyCard({
+  kadoId,
+  targetName,
+  kadoUrl,
+  waNumber,
+}: {
+  kadoId: string
+  targetName: string
+  kadoUrl: string
+  waNumber: string
+}) {
   const [state, setState] = useState<ReplyState | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -336,7 +355,13 @@ function ReplyCard({ kadoId, targetName }: { kadoId: string; targetName: string 
         | (ReplyState & { success?: boolean })
         | null
       if (res.ok && json?.success) {
-        setState({ status: json.status ?? null, reply: json.reply ?? null, repliedAt: json.repliedAt ?? null })
+        setState({
+          status: json.status ?? null,
+          reply: json.reply ?? null,
+          repliedAt: json.repliedAt ?? null,
+          openCount: json.openCount ?? null,
+          lastOpenedAt: json.lastOpenedAt ?? null,
+        })
         setFailed(false)
       } else {
         setFailed(true)
@@ -371,6 +396,22 @@ function ReplyCard({ kadoId, targetName }: { kadoId: string; targetName: string 
         minute: "2-digit",
       })
     : null
+
+  const lastOpenedAtLabel = state?.lastOpenedAt
+    ? new Date(state.lastOpenedAt).toLocaleString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
+
+  // Nudge WA — pesan terisi otomatis sesuai status kado. Teks TIDAK pernah
+  // membocorkan identitas pengirim (tetap anonim): cuma ajakan buka/jawab.
+  const waValid = waNumber.startsWith("62") && waNumber.length >= 10
+  const waMessage = !state || state.status === "pending"
+    ? `Psst… ada sesuatu buat kamu nih 🎁 coba buka: ${kadoUrl}`
+    : `Jangan lupa jawab kado rahasianya ya 💌 dia nunggu balasanmu: ${kadoUrl}`
 
   return (
     <motion.section
@@ -426,6 +467,34 @@ function ReplyCard({ kadoId, targetName }: { kadoId: string; targetName: string 
         <p className="text-xs leading-relaxed text-zinc-500">
           Kadonya udah dibuka. <span className="text-zinc-300">Nunggu dia nulis balasan…</span> Pantauannya update sendiri tiap beberapa detik.
         </p>
+      )}
+
+      {/* Statistik buka — angka jujur: 1 hit per sesi browser per kado,
+          pratinjau & demo tidak pernah dihitung. */}
+      {state?.openCount != null && state.openCount > 0 && (
+        <p className="mt-3 flex items-center gap-1.5 border-t border-white/5 pt-2.5 text-[11px] text-zinc-500">
+          <Eye className="h-3 w-3 text-zinc-400" />
+          <span>
+            Kadonya udah dibuka <span className="font-semibold text-zinc-300">{state.openCount}×</span>
+            {lastOpenedAtLabel ? (
+              <> — terakhir {lastOpenedAtLabel}</>
+            ) : null}
+          </span>
+        </p>
+      )}
+
+      {/* Kabarin dia — deep link WA dengan pesan siap-tempel. Muncul cuma
+          kalau nomor target udah diisi di kartu WA Bot di bawah. */}
+      {waValid && !state?.reply && (
+        <a
+          href={`https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/20"
+        >
+          <MessageCircle className="h-4 w-4" />
+          {state?.status === "pending" ? "Kabarin dia buka via WA 📲" : "Ingatkan dia bales via WA 📲"}
+        </a>
       )}
     </motion.section>
   )
@@ -696,9 +765,8 @@ function WaBotCard({
       </button>
 
       <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-        Integrasi WA Bot masuk fase berikutnya. Sementara, jadi kurirnya dulu lewat{" "}
-        <span className="text-zinc-300">Alibi</span> atau{" "}
-        <span className="text-zinc-300">QR Code</span> ✈️
+        Isi nomor target di sini → tombol <span className="text-emerald-300">kabarin via WA</span> di kartu
+        balasan di atas langsung aktif — pesannya terisi otomatis, tetap tanpa jejak namamu ✈️
       </p>
     </div>
   )

@@ -134,6 +134,10 @@ export async function GET(
         status: kado.status,
         reply: typeof progress.reply === "string" ? progress.reply : null,
         repliedAt: typeof progress.repliedAt === "string" ? progress.repliedAt : null,
+        // statistik buka (ditulis POST /api/kado/[id]/opened) — tampil di
+        // dashboard pengirim: "kadonya udah dibuka 3×, terakhir jam ..."
+        openCount: typeof progress.openCount === "number" ? progress.openCount : null,
+        lastOpenedAt: typeof progress.lastOpenedAt === "string" ? progress.lastOpenedAt : null,
       },
       { headers: { "Cache-Control": "no-store, max-age=0", "CDN-Cache-Control": "no-store" } }
     );
